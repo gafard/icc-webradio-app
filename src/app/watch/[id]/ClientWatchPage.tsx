@@ -1,9 +1,18 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
 import { useSettings } from '../../../contexts/SettingsContext';
 import AaiPanel from '../../../components/AaiPanel';
+import { getProgress, upsertProgress } from '../../../components/progress';
+import { upsertHistory } from '../../../components/history';
+import { cacheAudio, getOfflineById, isAudioCached, precachePage, removeCachedAudio } from '../../../components/offline';
+import CommentsPanel from '../../../components/CommentsPanel';
+import QaPanel from '../../../components/QaPanel';
+import { fetchRemoteProgress, upsertRemoteProgress } from '../../../components/sync';
+import ShareButton from '../../../components/ShareButton';
+import { decodeHtmlEntities } from '../../../lib/wp';
 
 type WPPost = {
   id: number;
@@ -19,7 +28,8 @@ type WPPost = {
 };
 
 function stripHtml(html: string) {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = html.replace(/<[^>]+>/g, ' ');
+  return decodeHtmlEntities(text).replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim();
 }
 
 function extractAudioUrlFromHtml(html: string): string | null {
@@ -47,7 +57,8 @@ export default function ClientWatchPage({
 }) {
   const post = initialPost;
 
-  const { autoPlayOnOpen } = useSettings();
+  const { autoPlayOnOpen, autoPlayNext, dataSaver, syncId } = useSettings();
+  const searchParams = useSearchParams();
 
   const title = stripHtml(post?.title?.rendered ?? 'Lecture');
   const author = post?._embedded?.author?.[0]?.name ?? 'ICC';
@@ -55,11 +66,21 @@ export default function ClientWatchPage({
 
   const audioUrl = useMemo(() => extractAudioUrlFromHtml(post?.content?.rendered ?? ''), [post?.id]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSaveRef = useRef(0);
+  const resumeRef = useRef(0);
+  const resumeAppliedRef = useRef(false);
+
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   // real progress
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
+  const [nextCountdown, setNextCountdown] = useState<number | null>(null);
+  const [nextTarget, setNextTarget] = useState<string | null>(null);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
+  const [offlineError, setOfflineError] = useState<string | null>(null);
 
   // Playlist triée par date croissante (ancien -> récent)
   const playlist = useMemo(() => {
@@ -103,6 +124,17 @@ export default function ClientWatchPage({
         if (!a.src) a.src = audioUrl;
         await a.play();
         setPlaying(true);
+        if (post) {
+          upsertHistory({
+            id: `wp:${post.id}`,
+            slug: post.slug,
+            title,
+            thumbnail: cover,
+            type: audioUrl ? 'audio' : 'video',
+            lastPlayed: a.currentTime || 0,
+            updatedAt: Date.now(),
+          });
+        }
       } else {
         a.pause();
         setPlaying(false);
@@ -110,6 +142,14 @@ export default function ClientWatchPage({
     } catch {
       // ignore
     }
+  };
+
+  const seekBy = (deltaSeconds: number) => {
+    const a = audioRef.current;
+    if (!a || !duration) return;
+    const next = Math.max(0, Math.min(duration, (a.currentTime || 0) + deltaSeconds));
+    a.currentTime = next;
+    setCurrent(next);
   };
 
   const seek = (ratio: number) => {
@@ -123,9 +163,38 @@ export default function ClientWatchPage({
     const a = audioRef.current;
     if (!a) return;
 
-    const onLoaded = () => setDuration(a.duration || 0);
+    const onLoaded = () => {
+      const dur = a.duration || 0;
+      setDuration(dur);
+      if (!resumeAppliedRef.current && resumeRef.current > 0 && dur > 0) {
+        a.currentTime = Math.min(resumeRef.current, Math.max(0, dur - 1));
+        setCurrent(a.currentTime || 0);
+        resumeAppliedRef.current = true;
+      }
+    };
     const onTime = () => setCurrent(a.currentTime || 0);
-    const onEnded = () => setPlaying(false);
+    const onEnded = () => {
+      setPlaying(false);
+      if (!post) return;
+      const dur = a.duration || duration;
+      if (!dur) return;
+      upsertProgress({
+        id: `wp:${post.id}`,
+        slug: post.slug,
+        title,
+        thumbnail: cover,
+        type: audioUrl ? 'audio' : 'video',
+        lastTime: dur,
+        duration: dur,
+        progress: 1,
+        updatedAt: Date.now(),
+      });
+
+      if (autoPlayNext && currentIndex >= 0 && currentIndex < playlist.length - 1) {
+        setNextTarget(`/watch/${playlist[currentIndex + 1].slug}`);
+        setNextCountdown(5);
+      }
+    };
 
     a.addEventListener('loadedmetadata', onLoaded);
     a.addEventListener('timeupdate', onTime);
@@ -136,7 +205,7 @@ export default function ClientWatchPage({
       a.removeEventListener('timeupdate', onTime);
       a.removeEventListener('ended', onEnded);
     };
-  }, []);
+  }, [post?.id, post?.slug, title, cover, audioUrl, duration, autoPlayNext, currentIndex, playlist]);
 
   // autoplay au changement de post.id
   useEffect(() => {
@@ -151,14 +220,158 @@ export default function ClientWatchPage({
 
     if (audioUrl) {
       a.src = audioUrl;
+      a.playbackRate = playbackRate;
       if (autoPlayOnOpen) {
-        a.play().then(() => setPlaying(true)).catch(() => {});
+        a.play().then(() => {
+          setPlaying(true);
+          if (post) {
+            upsertHistory({
+              id: `wp:${post.id}`,
+              slug: post.slug,
+              title,
+              thumbnail: cover,
+              type: audioUrl ? 'audio' : 'video',
+              lastPlayed: a.currentTime || 0,
+              updatedAt: Date.now(),
+            });
+          }
+        }).catch(() => {});
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post?.id]);
 
+  useEffect(() => {
+    const tRaw = searchParams?.get('t');
+    const t = tRaw ? Number(tRaw) : 0;
+    let resumeAt = Number.isFinite(t) && t > 0 ? t : 0;
+
+    if (!resumeAt && post?.id) {
+      const saved = getProgress(`wp:${post.id}`);
+      if (saved?.lastTime && saved.lastTime > 0) resumeAt = saved.lastTime;
+      else if (saved?.duration && saved?.progress) resumeAt = saved.duration * saved.progress;
+    }
+
+    resumeRef.current = resumeAt;
+    resumeAppliedRef.current = false;
+    const a = audioRef.current;
+    if (a && a.duration && resumeRef.current > 0) {
+      a.currentTime = Math.min(resumeRef.current, Math.max(0, a.duration - 1));
+      setCurrent(a.currentTime || 0);
+      resumeAppliedRef.current = true;
+    }
+  }, [searchParams, post?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadRemote = async () => {
+      if (!syncId || !post?.id) return;
+      const local = getProgress(`wp:${post.id}`);
+      if (local?.lastTime || local?.progress) return;
+      const remote = await fetchRemoteProgress(syncId, `wp:${post.id}`);
+      if (!remote) return;
+      resumeRef.current = remote.lastTime || remote.duration * remote.progress;
+      resumeAppliedRef.current = false;
+      const a = audioRef.current;
+      if (mounted && a && a.duration && resumeRef.current > 0) {
+        a.currentTime = Math.min(resumeRef.current, Math.max(0, a.duration - 1));
+        setCurrent(a.currentTime || 0);
+        resumeAppliedRef.current = true;
+      }
+    };
+    loadRemote().catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [syncId, post?.id]);
+
+  useEffect(() => {
+    lastSaveRef.current = 0;
+  }, [post?.id]);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!post?.id || !audioUrl) {
+      setOfflineReady(false);
+      return;
+    }
+    const local = getOfflineById(`wp:${post.id}`);
+    if (local) {
+      setOfflineReady(true);
+    }
+    isAudioCached(audioUrl).then((cached) => {
+      if (mounted) setOfflineReady(cached);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [post?.id, audioUrl]);
+
+  useEffect(() => {
+    if (!post || !duration || !audioUrl || current <= 0) return;
+    const now = Date.now();
+    if (now - lastSaveRef.current < 5000 && current < duration - 2) return;
+    lastSaveRef.current = now;
+
+    const progressValue = Math.min(0.99, Math.max(0, current / duration));
+    upsertProgress({
+      id: `wp:${post.id}`,
+      slug: post.slug,
+      title,
+      thumbnail: cover,
+      type: audioUrl ? 'audio' : 'video',
+      lastTime: current,
+      duration,
+      progress: progressValue,
+      updatedAt: now,
+    });
+    if (syncId) {
+      upsertRemoteProgress(syncId, {
+        postKey: `wp:${post.id}`,
+        lastTime: current,
+        duration,
+        progress: progressValue,
+        updatedAt: now,
+      }).catch(() => {});
+    }
+    upsertHistory({
+      id: `wp:${post.id}`,
+      slug: post.slug,
+      title,
+      thumbnail: cover,
+      type: audioUrl ? 'audio' : 'video',
+      lastPlayed: current,
+      updatedAt: now,
+    });
+  }, [current, duration, post?.id, post?.slug, audioUrl, title, cover]);
+
   const progress = duration > 0 ? Math.min(1, current / duration) : 0;
+  const publishedLabel = post?.date
+    ? new Date(post.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '';
+
+  useEffect(() => {
+    setNextCountdown(null);
+    setNextTarget(null);
+  }, [post?.id]);
+
+  useEffect(() => {
+    if (nextCountdown === null) return;
+    if (nextCountdown <= 0) {
+      if (nextTarget) window.location.href = nextTarget;
+      return;
+    }
+    const t = setTimeout(() => {
+      setNextCountdown((c) => (c ?? 0) - 1);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [nextCountdown, nextTarget]);
 
   if (!post) {
     return (
@@ -170,6 +383,14 @@ export default function ClientWatchPage({
 
   return (
     <div className="w-full min-h-[100dvh] flex items-center justify-center px-3 sm:px-6 py-8">
+      {nextCountdown !== null && nextTarget ? (
+        <div className="fixed left-1/2 -translate-x-1/2 z-[10000] px-4" style={{ bottom: `calc(72px + env(safe-area-inset-bottom) + 16px)` }}>
+          <div className="glass-panel rounded-full px-4 py-2 text-xs font-semibold text-[color:var(--foreground)] flex items-center gap-2 shadow-2xl">
+            <span>Lecture suivante dans</span>
+            <span className="rounded-full bg-blue-600 text-white px-2 py-0.5">{nextCountdown}s</span>
+          </div>
+        </div>
+      ) : null}
       {/* background */}
       <div className="fixed inset-0 -z-10 bg-[#070A1A]" />
       <div className="fixed inset-0 -z-10 opacity-90 bg-[radial-gradient(1000px_600px_at_70%_20%,rgba(70,110,255,0.35),transparent_60%),radial-gradient(900px_650px_at_25%_10%,rgba(20,40,120,0.55),transparent_55%),radial-gradient(1000px_700px_at_50%_100%,rgba(0,0,0,0.75),transparent_65%)]" />
@@ -192,10 +413,23 @@ export default function ClientWatchPage({
                   <div className="text-white font-extrabold text-[30px] sm:text-[44px] leading-none tracking-tight">
                     {title || '—'}
                   </div>
-                  <div className="mt-3 text-white/60 text-xs font-semibold flex gap-3">
-                    <span>• {author}</span>
-                    <span>• {audioUrl ? 'AUDIO' : 'VIDÉO'}</span>
-                    <span>• {new Date(post.date).toLocaleDateString('fr-FR')}</span>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-white/80">
+                      {audioUrl ? 'AUDIO' : 'VIDÉO'}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/60">
+                      {author}
+                    </span>
+                    {publishedLabel ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/60">
+                        {publishedLabel}
+                      </span>
+                    ) : null}
+                    {duration ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/60">
+                        Durée {fmt(duration)}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 text-white/45 text-[12px] sm:text-[13px] max-w-[680px] line-clamp-3">
@@ -212,7 +446,20 @@ export default function ClientWatchPage({
 
               {/* PLAYER (unique) */}
               <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 p-5 sm:p-6">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+                    <img src={cover} alt="" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-white/90 font-extrabold text-sm truncate">{title}</div>
+                    <div className="text-xs text-white/50 truncate">{author}{publishedLabel ? ` • ${publishedLabel}` : ''}</div>
+                  </div>
+                  <div className="ml-auto text-[10px] font-bold text-white/60 tracking-widest">
+                    {audioUrl ? 'LISTEN' : 'WATCH'}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between gap-4">
                   <div className="text-white/90 font-extrabold">Lecteur</div>
                   {!audioUrl ? (
                     <div className="text-white/50 text-xs font-semibold">
@@ -225,7 +472,7 @@ export default function ClientWatchPage({
                 <div className="mt-4 flex items-center gap-3">
                   <button
                     onClick={goPrev}
-                    className="h-11 w-11 rounded-full bg-white/8 border border-white/10 grid place-items-center text-white/90 disabled:opacity-40"
+                    className="btn-icon bg-white/8 border-white/10 text-white/90 disabled:opacity-40"
                     disabled={currentIndex <= 0}
                     title="Précédent"
                   >
@@ -235,7 +482,7 @@ export default function ClientWatchPage({
                   <button
                     onClick={toggle}
                     disabled={!audioUrl}
-                    className="h-12 w-12 rounded-full bg-blue-600 text-white grid place-items-center shadow-[0_18px_45px_rgba(74,123,255,0.30)] disabled:opacity-40"
+                    className="btn-icon h-12 w-12 bg-blue-600 text-white shadow-[0_18px_45px_rgba(74,123,255,0.30)] disabled:opacity-40"
                     title="Play / Pause"
                   >
                     {playing ? <Pause size={18} /> : <Play size={18} />}
@@ -244,7 +491,7 @@ export default function ClientWatchPage({
                   <button
                     onClick={stop}
                     disabled={!audioUrl}
-                    className="h-11 w-11 rounded-full bg-white/8 border border-white/10 grid place-items-center text-white/90 disabled:opacity-40"
+                    className="btn-icon bg-white/8 border-white/10 text-white/90 disabled:opacity-40"
                     title="Stop"
                   >
                     <Square size={18} />
@@ -252,12 +499,18 @@ export default function ClientWatchPage({
 
                   <button
                     onClick={goNext}
-                    className="h-11 w-11 rounded-full bg-white/8 border border-white/10 grid place-items-center text-white/90 disabled:opacity-40"
+                    className="btn-icon bg-white/8 border-white/10 text-white/90 disabled:opacity-40"
                     disabled={currentIndex < 0 || currentIndex >= playlist.length - 1}
                     title="Suivant"
                   >
                     <SkipForward size={18} />
                   </button>
+
+                  <ShareButton
+                    title={title}
+                    text="Écoute ce message sur ICC WebRadio"
+                    className="btn-base btn-secondary text-xs px-3 py-2"
+                  />
 
                   <div className="ml-auto text-white/50 text-xs font-semibold tabular-nums">
                     {fmt(current)} / {duration ? fmt(duration) : '—:—'}
@@ -279,13 +532,115 @@ export default function ClientWatchPage({
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => seekBy(-15)}
+                    disabled={!audioUrl}
+                    className="btn-base btn-secondary text-xs px-3 py-2 disabled:opacity-40"
+                  >
+                    ⟲ 15s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => seekBy(30)}
+                    disabled={!audioUrl}
+                    className="btn-base btn-secondary text-xs px-3 py-2 disabled:opacity-40"
+                  >
+                    30s ⟳
+                  </button>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    <div className="text-[11px] text-white/50 font-semibold">Vitesse</div>
+                    {[1, 1.25, 1.5].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setPlaybackRate(r)}
+                        className={`btn-base text-[11px] px-3 py-2 ${
+                          playbackRate === r
+                            ? 'btn-primary'
+                            : 'btn-secondary'
+                        }`}
+                      >
+                        {r}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* offline actions */}
+                {audioUrl ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <div className="text-[11px] font-semibold text-white/50">Hors‑ligne</div>
+                    {offlineReady ? (
+                      <span className="chip-soft text-white/80 border-white/20 bg-white/10">Disponible</span>
+                    ) : (
+                      <span className="chip-soft text-white/60 border-white/10 bg-white/5">Non disponible</span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!post?.id || !audioUrl) return;
+                        setOfflineBusy(true);
+                        setOfflineError(null);
+                        try {
+                          if (offlineReady) {
+                            await removeCachedAudio(`wp:${post.id}`, audioUrl);
+                            setOfflineReady(false);
+                          } else {
+                            const ok = await cacheAudio({
+                              id: `wp:${post.id}`,
+                              slug: post.slug,
+                              title,
+                              thumbnail: cover,
+                              url: audioUrl,
+                              updatedAt: Date.now(),
+                            });
+                            if (!ok) {
+                              setOfflineError('Téléchargement impossible');
+                            } else {
+                              setOfflineReady(true);
+                              precachePage(window.location.href);
+                            }
+                          }
+                        } finally {
+                          setOfflineBusy(false);
+                        }
+                      }}
+                      className="btn-base btn-secondary text-xs px-3 py-2 disabled:opacity-50"
+                      disabled={offlineBusy}
+                    >
+                      {offlineReady ? 'Retirer' : offlineBusy ? 'Téléchargement...' : 'Télécharger'}
+                    </button>
+
+                    {offlineError ? (
+                      <span className="text-[11px] text-red-300 font-semibold">{offlineError}</span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {/* IA Panel (AssemblyAI) */}
-              <AaiPanel postKey={`wp:${post?.id ?? '0'}`} audioUrl={audioUrl} />
+              <AaiPanel
+                postKey={`wp:${post?.id ?? '0'}`}
+                audioUrl={audioUrl}
+                onSeekSeconds={(s) => {
+                  const a = audioRef.current;
+                  if (!a || !duration) return;
+                  const next = Math.max(0, Math.min(duration, s));
+                  a.currentTime = next;
+                  setCurrent(next);
+                }}
+              />
+
+              <CommentsPanel postKey={`wp:${post?.id ?? '0'}`} title={title} />
+              <QaPanel postKey={`wp:${post?.id ?? '0'}`} />
 
               {/* hidden audio */}
-              <audio ref={audioRef} preload="metadata" />
+              <audio ref={audioRef} preload={dataSaver ? 'none' : 'metadata'} />
             </section>
 
             {/* PLAYLIST RIGHT */}
@@ -305,7 +660,7 @@ export default function ClientWatchPage({
                     <a
                       key={p.slug}
                       href={`/watch/${p.slug}`}
-                      className={`group flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition ${
+                      className={`group flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition card-anim ${
                         isActive
                           ? 'bg-blue-600/90 border-transparent'
                           : 'bg-white/5 border-white/10 hover:bg-white/8'

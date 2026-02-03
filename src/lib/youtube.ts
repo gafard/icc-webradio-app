@@ -23,6 +23,10 @@ export type YTPlaylistItem = {
 };
 
 const YT_BASE = "https://www.googleapis.com/youtube/v3";
+const YT_RSS_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
 
 async function ytFetch<T>(path: string, revalidate = 300): Promise<T> {
   if (!API_KEY) throw new Error("YT_API_KEY manquant dans .env.local");
@@ -136,7 +140,10 @@ export async function getPlaylistItems(playlistId: string, count = 50): Promise<
   // ✅ Fallback sans clé : RSS playlist
   const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
   try {
-    const res = await fetch(rssUrl, { next: { revalidate: 300 } });
+    const res = await fetch(rssUrl, {
+      next: { revalidate: 300 },
+      headers: YT_RSS_HEADERS,
+    });
     if (!res.ok) return [];
 
     const xml = await res.text();
@@ -165,6 +172,60 @@ export async function getPlaylistItems(playlistId: string, count = 50): Promise<
   }
 }
 
+export async function getPlaylistInfo(
+  playlistId: string,
+  count = 50
+): Promise<{ title: string; items: YTPlaylistItem[] }> {
+  if (HAS_KEY) {
+    try {
+      const data = await ytFetch<any>(
+        `/playlists?part=snippet&id=${encodeURIComponent(playlistId)}`,
+        300
+      );
+      const title = data?.items?.[0]?.snippet?.title ?? '';
+      const items = await getPlaylistItems(playlistId, count);
+      return { title, items };
+    } catch (error) {
+      console.error('Error fetching playlist info with API key:', error);
+    }
+  }
+
+  const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${playlistId}`;
+  try {
+    const res = await fetch(rssUrl, {
+      next: { revalidate: 300 },
+      headers: YT_RSS_HEADERS,
+    });
+    if (!res.ok) return { title: '', items: [] };
+
+    const xml = await res.text();
+    const parser = new XMLParser({ ignoreAttributes: false });
+    const feed = parser.parse(xml);
+
+    const title = feed?.feed?.title ?? '';
+    const entries = feed?.feed?.entry;
+    if (!entries) return { title, items: [] };
+
+    const list = Array.isArray(entries) ? entries : [entries];
+    const items = list.slice(0, count).map((e: any) => {
+      const videoId = e['yt:videoId'];
+      const title = e.title;
+      const publishedAt = e.published;
+      const channelTitle = e.author?.name ?? '';
+      const thumb =
+        e['media:group']?.['media:thumbnail']?.['@_url'] ??
+        `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+      return { videoId, title, publishedAt, channelTitle, thumb };
+    });
+
+    return { title, items };
+  } catch (error) {
+    console.error('Error fetching playlist with RSS:', error);
+    return { title: '', items: [] };
+  }
+}
+
 export function buildUpNextFromPlaylist(
   items: YTPlaylistItem[],
   currentVideoId: string,
@@ -183,9 +244,55 @@ export function buildUpNextFromPlaylist(
   return items.slice(currentIndex + 1, currentIndex + 1 + take);
 }
 
-export async function getUpNextRelated(videoId: string, take = 10): Promise<any[]> {
+export async function getUpNextRelated(videoId: string, take = 10): Promise<YTPlaylistItem[]> {
   if (!HAS_KEY) return []; // sans clé, pas de "related" fiable
-  // Cette fonction nécessiterait l'utilisation de l'API YouTube Search avec relatedToVideoId
-  // Pour le moment, on retourne un tableau vide si on n'a pas de clé
-  return [];
+
+  // Valider l'ID de la vidéo (format YouTube standard)
+  if (!videoId || typeof videoId !== 'string' || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    console.warn(`ID de vidéo invalide pour les vidéos liées: ${videoId}`);
+    return [];
+  }
+
+  try {
+    // Récupérer les détails de la vidéo pour trouver la chaîne
+    const videoDetails = await getVideo(videoId);
+    if (!videoDetails || !videoDetails.channelId) return [];
+
+    // Charger les dernières vidéos de la même chaîne
+    const data = await ytFetch<any>(
+      `/search?part=snippet&channelId=${videoDetails.channelId}&type=video&maxResults=${take}&order=date`,
+      300
+    );
+
+    const items: YTPlaylistItem[] = (data.items ?? [])
+      .map((item: any) => {
+        const snippet = item.snippet;
+        const videoId = item.id?.videoId;
+
+        if (!videoId) return null;
+
+        const thumb =
+          snippet?.thumbnails?.maxres?.url ||
+          snippet?.thumbnails?.high?.url ||
+          snippet?.thumbnails?.medium?.url ||
+          snippet?.thumbnails?.default?.url ||
+          `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+        return {
+          videoId,
+          title: snippet?.title ?? "",
+          channelTitle: snippet?.channelTitle ?? "",
+          channelId: snippet?.channelId ?? "",
+          publishedAt: snippet?.publishedAt ?? "",
+          thumb,
+        } as YTPlaylistItem;
+      })
+      .filter(Boolean);
+
+    // Exclure la vidéo originale des résultats
+    return items.filter(item => item.videoId !== videoId);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des vidéos liées:", error);
+    return [];
+  }
 }

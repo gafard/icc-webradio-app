@@ -1,5 +1,11 @@
 const KEY = 'icc_favorites_v1';
 
+function notify() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('icc-user-state-update'));
+  }
+}
+
 export function getFavorites(): string[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -15,6 +21,7 @@ export function getFavorites(): string[] {
 export function setFavorites(ids: string[]) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(Array.from(new Set(ids))));
+  notify();
 }
 
 export function toggleFavorite(id: string): string[] {

@@ -1,11 +1,16 @@
 import AppShell from '../components/AppShell';
 import HomeHeroBridge from '../components/HomeHeroBridge';
 import ContinueRail from '../components/ContinueRail';
+import RecentRail from '../components/RecentRail';
 import HomeRailsBridge, { type HomeSection } from '../components/HomeRailsBridge';
 import { wpFetch } from '../lib/wp';
 import { XMLParser } from 'fast-xml-parser';
 
 import { mapWpToMediaItem, mapYtToMediaItem, uniqById, type MediaItem } from '../lib/media';
+import { getCategoriesBySearch, getSeriesCategories, type WPCategory } from '../lib/wp-series';
+import { applyAlias, cleanTitle, normalizeSerie, parseEpisodeNumber, parseSerieFromTitle } from '../lib/series';
+import { getPlaylistInfo } from '../lib/youtube';
+import { YT_PLAYLISTS, resolvePlaylistId, mapPlaylistItemToMediaItem } from '../lib/youtube-playlists';
 
 type Video = {
   id: string;
@@ -58,13 +63,8 @@ async function getTagsBySearch(search: string) {
   )) ?? [];
 }
 
-async function getSerieTags(): Promise<WPTerm[]> {
-  const a = await getTagsBySearch('Serie:');
-  const b = await getTagsBySearch('Série:');
-  const merged = [...a, ...b];
-
-  const unique = Array.from(new Map(merged.map(t => [t.id, t])).values());
-  return unique.filter(t => /^s[ée]rie\s*:/i.test(t.name.trim()));
+async function getCategoriesByName(name: string): Promise<WPCategory[]> {
+  return getCategoriesBySearch(name);
 }
 
 // ⬇️ helper: filtre dernière semaine
@@ -81,28 +81,53 @@ const CATEGORY_IDS = {
 };
 
 export default async function Home() {
+  const themeWanted = ['Foi', 'Prière', 'Saint-Esprit', 'Famille', 'Jeûne'];
+
   // 1) sources WP larges pour avoir assez de matière pour le "mix"
-  const [wpLatest, wpAudiosPool, wpMessages, wpCultes, wpEns, serieTags, ytVideos, themeTags] =
+  const [
+    wpLatest,
+    wpAudiosPool,
+    wpMessages,
+    wpCultes,
+    wpEns,
+    serieCategories,
+    ytVideos,
+    themeTags,
+    themeCategories,
+    growthTags,
+    growthCategories,
+  ] =
     await Promise.all([
       getWpPosts('', 40, 'desc'), // pool général (mix)
-      getWpPosts('', 60, 'desc'), // pool audios (on filtrera)
+      getWpPosts('', 100, 'desc'), // pool audios (on filtrera)
       getWpPosts(`categories=${CATEGORY_IDS.messages}`, 12, 'desc'),
       getWpPosts(`categories=${CATEGORY_IDS.cultes}`, 12, 'desc'),
       getWpPosts(`categories=${CATEGORY_IDS.enseignements}`, 12, 'desc'),
-      getSerieTags(),
+      getSeriesCategories(Object.values(CATEGORY_IDS)),
       getLatestVideos(20),
-      Promise.all([
-        getTagsBySearch('Foi'),
-        getTagsBySearch('Prière'),
-        getTagsBySearch('Saint-Esprit'),
-        getTagsBySearch('Famille'),
-        getTagsBySearch('Jeûne'),
-        getTagsBySearch('École de croissance'),
-        getTagsBySearch('Ecole de croissance'),
-      ]),
+      Promise.all(themeWanted.map((name) => getTagsBySearch(name))),
+      Promise.all(themeWanted.map((name) => getCategoriesByName(name))),
+      Promise.all([getTagsBySearch('École de croissance'), getTagsBySearch('Ecole de croissance')]),
+      Promise.all([getCategoriesByName('École de croissance'), getCategoriesByName('Ecole de croissance')]),
     ]);
 
+  const playlistInfos = await Promise.all(
+    YT_PLAYLISTS.map(async (cfg) => {
+      const playlistId = resolvePlaylistId(cfg);
+      if (!playlistId) return null;
+      const info = await getPlaylistInfo(playlistId, 50);
+      return {
+        id: playlistId,
+        title: cfg.title ?? info.title ?? 'Playlist YouTube',
+        items: info.items ?? [],
+      };
+    })
+  );
+
   const flatThemeTags = themeTags.flat();
+  const flatThemeCategories = themeCategories.flat();
+  const flatGrowthTags = growthTags.flat();
+  const flatGrowthCategories = growthCategories.flat();
 
   // ---- items mapping
   const wpLatestItems = wpLatest.map(mapWpToMediaItem);
@@ -125,58 +150,215 @@ export default async function Home() {
   const cultesItems = wpCultes.map(mapWpToMediaItem);
   const enseignementsItems = wpEns.map(mapWpToMediaItem);
 
-  // 5) Thèmes (tag → rail)
-  const themeWanted = ['Foi', 'Prière', 'Saint-Esprit', 'Famille', 'Jeûne'];
+  // 5) Thèmes (catégories si dispo, sinon tags)
   const themeRails: HomeSection[] = [];
   for (const name of themeWanted) {
-    const tag = flatThemeTags.find(t => t?.name?.toLowerCase() === name.toLowerCase());
+    const category = flatThemeCategories.find(
+      (c) => c?.name?.toLowerCase() === name.toLowerCase()
+    );
+    if (category) {
+      const posts = await getWpPosts(`categories=${category.id}`, 12, 'desc');
+      const items = posts.map(mapWpToMediaItem);
+      if (items.length) themeRails.push({ key: `theme-cat-${category.id}`, title: `Thème — ${name}`, items });
+      continue;
+    }
+
+    const tag = flatThemeTags.find((t) => t?.name?.toLowerCase() === name.toLowerCase());
     if (!tag) continue;
     const posts = await getWpPosts(`tags=${tag.id}`, 12, 'desc');
     const items = posts.map(mapWpToMediaItem);
-    if (items.length) themeRails.push({ key: `theme-${tag.id}`, title: `Thème — ${name}`, items });
+    if (items.length) themeRails.push({ key: `theme-tag-${tag.id}`, title: `Thème — ${name}`, items });
   }
 
-  // 6) École de croissance (ordre croissant)
-  const growthTag =
-    flatThemeTags.find(t => /école de croissance/i.test(t?.name ?? '')) ||
-    flatThemeTags.find(t => /ecole de croissance/i.test(t?.name ?? ''));
-  let ecoleCroissance: HomeSection | null = null;
-  if (growthTag) {
-    const postsAsc = await getWpPosts(`tags=${growthTag.id}`, 60, 'asc'); // ✅ asc
-    const itemsAsc = postsAsc.map(mapWpToMediaItem);
-    if (itemsAsc.length) ecoleCroissance = { key: `growth-${growthTag.id}`, title: 'École de croissance', items: itemsAsc };
-  }
+  const pickFirstEpisode = (items: MediaItem[]) => {
+    if (!items.length) return null;
+    return items.reduce((best, item) => {
+      const itemTitle = cleanTitle(item.title);
+      const bestTitle = cleanTitle(best.title);
+      const itemNum = parseEpisodeNumber(itemTitle);
+      const bestNum = parseEpisodeNumber(bestTitle);
+      const itemDate = new Date(item.dateISO).getTime();
+      const bestDate = new Date(best.dateISO).getTime();
 
-  // 7) Séries (1 tag = 1 rail)
-  const serieRails = await Promise.all(
-    serieTags.slice(0, 6).map(async (tag) => {
-      const posts = await getWpPosts(`tags=${tag.id}`, 12, 'desc');
-      const serieName = tag.name.replace(/^s[ée]rie\s*:\s*/i, '').trim();
-      return {
-        key: `serie-${tag.id}`,
-        title: `Série — ${serieName}`,
-        items: posts.map(mapWpToMediaItem),
-      } as HomeSection;
-    })
+      if (itemNum !== null && (bestNum === null || itemNum < bestNum)) return item;
+      if (itemNum !== null && bestNum !== null && itemNum === bestNum && itemDate < bestDate) return item;
+      if (itemNum === null && bestNum === null && itemDate < bestDate) return item;
+      return best;
+    }, items[0]);
+  };
+
+
+  // 7) Séries (mix titres + catégories, 1er épisode par série)
+  const seriesCategoryById = new Map<number, string>(
+    serieCategories.map((cat) => [cat.id, cat.name])
   );
 
-  // ---- sections finales (ordre "Netflix")
+  const seriesMap = new Map<
+    string,
+    { serieName: string; item: MediaItem; episodeNumber: number | null; dateTs: number }
+  >();
+
+  const upsertSeries = (name: string, item: MediaItem, episodeNumber: number | null) => {
+    const serieName = applyAlias(
+      cleanTitle(name).replace(/^s[ée]rie\s*:\s*/i, '').trim()
+    );
+    if (!serieName) return;
+    const key = normalizeSerie(serieName) || serieName.toLowerCase();
+    const dateTs = new Date(item.dateISO).getTime();
+
+    const existing = seriesMap.get(key);
+    if (!existing) {
+      seriesMap.set(key, { serieName, item, episodeNumber, dateTs });
+      return;
+    }
+
+    if (
+      episodeNumber !== null &&
+      (existing.episodeNumber === null || episodeNumber < existing.episodeNumber)
+    ) {
+      seriesMap.set(key, { serieName, item, episodeNumber, dateTs });
+      return;
+    }
+
+    if (episodeNumber !== null && existing.episodeNumber === episodeNumber && dateTs < existing.dateTs) {
+      seriesMap.set(key, { serieName, item, episodeNumber, dateTs });
+      return;
+    }
+
+    if (episodeNumber === null && existing.episodeNumber === null && dateTs < existing.dateTs) {
+      seriesMap.set(key, { serieName, item, episodeNumber, dateTs });
+    }
+  };
+
+  for (const post of wpAudiosPool) {
+    const item = mapWpToMediaItem(post);
+    if (item.kind === 'text') continue;
+    const cleanedTitle = cleanTitle(item.title);
+    const cleanedItem = { ...item, title: cleanedTitle };
+    const episodeNumber = parseEpisodeNumber(cleanedTitle);
+    const titleKey = normalizeSerie(cleanedTitle);
+
+    const serieRaw = parseSerieFromTitle(cleanedTitle);
+    if (serieRaw) {
+      upsertSeries(serieRaw, cleanedItem, episodeNumber);
+    }
+
+    const postCategories = Array.isArray(post?.categories) ? post.categories : [];
+    for (const catId of postCategories) {
+      const catName = seriesCategoryById.get(catId);
+      if (catName) {
+        const catKey = normalizeSerie(cleanTitle(catName));
+        if (!catKey || (titleKey && !titleKey.includes(catKey))) continue;
+        upsertSeries(catName, cleanedItem, episodeNumber);
+      }
+    }
+  }
+
+  const withSerieSubtitle = (item: MediaItem, serieName: string) => {
+    if (!item.subtitle) return { ...item, subtitle: `Série — ${serieName}` };
+    if (item.subtitle.toLowerCase().includes(serieName.toLowerCase())) return item;
+    return { ...item, subtitle: `${item.subtitle} • ${serieName}` };
+  };
+
+  const wpSerieEntries = Array.from(seriesMap.values())
+    .map(({ serieName, item }) => ({
+      serieName,
+      item: withSerieSubtitle(item, serieName),
+    }));
+
+  const excludeSerieKey = null; // Variable manquante - définie comme null pour ne pas exclure de séries
+
+  const playlistSerieEntries = playlistInfos
+    .filter((info): info is { id: string; title: string; items: any[] } => !!info)
+    .map((info) => {
+      const title = cleanTitle(info.title);
+      const items = Array.isArray(info.items) ? info.items : [];
+      if (!items.length) return null;
+      const sorted = [...items].sort((a, b) => {
+        const aTs = new Date(a.publishedAt ?? 0).getTime();
+        const bTs = new Date(b.publishedAt ?? 0).getTime();
+        return aTs - bTs;
+      });
+      const first = sorted[0];
+      if (!first) return null;
+      const item = mapPlaylistItemToMediaItem(first, info.id);
+      return { serieName: title, item: withSerieSubtitle(item, title) };
+    })
+    .filter((entry): entry is { serieName: string; item: MediaItem } => !!entry)
+    .filter((entry) => !excludeSerieKey || normalizeSerie(entry.serieName) !== excludeSerieKey);
+
+  const playlistSerieItems = playlistSerieEntries
+    .sort((a, b) => a.serieName.localeCompare(b.serieName, 'fr', { sensitivity: 'base' }))
+    .map(({ item }) => item);
+
+  const wpSerieItemsSorted = wpSerieEntries
+    .sort((a, b) => a.serieName.localeCompare(b.serieName, 'fr', { sensitivity: 'base' }))
+    .map(({ item }) => item);
+
+  const MAX_SERIES = 12;
+  const remainingSlots = Math.max(0, MAX_SERIES - playlistSerieItems.length);
+  const serieItems = [...playlistSerieItems, ...wpSerieItemsSorted.slice(0, remainingSlots)];
+
+  // ---- sections finales (ordre "Netflix") avec dédoublonnage
+  
+  // Créer un ensemble d'IDs déjà vus pour éviter les doublons entre sections
+  const usedIds = new Set<string>();
+
+  // Fonction pour filtrer les éléments déjà utilisés dans d'autres sections
+  const filterUniqueItems = (items: MediaItem[]): MediaItem[] => {
+    return items.filter(item => {
+      if (usedIds.has(item.id)) {
+        return false;
+      }
+      usedIds.add(item.id);
+      return true;
+    });
+  };
+
+  // Filtrer les sections dans l'ordre d'importance
+  const filteredNouveautesSemaine = filterUniqueItems(nouveautesSemaine);
+  const filteredDerniersAudios = filterUniqueItems(derniersAudios);
+  const filteredMessagesItems = filterUniqueItems(messagesItems);
+  const filteredCultesItems = filterUniqueItems(cultesItems);
+  const filteredEnseignementsItems = filterUniqueItems(enseignementsItems);
+
+  // Filtrer les thèmes
+  const filteredThemeRails = themeRails.map(rail => ({
+    ...rail,
+    items: filterUniqueItems(rail.items)
+  })).filter(rail => rail.items.length > 0);
+
+
+  // Filtrer les séries
+  const filteredSerieItems = filterUniqueItems(serieItems);
+
+  // Filtrer les vidéos YouTube
+  const filteredYtItems = filterUniqueItems(ytItems.slice(0, 12));
+
   const sections: HomeSection[] = [
-    { key: 'new-week', title: 'Nouveautés cette semaine', items: nouveautesSemaine },
+    { key: 'new-week', title: 'Nouveautés cette semaine', items: filteredNouveautesSemaine },
 
     // ContinueRail est un composant à part (client) → tu le mets sous le hero
-    { key: 'audios', title: 'Derniers audios', items: derniersAudios },
+    { key: 'audios', title: 'Derniers audios', items: filteredDerniersAudios },
 
-    { key: 'msg', title: 'Messages du jour', items: messagesItems },
-    { key: 'cultes', title: 'Cultes', items: cultesItems },
-    { key: 'ens', title: 'Enseignements', items: enseignementsItems },
+    { key: 'msg', title: 'Messages du jour', items: filteredMessagesItems },
+    { key: 'cultes', title: 'Cultes', items: filteredCultesItems },
+    { key: 'ens', title: 'Enseignements', items: filteredEnseignementsItems },
 
-    // YouTube séparé, tu peux le garder même si tu as un mix
-    { key: 'yt', title: 'Vidéos récentes (YouTube)', items: ytItems.slice(0, 12) },
+    ...filteredThemeRails,
+    ...(filteredSerieItems.length
+      ? [
+          {
+            key: 'series',
+            title: 'Séries',
+            items: filteredSerieItems,
+            seeAllHref: '/series',
+          } as HomeSection,
+        ]
+      : []),
 
-    ...(ecoleCroissance ? [ecoleCroissance] : []),
-    ...themeRails,
-    ...serieRails,
+    // YouTube séparé, placé sous les séries
+    { key: 'yt', title: 'Vidéos récentes (YouTube)', items: filteredYtItems },
   ].filter(s => s.items.length > 0);
 
   // Récupérer la dernière vidéo YouTube pour le hero
@@ -189,7 +371,7 @@ export default async function Home() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-[96vw] sm:max-w-6xl px-4 py-6 sm:py-8">
         <HomeHeroBridge
           latestVideo={latestVideo}
           radioStreamUrl="https://streamer.iccagoe.net:8443/live"
@@ -197,6 +379,7 @@ export default async function Home() {
 
         {/* ✅ Reprendre (client) */}
         <ContinueRail />
+        <RecentRail />
 
         {/* ✅ Tous les rails */}
         <HomeRailsBridge sections={sections} />

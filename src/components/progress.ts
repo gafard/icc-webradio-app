@@ -14,6 +14,12 @@ export type ProgressItem = {
 
 const KEY = 'icc_progress_v1';
 
+function notify() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('icc-user-state-update'));
+  }
+}
+
 function read(): Record<string, ProgressItem> {
   if (typeof window === 'undefined') return {};
   try {
@@ -25,6 +31,7 @@ function read(): Record<string, ProgressItem> {
 
 function write(data: Record<string, ProgressItem>) {
   localStorage.setItem(KEY, JSON.stringify(data));
+  notify();
 }
 
 export function upsertProgress(item: ProgressItem) {
@@ -42,10 +49,16 @@ export function getProgressList(): ProgressItem[] {
     .slice(0, 12); // Limiter à 12 éléments
 }
 
+export function getProgress(id: string): ProgressItem | null {
+  const data = read();
+  return data[id] ?? null;
+}
+
 export function clearProgress(id?: string) {
   const data = read();
   if (!id) {
     localStorage.removeItem(KEY);
+    notify();
     return;
   }
   delete data[id];

@@ -4,7 +4,7 @@ import { setCache } from '../../../../lib/aaiStore';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const { postKey, audioUrl } = body as { postKey?: string; audioUrl?: string };
+  const { postKey, audioUrl, autoSummarize } = body as { postKey?: string; audioUrl?: string; autoSummarize?: boolean };
 
   if (!postKey || !audioUrl) {
     return NextResponse.json({ error: 'Missing postKey or audioUrl' }, { status: 400 });
@@ -13,10 +13,10 @@ export async function POST(req: Request) {
   const created = await aaiCreateTranscript({
     audio_url: audioUrl,
     language_code: 'fr',
-    summarization: true,
+    summarization: autoSummarize !== false,
     summary_model: 'informative',
     summary_type: 'bullets',
-    auto_chapters: true,
+    auto_chapters: autoSummarize !== false,
   });
 
   // save initial snapshot

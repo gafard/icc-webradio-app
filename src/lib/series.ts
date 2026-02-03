@@ -2,7 +2,8 @@ export function parseEpisodeNumber(title: string): number | null {
   const t = title ?? '';
 
   const m =
-    t.match(/(?:\bEP\b|\bEPI\b|\bÉP\b|\bEPISODE\b|\bÉPISODE\b)\s*[:\-]?\s*0*([0-9]{1,4})/i) ||
+    t.match(/(?:\bSESSION\b|\bS[ÉE]ANCE\b)\s*[,.:–—\-]?\s*0*([0-9]{1,4})/i) ||
+    t.match(/(?:\bEP\b|\bEPI\b|\bÉP\b|\bEPISODE\b|\bÉPISODE\b)\s*[,.:–—\-]?\s*0*([0-9]{1,4})/i) ||
     t.match(/(?:#|N°|No\.?)\s*0*([0-9]{1,4})/i) ||
     t.match(/\b0*([0-9]{1,4})\b\s*\/\s*\b0*([0-9]{1,4})\b/); // 3/20
 
@@ -11,9 +12,33 @@ export function parseEpisodeNumber(title: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+export function cleanTitle(text: string) {
+  return (text ?? '')
+    .replace(/[#@]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function parseSerieFromTitle(title: string): string | null {
   const t = (title ?? '').trim();
   if (!t) return null;
+
+  // "Session 04 - Série" ou "Série - Session 04"
+  const sessionAfter = t.match(
+    /^(?:session|s[ée]ance|episode|[ée]pisode|ep)\s*[,.:–—\-]?\s*0*[0-9]{1,4}\s*[-–—:|]?\s*(.+)$/i
+  );
+  if (sessionAfter?.[1]) {
+    const raw = sessionAfter[1].replace(/[\|\-–—:]+$/g, '').trim();
+    return raw && raw.length >= 3 ? raw : null;
+  }
+
+  const sessionBefore = t.match(
+    /^(.+?)\s*[-–—:|]\s*(?:session|s[ée]ance|episode|[ée]pisode|ep)\s*[,.:–—\-]?\s*0*[0-9]{1,4}/i
+  );
+  if (sessionBefore?.[1]) {
+    const raw = sessionBefore[1].replace(/[\|\-–—:]+$/g, '').trim();
+    return raw && raw.length >= 3 ? raw : null;
+  }
 
   // coupe avant EP/Episode/#/No/N°
   const m = t.match(/^(.*?)(?:\bEP\b|\bEPI\b|\bÉP\b|\bEPISODE\b|\bÉPISODE\b|#|N°|No\.?)/i);
@@ -40,6 +65,7 @@ export function normalizeSerie(s: string) {
 const SERIE_ALIASES: Record<string, string> = {
   'ecole croissance': 'École de croissance',
   'ecole de croissance': 'École de croissance',
+  'ecole de la croissance': 'École de croissance',
 };
 
 export function applyAlias(serie: string) {

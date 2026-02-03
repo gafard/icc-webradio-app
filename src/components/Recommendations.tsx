@@ -51,7 +51,7 @@ export default function Recommendations({ slug }: { slug: string }) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-xl font-bold text-white mb-4">Vous aimerez aussi</h2>
+      <h2 className="text-xl font-bold text-[color:var(--foreground)] mb-4">Vous aimerez aussi</h2>
       
       {loading && (
         <div className="flex justify-center items-center py-4">
@@ -70,15 +70,15 @@ export default function Recommendations({ slug }: { slug: string }) {
           {recommendations.map((rec) => (
             <div 
               key={rec.id} 
-              className="bg-white/20 backdrop-blur border border-white/30 rounded-xl p-3 hover:bg-white/30 transition"
+              className="glass-card card-anim rounded-xl p-3 hover:shadow-2xl transition"
             >
               <Link href={`/watch/${rec.slug}`} className="block">
-                <h3 className="font-semibold text-white line-clamp-2 text-sm">
+                <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2 text-sm">
                   {rec.title}
                 </h3>
                 
                 {rec.serie && (
-                  <div className="text-xs text-white/70 mt-1">
+                  <div className="text-xs mt-1 text-[color:var(--foreground)] opacity-70">
                     {rec.serie}
                     {rec.episode_number && ` • Épisode ${rec.episode_number}`}
                   </div>

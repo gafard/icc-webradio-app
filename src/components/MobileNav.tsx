@@ -20,10 +20,8 @@ export default function MobileNav() {
   ];
 
   return (
-    <nav className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md rounded-2xl backdrop-blur-xl overflow-hidden ${
-      isNight
-        ? 'bg-[#0B1220]/70 border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
-        : 'bg-white/70 border border-white/80 shadow-2xl'
+    <nav className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md rounded-2xl overflow-hidden glass-panel shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
+      isNight ? 'bg-[#0B1220]/75' : 'bg-white/75'
     }`}>
       {/* Ligne de dégradé en haut */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />

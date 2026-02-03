@@ -80,7 +80,7 @@ function RadioPlayerContent() {
       <main className="min-h-[calc(100vh-72px)] px-4 py-10">
         {/* Background */}
         <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#101425]/70 shadow-[0_30px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#101425]/70 shadow-[0_30px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl hero-float">
             <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_30%_20%,rgba(255,0,150,0.18),transparent_60%),radial-gradient(900px_600px_at_70%_0%,rgba(120,190,255,0.18),transparent_60%),radial-gradient(1000px_700px_at_50%_100%,rgba(0,0,0,0.55),transparent_65%)]" />
 
             {/* Top bar */}
@@ -103,13 +103,13 @@ function RadioPlayerContent() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
+                  className="btn-base btn-ghost text-white/80 text-xs px-4 py-2"
                 >
                   Open in Spotify
                 </button>
                 <button
                   type="button"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+                  className="btn-icon text-white/80"
                   aria-label="Settings"
                   title="Settings"
                 >
@@ -122,7 +122,7 @@ function RadioPlayerContent() {
             <div className="relative px-6 pb-7">
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
                 {/* Left: Player */}
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] card-anim">
                   {/* Playlist label */}
                   <div className="text-center">
                     <div className="text-xs tracking-widest text-white/35">Playlist</div>
@@ -230,7 +230,7 @@ function RadioPlayerContent() {
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                        className="btn-icon text-white/75"
                         aria-label="Like"
                         title="Like"
                       >
@@ -238,7 +238,7 @@ function RadioPlayerContent() {
                       </button>
                       <button
                         type="button"
-                        className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                        className="btn-icon text-white/75"
                         aria-label="More"
                         title="More"
                       >
@@ -252,7 +252,7 @@ function RadioPlayerContent() {
                 </div>
 
                 {/* Right: WP Content */}
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] card-anim">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-extrabold text-white/90">Derniers contenus</h3>
                     <a href="/explorer" className="text-xs text-white/60 hover:text-white/80">Voir tout →</a>
@@ -290,7 +290,7 @@ function RadioPlayerContent() {
                     <button
                       type="button"
                       onClick={togglePlay}
-                      className="w-full rounded-2xl bg-[linear-gradient(135deg,rgba(255,90,190,1),rgba(255,165,95,1))] px-4 py-3 text-sm font-extrabold text-white shadow-[0_18px_50px_rgba(255,90,190,0.25)] hover:brightness-110"
+                      className="w-full btn-base btn-primary text-sm"
                     >
                       {isPlaying ? 'Mettre en pause' : 'Écouter maintenant'}
                     </button>

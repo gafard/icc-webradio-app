@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Radio, Mic2, Video, Search, Heart, Settings, Menu, X } from 'lucide-react';
+import { Home, Radio, Mic2, Video, Search, BookOpen, Settings, Users } from 'lucide-react';
+import { useRef } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useMode } from '../contexts/ModeContext';
@@ -13,14 +14,17 @@ const items = [
   { href: '/radio', label: 'Radio', icon: Radio },
   { href: '/explorer', label: 'Messages', icon: Mic2 },
   { href: '/videos', label: 'Cultes', icon: Video },
-  { href: '/ma-liste', label: 'Favoris', icon: Heart },
+  { href: '/bible', label: 'Bible', icon: BookOpen },
+  { href: '/spiritual', label: 'Communauté', icon: Users },
 ];
 
 export default function SidebarNav() {
   const pathname = usePathname();
-  const { isExpanded, toggleSidebar } = useSidebar();
+  const { isExpanded, setExpanded } = useSidebar();
   const { openSettings } = useSettings();
   const { mode } = useMode();
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shell =
     mode === 'night'
@@ -42,26 +46,24 @@ export default function SidebarNav() {
       className={`fixed left-4 top-4 bottom-4 z-[9999] pointer-events-auto rounded-[22px] border ${shell} backdrop-blur-xl shadow-2xl flex flex-col items-center py-4 transition-all duration-300 ${
         isExpanded ? 'w-[120px]' : 'w-[60px]'
       }`}
+      onMouseEnter={() => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        openTimer.current = setTimeout(() => setExpanded(true), 150);
+      }}
+      onMouseLeave={() => {
+        if (openTimer.current) clearTimeout(openTimer.current);
+        closeTimer.current = setTimeout(() => setExpanded(false), 150);
+      }}
     >
-      {/* Toggle button */}
-      <button
-        onClick={toggleSidebar}
-        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-black mb-4 transition-all ${
-          isExpanded ? 'bg-blue-600' : 'bg-blue-600/80'
-        }`}
-      >
-        {isExpanded ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
       {/* Logo ICC - only show when open */}
       {isExpanded && (
-        <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center mb-4 overflow-hidden">
+        <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center mb-4 overflow-hidden">
           <Image
-            src="/images/logoicc.jpeg" // Chemin vers le logo ICC
+            src="/icons/logo-sidebar.jpg"
             alt="Logo ICC"
-            width={32}
-            height={32}
-            className="object-contain"
+            width={44}
+            height={44}
+            className="h-full w-full object-cover"
           />
         </div>
       )}
@@ -70,6 +72,7 @@ export default function SidebarNav() {
         {items.map((it) => {
           const isActive = pathname === it.href;
           const IconComponent = it.icon;
+
           return (
             <Link
               key={it.href}

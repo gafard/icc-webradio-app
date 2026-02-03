@@ -16,9 +16,10 @@ type Props = {
   latestVideo: Video | null;
   radioStreamUrl: string;
   customRadioImage?: string;
+  dataSaver?: boolean;
 };
 
-export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, customRadioImage }: Props) {
+export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, customRadioImage, dataSaver }: Props) {
   const isNight = mode === 'night';
   const heroKind = isNight ? 'radio' : 'video';
 
@@ -58,36 +59,38 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
 
   const primaryBtn =
     heroKind === 'radio'
-      ? 'bg-white text-black hover:bg-white/90'
-      : 'bg-blue-600 text-white hover:bg-blue-700';
+      ? 'btn-base btn-white'
+      : 'btn-base btn-primary';
 
   const secondaryBtn =
     heroKind === 'radio'
-      ? 'bg-white/10 text-white hover:bg-white/15 border border-white/15'
-      : 'bg-white/80 text-[#0B1220] hover:bg-white border border-white/70';
+      ? 'btn-base btn-outline-light'
+      : 'btn-base btn-secondary';
 
   // Badges (chips) façon Netflix
   const chip =
     heroKind === 'radio'
-      ? 'bg-white/10 border border-white/15 text-white'
-      : 'bg-black/5 border border-black/10 text-[#0B1220]';
+      ? 'chip-soft text-white/90 border-white/20'
+      : 'chip-soft text-[#0B1220]';
 
   return (
-    <section className={`relative overflow-hidden rounded-[28px] border ${frame} backdrop-blur-xl shadow-2xl ${shell}`}>
+    <section className={`relative overflow-hidden rounded-[28px] border ${frame} backdrop-blur-xl shadow-2xl ${shell} ${dataSaver ? '' : 'hero-float'}`}>
       {/* Backdrop */}
-      <div className="relative h-[360px] sm:h-[440px] lg:h-[520px]">
+      <div className={`relative ${dataSaver ? 'h-[300px] sm:h-[340px] lg:h-[380px]' : 'h-[360px] sm:h-[440px] lg:h-[520px]'}`}>
         <div className="absolute inset-0">
           {/* Si pas d'image radio, on garde un fond stylé */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={backdrop}
-            alt="Hero"
-            className={`w-full h-full object-cover ${heroKind === 'radio' ? 'opacity-70' : 'opacity-100'}`}
-            onError={(e) => {
-              // fallback si /hero-radio.jpg n'existe pas
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
+          {!dataSaver && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={backdrop}
+              alt="Hero"
+              className={`w-full h-full object-cover ${heroKind === 'radio' ? 'opacity-70' : 'opacity-100'}`}
+              onError={(e) => {
+                // fallback si /hero-radio.jpg n'existe pas
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          )}
           {/* Cinema overlay */}
           <div className={`absolute inset-0 ${overlay}`} />
           {/* Vignette + glow */}
@@ -117,7 +120,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight drop-shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
               {title}
             </h1>
 
@@ -147,32 +150,37 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             <div className="mt-7 flex flex-wrap items-center gap-3">
               {heroKind === 'radio' ? (
                 <>
-                  <Link
-                    href="/radio"
-                    className={`inline-flex items-center justify-center px-6 py-3 rounded-full font-extrabold transition ${primaryBtn}`}
+                  <button
+                    type="button"
+                    className={primaryBtn}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        import('./radioPlayer').then(({ playRadio }) => {
+                          playRadio(radioStreamUrl).catch(() => {});
+                        });
+                      }
+                    }}
                   >
                     ▶ Écouter maintenant
-                  </Link>
-                  <a
-                    href={radioStreamUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`inline-flex items-center justify-center px-6 py-3 rounded-full font-extrabold transition ${secondaryBtn}`}
+                  </button>
+                  <Link
+                    href="/radio"
+                    className={secondaryBtn}
                   >
                     🔗 Stream direct
-                  </a>
+                  </Link>
                 </>
               ) : (
                 <>
                   <Link
                     href={latestVideo ? `/y/watch/${latestVideo.id}` : '/videos'}
-                    className={`inline-flex items-center justify-center px-6 py-3 rounded-full font-extrabold transition ${primaryBtn}`}
+                    className={primaryBtn}
                   >
                     ▶ Regarder
                   </Link>
                   <Link
                     href="/ma-liste"
-                    className={`inline-flex items-center justify-center px-6 py-3 rounded-full font-extrabold transition ${secondaryBtn}`}
+                    className={secondaryBtn}
                   >
                     ⭐ Ma liste
                   </Link>

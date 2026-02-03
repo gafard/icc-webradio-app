@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { decodeHtmlEntities } from '../lib/wp';
 
 type WPPost = {
   id: number;
@@ -25,7 +26,8 @@ type RailItem = {
 };
 
 function stripHtml(html: string) {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const text = html.replace(/<[^>]+>/g, ' ');
+  return decodeHtmlEntities(text).replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim();
 }
 
 function extractAudioUrlFromHtml(html: string): string | null {

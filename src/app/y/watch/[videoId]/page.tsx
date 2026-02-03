@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 
 import AppShell from '../../../../components/AppShell';
 import YoutubePlayerClient from './player-client';
-import { getVideoNoApi, getUpNextFromChannelNoApi, getPlaylistUpNextNoApi } from '../../../../lib/youtube-noapi';
+import { getVideo, getUpNextRelated, buildUpNextFromPlaylist } from '../../../../lib/youtube';
+import { getPlaylistItems } from '../../../../lib/youtube';
 
 export default async function YWatchPage({
   params,
@@ -14,12 +15,17 @@ export default async function YWatchPage({
   const { videoId } = await params;
   const { list: playlistId } = await searchParams;
 
-  const video = await getVideoNoApi(videoId);
+  const video = await getVideo(videoId);
   if (!video) {
     return (
       <AppShell>
         <main className="px-4 py-12">
-          <div className="mx-auto max-w-3xl text-white">Vidéo introuvable.</div>
+          <div className="mx-auto max-w-3xl text-white text-center">
+            <h2 className="text-2xl font-bold mb-4">Vidéo indisponible</h2>
+            <p className="text-gray-300">
+              Cette vidéo n'existe pas ou n'est plus accessible. Veuillez vérifier l'URL ou revenir en arrière.
+            </p>
+          </div>
         </main>
       </AppShell>
     );
@@ -28,14 +34,12 @@ export default async function YWatchPage({
   let upNext: any[] = [];
 
   if (playlistId) {
-    // ✅ gestion des playlists via RSS
-    upNext = await getPlaylistUpNextNoApi(playlistId, videoId, 10);
-  } else if (video.channelId) {
-    // ✅ fallback sans playlist = dernières vidéos de la chaîne
-    upNext = await getUpNextFromChannelNoApi(video.channelId, videoId, 10);
+    // ✅ gestion des playlists via l'API YouTube
+    const playlistItems = await getPlaylistItems(playlistId, 50);
+    upNext = buildUpNextFromPlaylist(playlistItems, videoId, 10);
   } else {
-    // dernier fallback si on n'arrive pas à extraire channelId (rare)
-    upNext = [];
+    // ✅ suggestions connexes via l'API YouTube
+    upNext = await getUpNextRelated(videoId, 10);
   }
 
   return (

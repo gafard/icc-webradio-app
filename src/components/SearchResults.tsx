@@ -15,14 +15,27 @@ type SearchResult = {
   distance: number;
 };
 
+type TranscriptResult = {
+  post_key: string;
+  post_id: number | null;
+  slug: string | null;
+  title: string | null;
+  date?: string | null;
+  snippet: string;
+};
+
 export default function SearchResults({ query }: { query: string }) {
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [transcripts, setTranscripts] = useState<TranscriptResult[]>([]);
+  const [mode, setMode] = useState<'semantic' | 'transcript'>('semantic');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setTranscripts([]);
       setLoading(false);
       return;
     }
@@ -32,14 +45,20 @@ export default function SearchResults({ query }: { query: string }) {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const endpoint = mode === 'semantic' ? '/api/search' : '/api/aai/search-transcripts';
+        const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`);
         
         if (!response.ok) {
           throw new Error(`Erreur réseau: ${response.status}`);
         }
         
         const data = await response.json();
-        setResults(data.items || []);
+        setWarning(data.warning ?? null);
+        if (mode === 'semantic') {
+          setResults(data.items || []);
+        } else {
+          setTranscripts(data.items || []);
+        }
       } catch (err) {
         console.error('Erreur lors de la recherche:', err);
         setError(err instanceof Error ? err.message : 'Une erreur inconnue est survenue');
@@ -51,7 +70,16 @@ export default function SearchResults({ query }: { query: string }) {
     // Délai pour éviter les requêtes trop fréquentes
     const timeoutId = setTimeout(fetchResults, 300);
     return () => clearTimeout(timeoutId);
-  }, [query]);
+  }, [query, mode]);
+
+  useEffect(() => {
+    if (mode === 'semantic') {
+      setTranscripts([]);
+    } else {
+      setResults([]);
+    }
+    setWarning(null);
+  }, [mode]);
 
   if (!query) {
     return null;
@@ -62,7 +90,7 @@ export default function SearchResults({ query }: { query: string }) {
       {loading && (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-gray-600">Recherche en cours...</span>
+          <span className="ml-2 text-[color:var(--foreground)] opacity-70">Recherche en cours...</span>
         </div>
       )}
 
@@ -74,43 +102,64 @@ export default function SearchResults({ query }: { query: string }) {
 
       {!loading && !error && (
         <div>
-          <h2 className="text-xl font-bold text-white mb-4">
+          <h2 className="text-xl font-bold text-[color:var(--foreground)] mb-4">
             Résultats de recherche pour "{query}"
           </h2>
+
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              className={`btn-base text-xs px-3 py-2 ${mode === 'semantic' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('semantic')}
+            >
+              Sémantique
+            </button>
+            <button
+              className={`btn-base text-xs px-3 py-2 ${mode === 'transcript' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMode('transcript')}
+            >
+              Transcriptions
+            </button>
+          </div>
+
+          {warning ? (
+            <div className="mb-4 text-xs text-yellow-700 bg-yellow-100 border border-yellow-300 rounded-lg px-3 py-2">
+              {warning}
+            </div>
+          ) : null}
           
-          {results.length === 0 ? (
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 text-center text-white">
+          {mode === 'semantic' && results.length === 0 ? (
+            <div className="glass-panel rounded-3xl p-8 text-center text-[color:var(--foreground)]">
               Aucun résultat trouvé pour cette recherche.
             </div>
-          ) : (
+          ) : mode === 'semantic' ? (
             <div className="space-y-6">
               {results.map((result) => (
                 <div 
                   key={result.chunk_id} 
-                  className="bg-white/80 backdrop-blur border border-white/50 shadow-md hover:shadow-2xl transition rounded-2xl overflow-hidden"
+                  className="glass-card card-anim hover:shadow-2xl transition rounded-2xl overflow-hidden"
                 >
                   <div className="p-4">
                     <Link href={`/watch/${result.slug}?chunk=${result.chunk_index}`}>
-                      <h3 className="font-semibold text-gray-900 line-clamp-2">
+                      <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2">
                         {result.title}
                       </h3>
                     </Link>
                     
                     {result.serie && (
-                      <div className="mt-2 text-sm text-gray-600">
+                      <div className="mt-2 text-sm text-[color:var(--foreground)] opacity-70">
                         Série: {result.serie}
                         {result.episode_number && ` • Épisode ${result.episode_number}`}
                       </div>
                     )}
                     
                     {result.published_at && (
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-[color:var(--foreground)] opacity-60 mt-1">
                         Publié le {new Date(result.published_at).toLocaleDateString('fr-FR')}
                       </div>
                     )}
                     
                     <div 
-                      className="mt-3 p-3 bg-white/50 rounded-lg text-sm text-gray-800"
+                      className="mt-3 p-3 bg-white/50 rounded-lg text-sm text-[color:var(--foreground)]"
                       dangerouslySetInnerHTML={{ 
                         __html: highlightSnippet(result.chunk_text, query) 
                       }} 
@@ -119,11 +168,60 @@ export default function SearchResults({ query }: { query: string }) {
                     <div className="mt-4">
                       <Link
                         href={`/watch/${result.slug}?chunk=${result.chunk_index}`}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium hover:bg-blue-700 transition"
+                        className="btn-base btn-primary text-sm"
                       >
                         Écouter ce passage
                       </Link>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : transcripts.length === 0 ? (
+            <div className="glass-panel rounded-3xl p-8 text-center text-[color:var(--foreground)]">
+              Aucun résultat trouvé dans les transcriptions.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {transcripts.map((result, idx) => (
+                <div
+                  key={`${result.post_key}-${idx}`}
+                  className="glass-card card-anim hover:shadow-2xl transition rounded-2xl overflow-hidden"
+                >
+                  <div className="p-4">
+                    {result.slug ? (
+                      <Link href={`/watch/${result.slug}`}>
+                        <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2">
+                          {result.title || `Post ${result.post_id ?? ''}`}
+                        </h3>
+                      </Link>
+                    ) : (
+                      <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2">
+                        {result.title || `Post ${result.post_id ?? ''}`}
+                      </h3>
+                    )}
+
+                    {result.date ? (
+                      <div className="text-xs text-[color:var(--foreground)] opacity-60 mt-1">
+                        Publié le {new Date(result.date).toLocaleDateString('fr-FR')}
+                      </div>
+                    ) : null}
+
+                    <div
+                      className="mt-3 p-3 bg-white/50 rounded-lg text-sm text-[color:var(--foreground)]"
+                      dangerouslySetInnerHTML={{ __html: highlightSnippet(result.snippet, query) }}
+                    />
+
+                    {result.slug ? (
+                      <div className="mt-4">
+                        <Link
+                          href={`/watch/${result.slug}`}
+                          className="btn-base btn-primary text-sm"
+                        >
+                          Ouvrir ce message
+                        </Link>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}

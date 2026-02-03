@@ -45,7 +45,13 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleMode = () => setMode(mode === 'night' ? 'day' : 'night');
 
-  const value = useMemo(() => ({ mode: hasMounted ? mode : 'night', setMode, toggleMode }), [mode, hasMounted]);
+  // Pendant le rendu serveur, on retourne 'night' par défaut pour éviter les incohérences
+  // Une fois monté côté client, on utilise le mode réel
+  const value = useMemo(() => ({
+    mode: hasMounted ? mode : 'night',
+    setMode,
+    toggleMode
+  }), [mode, hasMounted, setMode, toggleMode]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

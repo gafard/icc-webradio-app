@@ -32,8 +32,8 @@ function Chip({
       onClick={onClick}
       className={`px-4 py-2 rounded-full text-sm font-semibold transition border ${
         active
-          ? 'bg-blue-600 text-white border-blue-600'
-          : 'bg-white/70 backdrop-blur border-white/50 text-gray-700 hover:bg-white'
+          ? 'bg-blue-600 text-white border-blue-600 shadow-[0_12px_30px_rgba(37,99,235,0.25)]'
+          : 'glass-chip text-[color:var(--foreground)] hover:bg-white/80'
       }`}
     >
       {label}
@@ -51,7 +51,13 @@ export default function ExplorerClient({ videos }: Props) {
   const [theme, setTheme] = useState<string>('Tous');
   const [fav, setFav] = useState<string[]>([]);
 
-  useEffect(() => setFav(getFavorites()), []);
+  useEffect(() => {
+    const refresh = () => setFav(getFavorites());
+    refresh();
+    if (typeof window === 'undefined') return;
+    window.addEventListener('icc-user-state-update', refresh);
+    return () => window.removeEventListener('icc-user-state-update', refresh);
+  }, []);
 
   // Options dynamiques (intervenants/thèmes) à partir des titres
   const speakerOptions = useMemo(() => {
@@ -115,11 +121,11 @@ export default function ExplorerClient({ videos }: Props) {
   return (
     <>
       {/* Tabs */}
-      <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl p-2 flex gap-2">
+      <div className="glass-panel rounded-2xl p-2 flex gap-2">
         <button
           onClick={() => setTab('videos')}
           className={`flex-1 px-4 py-2 rounded-xl font-semibold transition ${
-            tab === 'videos' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-gray-700'
+            tab === 'videos' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-[color:var(--foreground)] opacity-80'
           }`}
         >
           🎬 Vidéos
@@ -127,7 +133,7 @@ export default function ExplorerClient({ videos }: Props) {
         <button
           onClick={() => setTab('favoris')}
           className={`flex-1 px-4 py-2 rounded-xl font-semibold transition ${
-            tab === 'favoris' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-gray-700'
+            tab === 'favoris' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-[color:var(--foreground)] opacity-80'
           }`}
         >
           ⭐ Favoris ({fav.length})
@@ -135,7 +141,7 @@ export default function ExplorerClient({ videos }: Props) {
         <button
           onClick={() => setTab('radio')}
           className={`flex-1 px-4 py-2 rounded-xl font-semibold transition ${
-            tab === 'radio' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-gray-700'
+            tab === 'radio' ? 'bg-blue-600 text-white' : 'hover:bg-neutral-100 text-[color:var(--foreground)] opacity-80'
           }`}
         >
           🎧 Radio
@@ -159,18 +165,18 @@ export default function ExplorerClient({ videos }: Props) {
 
           <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3">
             {/* search */}
-            <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span className="text-gray-500">🔎</span>
+            <div className="glass-panel rounded-2xl px-4 py-3 flex items-center gap-3">
+              <span className="opacity-60">🔎</span>
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Rechercher..."
-                className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+                className="w-full input-ghost outline-none text-[color:var(--foreground)] placeholder:text-[color:var(--foreground)] placeholder:opacity-50"
               />
               {q ? (
                 <button
                   onClick={() => setQ('')}
-                  className="text-sm px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 transition"
+                  className="btn-base btn-secondary text-xs px-3 py-2"
                 >
                   Effacer
                 </button>
@@ -178,12 +184,12 @@ export default function ExplorerClient({ videos }: Props) {
             </div>
 
             {/* sort */}
-            <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3">
-              <label className="text-xs text-gray-500">Tri</label>
+            <div className="glass-panel rounded-2xl px-4 py-3">
+              <label className="text-xs opacity-60">Tri</label>
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as any)}
-                className="w-full bg-transparent outline-none text-gray-800 mt-1"
+                className="w-full input-ghost outline-none text-[color:var(--foreground)] mt-1"
               >
                 <option value="recent">Plus récentes</option>
                 <option value="ancien">Plus anciennes</option>
@@ -191,12 +197,12 @@ export default function ExplorerClient({ videos }: Props) {
             </div>
 
             {/* range */}
-            <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3">
-              <label className="text-xs text-gray-500">Période</label>
+            <div className="glass-panel rounded-2xl px-4 py-3">
+              <label className="text-xs opacity-60">Période</label>
               <select
                 value={range}
                 onChange={(e) => setRange(e.target.value as any)}
-                className="w-full bg-transparent outline-none text-gray-800 mt-1"
+                className="w-full input-ghost outline-none text-[color:var(--foreground)] mt-1"
               >
                 <option value="all">Tout</option>
                 <option value="7">7 derniers jours</option>
@@ -205,12 +211,12 @@ export default function ExplorerClient({ videos }: Props) {
             </div>
 
             {/* speaker */}
-            <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3">
-              <label className="text-xs text-gray-500">Intervenant</label>
+            <div className="glass-panel rounded-2xl px-4 py-3">
+              <label className="text-xs opacity-60">Intervenant</label>
               <select
                 value={speaker}
                 onChange={(e) => setSpeaker(e.target.value)}
-                className="w-full bg-transparent outline-none text-gray-800 mt-1"
+                className="w-full input-ghost outline-none text-[color:var(--foreground)] mt-1"
               >
                 {speakerOptions.map((s) => (
                   <option key={s} value={s}>
@@ -222,8 +228,8 @@ export default function ExplorerClient({ videos }: Props) {
           </div>
 
           {/* Theme row */}
-          <div className="mt-3 bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3">
-            <div className="text-xs text-gray-500 mb-2">Thème</div>
+          <div className="mt-3 glass-panel rounded-2xl px-4 py-3">
+            <div className="text-xs opacity-60 mb-2">Thème</div>
             <div className="flex gap-2 overflow-x-auto pb-1">
               <Chip active={theme === 'Tous'} label="Tous" onClick={() => setTheme('Tous')} />
               {themeOptions
@@ -234,7 +240,7 @@ export default function ExplorerClient({ videos }: Props) {
             </div>
           </div>
 
-          <div className="text-sm text-gray-500 mt-3 flex items-center justify-between">
+          <div className="text-sm mt-3 flex items-center justify-between text-[color:var(--foreground)] opacity-70">
             <span>{filteredVideos.length} résultat(s)</span>
             <Link href="/ma-liste" className="font-semibold text-blue-600 hover:text-blue-700">
               ⭐ Ma liste ({fav.length})
@@ -247,7 +253,7 @@ export default function ExplorerClient({ videos }: Props) {
       <div className="mt-6 pb-28">
         {tab === 'videos' ? (
           filteredVideos.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center text-gray-600">Aucun résultat.</div>
+            <div className="glass-card rounded-2xl shadow-xl p-8 text-center text-[color:var(--foreground)] opacity-70">Aucun résultat.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredVideos.map((v) => {
@@ -259,7 +265,7 @@ export default function ExplorerClient({ videos }: Props) {
                 return (
                   <div
                     key={v.id}
-                    className="bg-white/80 backdrop-blur border border-white/50 shadow-md hover:shadow-2xl transition rounded-2xl overflow-hidden hover:-translate-y-1"
+                    className="glass-card card-anim hover:shadow-2xl transition rounded-2xl overflow-hidden hover:-translate-y-1"
                   >
                     <div className="aspect-video bg-gray-100 relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -277,15 +283,15 @@ export default function ExplorerClient({ videos }: Props) {
                         <span className="text-xs font-semibold px-3 py-1 rounded-full bg-black/70 text-white">
                           {categoryLabel(cat)}
                         </span>
-                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/90 text-gray-800">
+                        <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/90 text-[#0B1220]">
                           {spk}
                         </span>
                       </div>
                     </div>
 
                     <Link href={`/y/watch/${v.id}`} className="block p-4">
-                      <h3 className="font-semibold text-gray-800 line-clamp-2">{v.title}</h3>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2">{v.title}</h3>
+                      <p className="text-sm mt-2 text-[color:var(--foreground)] opacity-70">
                         {new Date(v.published).toLocaleDateString('fr-FR')} • {th.join(' · ')}
                       </p>
                     </Link>
@@ -298,7 +304,7 @@ export default function ExplorerClient({ videos }: Props) {
 
         {tab === 'favoris' ? (
           fav.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center text-gray-600">
+            <div className="glass-card rounded-2xl shadow-xl p-8 text-center text-[color:var(--foreground)] opacity-70">
               Ta liste est vide. Ajoute des ⭐ depuis Explorer.
             </div>
           ) : (
@@ -306,7 +312,7 @@ export default function ExplorerClient({ videos }: Props) {
               {favoriteItems.map((it) => (
                 <div
                   key={it.id}
-                  className="bg-white/80 backdrop-blur border border-white/50 rounded-2xl shadow-md overflow-hidden"
+                  className="glass-card card-anim rounded-2xl shadow-md overflow-hidden"
                 >
                   <div className="aspect-video bg-gray-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -318,7 +324,7 @@ export default function ExplorerClient({ videos }: Props) {
                     </Link>
                     <button
                       onClick={() => setFav(toggleFavorite(it.id))}
-                      className="text-sm px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 transition"
+                      className="btn-base btn-secondary text-xs px-3 py-2"
                     >
                       Retirer
                     </button>
@@ -330,14 +336,14 @@ export default function ExplorerClient({ videos }: Props) {
         ) : null}
 
         {tab === 'radio' ? (
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">🎧 ICC WebRadio</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="glass-card rounded-2xl shadow-xl p-8 text-center text-[color:var(--foreground)]">
+            <h2 className="text-2xl font-bold mb-2">🎧 ICC WebRadio</h2>
+            <p className="mb-6 opacity-70">
               Clique sur <b>Play</b> en bas (mini-player) pour écouter en direct.
             </p>
             <a
               href="/radio"
-              className="inline-flex items-center justify-center px-5 py-3 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+              className="btn-base btn-primary"
             >
               Aller à la page Radio
             </a>

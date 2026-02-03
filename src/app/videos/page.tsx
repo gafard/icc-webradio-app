@@ -1,6 +1,5 @@
 import AppShell from '../../components/AppShell';
 import VideosGrid from '../../components/VideosGrid';
-import { XMLParser } from 'fast-xml-parser';
 
 type Video = {
   id: string;
@@ -11,30 +10,45 @@ type Video = {
 
 async function getLatestVideos(): Promise<Video[]> {
   const channelId = process.env.NEXT_PUBLIC_YT_CHANNEL_ID;
-  if (!channelId) return [];
+  const apiKey = process.env.NEXT_PUBLIC_YT_API_KEY;
 
-  const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-  const res = await fetch(rssUrl, { next: { revalidate: 300 } });
-  if (!res.ok) return [];
+  if (!channelId || !apiKey) {
+    console.warn('YT_CHANNEL_ID ou YT_API_KEY manquant');
+    return [];
+  }
 
-  const xml = await res.text();
-  const parser = new XMLParser({ ignoreAttributes: false });
-  const data = parser.parse(xml);
+  const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=50&order=date`;
+  const res = await fetch(apiUrl, { next: { revalidate: 300 } });
 
-  const entries = data?.feed?.entry;
-  if (!entries) return [];
+  if (!res.ok) {
+    console.error(`Erreur API YouTube: ${res.status}`);
+    return [];
+  }
 
-  const list = Array.isArray(entries) ? entries : [entries];
+  const data = await res.json();
 
-  return list.slice(0, 48).map((e: any) => {
-    const videoId = e['yt:videoId'];
-    const title = e.title;
-    const published = e.published;
+  if (!data.items) {
+    console.warn('Aucune donnée retournée par l’API YouTube');
+    return [];
+  }
+
+  return data.items.map((item: any) => {
+    const videoId = item.id.videoId;
+    const snippet = item.snippet;
+
     const thumbnail =
-      e['media:group']?.['media:thumbnail']?.['@_url'] ??
+      snippet.thumbnails?.maxres?.url ||
+      snippet.thumbnails?.high?.url ||
+      snippet.thumbnails?.medium?.url ||
+      snippet.thumbnails?.default?.url ||
       `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
-    return { id: videoId, title, published, thumbnail };
+    return {
+      id: videoId,
+      title: snippet.title,
+      published: snippet.publishedAt,
+      thumbnail,
+    };
   });
 }
 

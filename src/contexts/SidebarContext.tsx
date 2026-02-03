@@ -3,13 +3,14 @@ import { createContext, useContext, ReactNode, useState, useEffect } from 'react
 type SidebarContextType = {
   isExpanded: boolean;
   toggleSidebar: () => void;
+  setExpanded: (v: boolean) => void;
   sidebarWidth: string;
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -23,7 +24,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [sidebarWidth]);
   
   return (
-    <SidebarContext.Provider value={{ isExpanded, toggleSidebar, sidebarWidth }}>
+    <SidebarContext.Provider value={{ isExpanded, toggleSidebar, setExpanded: setIsExpanded, sidebarWidth }}>
       {children}
     </SidebarContext.Provider>
   );

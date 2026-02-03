@@ -4,12 +4,25 @@ import { useEffect, useState } from 'react';
 import { clearProgress, getProgressList, type ProgressItem } from './progress';
 import Link from 'next/link';
 import { Play } from 'lucide-react';
+import { useMode } from '../contexts/ModeContext';
 
 export default function ContinueRail() {
   const [items, setItems] = useState<ProgressItem[]>([]);
+  const { mode } = useMode();
+  const isNight = mode === 'night';
+  const titleClass = isNight ? 'text-white' : 'text-[#0B1220]';
+  const subClass = isNight ? 'text-white/70' : 'text-[#0B1220]/60';
+  const trackClass = isNight ? 'bg-white/10' : 'bg-gray-200';
+  const fillClass = isNight ? 'bg-blue-500' : 'bg-blue-600';
 
   useEffect(() => {
-    setItems(getProgressList());
+    const refresh = () => setItems(getProgressList());
+    refresh();
+    if (typeof window === 'undefined') return;
+    window.addEventListener('icc-user-state-update', refresh);
+    return () => {
+      window.removeEventListener('icc-user-state-update', refresh);
+    };
   }, []);
 
   if (!items.length) return null;
@@ -17,9 +30,9 @@ export default function ContinueRail() {
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-extrabold text-white">Reprendre</h2>
+        <h2 className={`text-lg font-extrabold ${titleClass}`}>Reprendre</h2>
         <button
-          className="text-sm font-semibold text-white/70 hover:text-white/90"
+          className={`btn-base btn-ghost text-xs px-3 py-2 ${subClass}`}
           onClick={() => {
             clearProgress();
             setItems([]);
@@ -30,26 +43,36 @@ export default function ContinueRail() {
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-        {items.map((it) => (
+        {items.map((it) => {
+          const resumeAtRaw =
+            it.lastTime && it.lastTime > 0
+              ? it.lastTime
+              : (it.progress || 0) * (it.duration || 0);
+          const resumeAt = Math.max(0, Math.floor(resumeAtRaw || 0));
+          const href = `/${it.type === 'audio' ? 'watch' : 'y/watch'}/${it.slug}${
+            resumeAt > 0 ? `?t=${resumeAt}` : ''
+          }`;
+
+          return (
           <div key={it.id} className="shrink-0 w-[220px] snap-start">
-            <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl overflow-hidden hover:shadow-2xl transition">
-              <Link href={`/${it.type === 'audio' ? 'watch' : 'y/watch'}/${it.slug}`} className="block">
+            <div className="glass-card card-anim rounded-2xl overflow-hidden hover:shadow-2xl transition">
+              <Link href={href} className="block">
                 <div className="aspect-video bg-gray-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.thumbnail} alt={it.title} className="w-full h-full object-cover" />
                 </div>
 
                 {/* Barre de progression */}
-                <div className="h-2 bg-gray-200">
+                <div className={`h-2 ${trackClass}`}>
                   <div
-                    className="h-2 bg-blue-600"
+                    className={`h-2 ${fillClass}`}
                     style={{ width: `${Math.min(100, Math.max(0, it.progress * 100))}%` }}
                   />
                 </div>
 
                 <div className="p-3">
-                  <div className="font-semibold text-gray-900 line-clamp-2 text-sm">{it.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className={`font-semibold line-clamp-2 text-sm ${titleClass}`}>{it.title}</div>
+                  <div className={`text-xs mt-1 ${subClass}`}>
                     {Math.round(it.progress * 100)}% • {it.type === 'audio' ? 'Audio' : 'Vidéo'}
                   </div>
                 </div>
@@ -57,7 +80,7 @@ export default function ContinueRail() {
 
               <div className="px-3 pb-3">
                 <button
-                  className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 transition w-full"
+                  className="btn-base btn-secondary text-xs px-3 py-2 w-full"
                   onClick={(e) => {
                     e.preventDefault();
                     clearProgress(it.id);
@@ -69,7 +92,8 @@ export default function ContinueRail() {
               </div>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </section>
   );

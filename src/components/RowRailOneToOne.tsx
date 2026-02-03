@@ -58,23 +58,26 @@ export default function RowRailOneToOne({
   if (!mounted) {
     return (
       <section className="mt-10">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 relative z-20">
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-[#0B1220]">{title}</h2>
             <p className="text-xs sm:text-sm text-[#0B1220]/60">Défilement horizontal</p>
           </div>
           {seeAllHref ? (
-            <Link href={seeAllHref} className="text-sm font-bold text-[#0B1220]/60 hover:opacity-90">
+            <Link
+              href={seeAllHref}
+              className="text-sm font-bold text-[#0B1220]/60 hover:opacity-90 relative z-20 pointer-events-auto"
+            >
               Voir tout →
             </Link>
           ) : null}
         </div>
         <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth">
-          {items.map((it) => (
-            <div key={it.id} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
+          {items.map((it, idx) => (
+            <div key={`${it.id}-${idx}`} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
               <Link
                 href={it.href}
-                className="group block rounded-2xl border overflow-hidden backdrop-blur-xl shadow-lg transition bg-white/55 border-white/70 hover:shadow-2xl"
+                className="group block rounded-2xl border overflow-hidden backdrop-blur-xl shadow-lg transition bg-white/55 border-white/70 hover:shadow-2xl card-anim"
               >
                 <div className="relative aspect-video bg-black/10 overflow-hidden">
                   <img
@@ -111,14 +114,17 @@ export default function RowRailOneToOne({
   return (
     <section className="mt-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 relative z-20">
         <div>
           <h2 className={`text-xl sm:text-2xl font-extrabold ${t.text}`}>{title}</h2>
           <p className={`text-xs sm:text-sm ${t.sub}`}>Défilement horizontal</p>
         </div>
 
         {seeAllHref ? (
-          <Link href={seeAllHref} className={`text-sm font-bold ${t.sub} hover:opacity-90`}>
+          <Link
+            href={seeAllHref}
+            className={`text-sm font-bold ${t.sub} hover:opacity-90 relative z-20 pointer-events-auto`}
+          >
             Voir tout →
           </Link>
         ) : null}
@@ -156,12 +162,12 @@ export default function RowRailOneToOne({
           ref={scrollerRef}
           className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth"
         >
-          {items.map((it) => (
-            <div key={it.id} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
+          {items.map((it, idx) => (
+            <div key={`${it.id}-${idx}`} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
               <Link
                 href={it.href}
                 className={`group block rounded-2xl border overflow-hidden backdrop-blur-xl shadow-lg transition
-                  ${t.card} ${t.ring}
+                  ${t.card} ${t.ring} card-anim
                   hover:shadow-2xl
                 `}
               >

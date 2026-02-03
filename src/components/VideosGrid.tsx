@@ -16,7 +16,11 @@ export default function VideosGrid({ videos }: { videos: Video[] }) {
   const [fav, setFav] = useState<string[]>([]);
 
   useEffect(() => {
-    setFav(getFavorites());
+    const refresh = () => setFav(getFavorites());
+    refresh();
+    if (typeof window === 'undefined') return;
+    window.addEventListener('icc-user-state-update', refresh);
+    return () => window.removeEventListener('icc-user-state-update', refresh);
   }, []);
 
   const filtered = useMemo(() => {
@@ -28,25 +32,25 @@ export default function VideosGrid({ videos }: { videos: Video[] }) {
   return (
     <>
       <div className="mb-6">
-        <div className="bg-white/80 backdrop-blur border border-white/50 shadow-md rounded-2xl px-4 py-3 flex items-center gap-3">
-          <span className="text-gray-500">🔎</span>
+        <div className="glass-panel rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="opacity-60">🔎</span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher une vidéo..."
-            className="w-full bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+            className="w-full input-ghost outline-none text-[color:var(--foreground)] placeholder:text-[color:var(--foreground)] placeholder:opacity-50"
           />
           {q ? (
             <button
               onClick={() => setQ('')}
-              className="text-sm px-3 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 transition"
+              className="btn-base btn-secondary text-xs px-3 py-2"
             >
               Effacer
             </button>
           ) : null}
         </div>
 
-        <div className="text-sm text-gray-500 mt-2 flex items-center justify-between">
+        <div className="text-sm mt-2 flex items-center justify-between text-[color:var(--foreground)] opacity-70">
           <span>{filtered.length} résultat(s)</span>
           <Link href="/ma-liste" className="font-semibold text-blue-600 hover:text-blue-700">
             ⭐ Ma liste ({fav.length})
@@ -61,7 +65,7 @@ export default function VideosGrid({ videos }: { videos: Video[] }) {
           return (
             <div
               key={v.id}
-              className="bg-white/80 backdrop-blur border border-white/50 shadow-md hover:shadow-2xl transition rounded-2xl overflow-hidden hover:-translate-y-1"
+              className="glass-card card-anim hover:shadow-2xl transition rounded-2xl overflow-hidden hover:-translate-y-1"
             >
               <div className="aspect-video bg-gray-100 relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,8 +81,8 @@ export default function VideosGrid({ videos }: { videos: Video[] }) {
               </div>
 
               <Link href={`/y/watch/${v.id}`} className="block p-4">
-                <h3 className="font-semibold text-gray-800 line-clamp-2">{v.title}</h3>
-                <p className="text-sm text-gray-500 mt-2">
+                <h3 className="font-semibold text-[color:var(--foreground)] line-clamp-2">{v.title}</h3>
+                <p className="text-sm mt-2 text-[color:var(--foreground)] opacity-70">
                   {new Date(v.published).toLocaleDateString('fr-FR')}
                 </p>
               </Link>

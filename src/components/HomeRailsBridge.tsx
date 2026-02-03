@@ -8,6 +8,7 @@ export type HomeSection = {
   key: string;
   title: string;
   items: RailItem[];
+  seeAllHref?: string;
 };
 
 export default function HomeRailsBridge({ sections }: { sections: HomeSection[] }) {
@@ -34,7 +35,7 @@ export default function HomeRailsBridge({ sections }: { sections: HomeSection[] 
           mode={mode}
           title={section.title}
           items={section.items}
-          seeAllHref={`/explorer#${section.key}`}
+          seeAllHref={section.seeAllHref ?? `/explorer#${section.key}`}
         />
       ))}
     </>

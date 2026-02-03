@@ -8,11 +8,38 @@ export async function wpFetch<T>(path: string, revalidate = 300): Promise<T | nu
   return (await res.json()) as T;
 }
 
+export function decodeHtmlEntities(input: string) {
+  if (!input) return '';
+  const named: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+  };
+
+  let text = input.replace(/&[a-zA-Z0-9#]+;/g, (match) => named[match] ?? match);
+
+  text = text.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
+  text = text.replace(/&#([0-9]+);/g, (_, dec) =>
+    String.fromCharCode(parseInt(dec, 10))
+  );
+
+  return text;
+}
+
 export function stripHtml(html: string) {
-  return html
+  const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
+    .replace(/<[^>]+>/g, " ");
+
+  return decodeHtmlEntities(text)
+    .replace(/[–—]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
