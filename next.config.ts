@@ -5,6 +5,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  async redirects() {
+    return [
+      {
+        source: "/spiritual",
+        destination: "/community",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withPWA({
