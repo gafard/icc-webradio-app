@@ -18,9 +18,11 @@ export default function BottomNav() {
     setMounted(true);
   }, []);
 
-  // Utiliser le mode seulement après le montage pour éviter les problèmes d'hydratation
-  const isNight = mounted && mode === 'night';
-  const safePathname = mounted ? pathname : '';
+  // Avoid SSR/client nav mismatch when route state differs at hydration time.
+  if (!mounted) return null;
+
+  const isNight = mode === 'night';
+  const safePathname = pathname;
 
   const items = [
     { href: '/', icon: Home },
@@ -31,26 +33,17 @@ export default function BottomNav() {
     { href: '/community', icon: Users },
   ];
 
-  // Classes de base qui seront appliquées avant le montage
   const baseNavClass = 'fixed inset-x-0 bottom-0 z-[10000] mx-auto w-full max-w-md h-[72px] px-3 pb-[env(safe-area-inset-bottom)]';
   const baseDivClass = 'relative h-full w-full rounded-2xl backdrop-blur-xl overflow-hidden border';
 
   return (
     <nav
-      className={`${baseNavClass} ${
-        mounted
-          ? (isNight
-              ? 'bg-[#0B1220]/70 border-white/10'
-              : 'bg-white/70 border-white/80')
-          : 'bg-white/70 border-white/80'
-      }`}
+      className={`${baseNavClass} ${isNight ? 'bg-[#0B1220]/70 border-white/10' : 'bg-white/70 border-white/80'}`}
     >
       <div
         className={`${baseDivClass} ${
-          mounted
-            ? isNight
-              ? 'bg-[#0B1220]/70 border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
-              : 'bg-white/70 border-white/80 shadow-2xl'
+          isNight
+            ? 'bg-[#0B1220]/70 border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
             : 'bg-white/70 border-white/80 shadow-2xl'
         }`}
       >
