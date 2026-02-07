@@ -20,6 +20,7 @@ export default function BottomNav() {
 
   // Utiliser le mode seulement après le montage pour éviter les problèmes d'hydratation
   const isNight = mounted && mode === 'night';
+  const safePathname = mounted ? pathname : '';
 
   const items = [
     { href: '/', icon: Home },
@@ -27,7 +28,7 @@ export default function BottomNav() {
     { href: '/explorer', icon: Mic2 },
     { href: '/videos', icon: Video },
     { href: '/bible', icon: BookOpen },
-    { href: '/spiritual', icon: Users },
+    { href: '/community', icon: Users },
   ];
 
   // Classes de base qui seront appliquées avant le montage
@@ -57,7 +58,9 @@ export default function BottomNav() {
 
         <div className="relative z-10 flex items-center gap-1 px-1 py-3 overflow-x-auto scroll-smooth snap-x snap-mandatory">
           {items.map(({ href, icon: Icon }) => {
-            const active = pathname === href;
+            const active =
+              safePathname === href ||
+              (href === '/community' && safePathname === '/spiritual');
             return (
               <Link
                 key={href}
