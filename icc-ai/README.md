@@ -28,6 +28,11 @@ Appliquer le schéma :
 docker exec -i icc_pg psql -U icc -d iccapp < schema.sql
 ```
 
+Pour la page Communaute (categorie des posts) :
+```bash
+docker exec -i icc_pg psql -U icc -d iccapp < community_kind.sql
+```
+
 ### 2. Microservice d'embeddings
 
 Installer les dépendances :
@@ -50,6 +55,15 @@ Ajouter les variables d'environnement dans `.env.local` :
 DATABASE_URL=postgres://icc:icc_password_change_me@<IP_VPS>:5432/iccapp
 EMBED_URL=http://<IP_VPS>:8001/embed
 ASSEMBLY_API_KEY=votre_clé_assemblyai
+
+# WebRTC (appels de groupe integres)
+# Option simple (recommandee en production)
+NEXT_PUBLIC_WEBRTC_TURN_URLS=turn:turn.votre-domaine.com:3478,turns:turn.votre-domaine.com:5349
+NEXT_PUBLIC_WEBRTC_TURN_USERNAME=votre_user_turn
+NEXT_PUBLIC_WEBRTC_TURN_CREDENTIAL=votre_motdepasse_turn
+
+# Option avancee: surcharge complete des ICE servers (JSON)
+# NEXT_PUBLIC_WEBRTC_ICE_SERVERS_JSON=[{"urls":["stun:stun.l.google.com:19302"]},{"urls":["turn:turn.votre-domaine.com:3478"],"username":"u","credential":"p"}]
 ```
 
 ### 4. Worker d'indexation

@@ -1,0 +1,416 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+
+export type Locale = 'fr' | 'en';
+
+type TranslateParams = Record<string, string | number>;
+
+type I18nContextValue = {
+  locale: Locale;
+  setLocale: (next: Locale) => void;
+  t: (key: string, params?: TranslateParams) => string;
+};
+
+const STORAGE_KEY = 'icc_locale_v1';
+
+const messages: Record<Locale, Record<string, string>> = {
+  fr: {
+    'lang.label': 'Langue',
+    'lang.fr': 'Francais',
+    'lang.en': 'Anglais',
+
+    'nav.home': 'Accueil',
+    'nav.radio': 'Radio',
+    'nav.messages': 'Messages',
+    'nav.services': 'Cultes',
+    'nav.bible': 'Bible',
+    'nav.community': 'Communaute',
+    'nav.search': 'Recherche',
+    'nav.settings': 'Reglages',
+
+    'settings.title': 'Reglages',
+    'settings.language': 'Langue de l application',
+    'settings.languageHelp': 'Choisis la langue principale de l interface.',
+    'settings.close': 'Fermer',
+
+    'community.badge': 'Communaute',
+    'community.title': 'Ensemble dans la foi',
+    'community.subtitle': 'Prieres, entraide, annonces et contenus - sans compte, avec impact.',
+    'community.navigation': 'Navigation',
+    'community.tab.all': 'Fil d actualite',
+    'community.tab.prayer': 'Priere',
+    'community.tab.help': 'Entraide',
+    'community.tab.announcements': 'Annonces',
+    'community.tab.content': 'Contenus',
+    'community.tab.groups': 'Groupes',
+    'community.tabDesc.all': 'Tous les types de publications',
+    'community.tabDesc.prayer': 'Demandes, soutien, temoignages',
+    'community.tabDesc.help': 'Besoin / offre d aide',
+    'community.tabDesc.announcements': 'Infos officielles',
+    'community.tabDesc.content': 'Series, videos, ressources',
+    'community.tabDesc.groups': 'Groupes de priere, etude et soutien avec appels',
+    'community.placeholder.prayer': 'Partage une requete de priere ou un temoignage...',
+    'community.placeholder.help': 'Decris ton besoin ou propose ton aide...',
+    'community.placeholder.announcement': 'Annonce officielle...',
+    'community.placeholder.content': 'Partage un contenu utile (lien, ressource, video)...',
+    'community.submit.help': 'Publier la demande',
+    'community.submit.announcement': 'Publier l annonce',
+    'community.submit.content': 'Partager',
+    'community.empty.prayer': 'Aucune publication de priere pour l instant.',
+    'community.empty.help': 'Aucune demande d entraide pour l instant.',
+    'community.empty.announcements': 'Aucune annonce pour l instant.',
+    'community.empty.content': 'Aucun contenu partage pour l instant.',
+    'community.announcementsInfo': 'Les annonces officielles sont publiees par l equipe. (Mode admin a brancher)',
+    'community.storageLocalOnly':
+      'Mode local actif: les publications restent sur cet appareil tant que Supabase n est pas configure.',
+    'community.groups.title': 'Groupes',
+    'community.groups.subtitle': 'Creer des groupes pour prier et etudier ensemble',
+    'community.groups.createTitle': 'Creer un groupe',
+    'community.groups.name': 'Nom du groupe',
+    'community.groups.namePlaceholder': 'Ex: Priere du matin',
+    'community.groups.description': 'Description',
+    'community.groups.descriptionPlaceholder': 'Objectif du groupe, cadence, sujet biblique...',
+    'community.groups.type': 'Type',
+    'community.groups.type.general': 'General',
+    'community.groups.type.prayer': 'Priere',
+    'community.groups.type.study': 'Etude biblique',
+    'community.groups.type.support': 'Soutien',
+    'community.groups.callProvider': 'Plateforme d appel',
+    'community.groups.provider.none': 'Sans appel',
+    'community.groups.provider.google_meet': 'Google Meet',
+    'community.groups.provider.facetime': 'FaceTime',
+    'community.groups.provider.skype': 'Skype',
+    'community.groups.provider.other': 'Autre',
+    'community.groups.callLink': 'Lien d appel',
+    'community.groups.callLinkPlaceholder': 'https://... ou identifiant',
+    'community.groups.nextCall': 'Prochain appel',
+    'community.groups.create': 'Creer le groupe',
+    'community.groups.creating': 'Creation...',
+    'community.groups.join': 'Rejoindre',
+    'community.groups.leave': 'Quitter',
+    'community.groups.openCall': 'Ouvrir appel',
+    'community.groups.open': 'Ouvrir',
+    'community.groups.active': 'Groupe actif',
+    'community.groups.share': 'Partager',
+    'community.groups.shareLabel': 'Rejoins ce groupe dans la communaute',
+    'community.groups.linkCopied': 'Lien du groupe copie.',
+    'community.groups.callSettings': 'Planning et appel',
+    'community.groups.save': 'Enregistrer',
+    'community.groups.saved': 'Groupe mis a jour.',
+    'community.groups.saveError': 'Impossible de mettre a jour le groupe.',
+    'community.groups.inAppCall': 'Appel de groupe integre',
+    'community.groups.inAppCallHint': '{count} participant(s) dans la salle',
+    'community.groups.callJoin': 'Rejoindre l appel',
+    'community.groups.callJoining': 'Connexion...',
+    'community.groups.callModeAudio': 'Audio uniquement',
+    'community.groups.callModeVideo': 'Audio + video',
+    'community.groups.callLeave': 'Quitter l appel',
+    'community.groups.callMute': 'Couper micro',
+    'community.groups.callUnmute': 'Activer micro',
+    'community.groups.callVideoOn': 'Activer camera',
+    'community.groups.callVideoOff': 'Couper camera',
+    'community.groups.callYou': 'Toi',
+    'community.groups.callMicOn': 'Micro actif',
+    'community.groups.callMicOff': 'Micro coupe',
+    'community.groups.callVideoDisabled': 'Camera desactivee',
+    'community.groups.callNotStarted': 'Appel non demarre',
+    'community.groups.callSetupError': 'Configuration des appels indisponible.',
+    'community.groups.callPermissionError': 'Autorise micro/camera pour rejoindre l appel.',
+    'community.groups.postPlaceholder': 'Ecris un message au groupe...',
+    'community.groups.post': 'Publier dans le groupe',
+    'community.groups.feedEmpty': 'Aucune publication dans ce groupe.',
+    'community.groups.members': '{count} membres',
+    'community.groups.joined': 'Membre',
+    'community.groups.empty': 'Aucun groupe pour le moment.',
+    'community.groups.loading': 'Chargement des groupes...',
+    'community.groups.loadError': 'Impossible de charger les groupes.',
+    'community.groups.createError': 'Impossible de creer le groupe.',
+    'community.groups.actionError': 'Action impossible pour ce groupe.',
+    'community.groups.created': 'Groupe cree.',
+    'community.groups.nameTooShort': 'Le nom du groupe doit contenir au moins 3 caracteres.',
+
+    'composer.noAccountPseudo': 'Sans compte : choisis un pseudo.',
+    'composer.namePlaceholder': 'Ton nom ou pseudo...',
+    'composer.postAs': 'Publier en tant que {name}',
+    'composer.defaultPlaceholder': 'Partage un temoignage, un verset, une pensee...',
+    'composer.posting': 'Publication...',
+    'composer.publish': 'Publier',
+    'composer.publishStory': 'Publier en story',
+    'composer.errorDefault': 'Erreur',
+    'composer.errorVerseLoad': 'Impossible de charger un verset depuis la Bible locale',
+    'composer.errorStoryCreate': 'Erreur lors de la creation de la story',
+
+    'identity.title': 'Ton pseudo',
+    'identity.subtitle': 'Aucun compte. Juste un nom affiche.',
+    'identity.placeholder': 'Ex: Frere Gafard',
+    'identity.save': 'OK',
+    'identity.guest': 'Invite',
+
+    'feed.loading': 'Chargement...',
+    'feed.loadError': 'Impossible de charger le fil.',
+    'feed.emptyDefault': "Aucun post pour l instant. Sois le premier a partager !",
+    'feed.title': 'Fil communautaire',
+    'feed.sortRecent': 'Recents',
+    'feed.sortPopular': 'Populaires',
+    'feed.refresh': 'Actualiser',
+    'feed.kind.general': 'Partage',
+    'feed.kind.prayer': 'Priere',
+    'feed.kind.help': 'Entraide',
+    'feed.kind.announcement': 'Annonce',
+    'feed.kind.content': 'Contenu',
+    'feed.like': 'J aime',
+    'feed.comment': 'Commenter',
+    'feed.share': 'Partager',
+    'feed.likeError': 'Impossible de mettre a jour le like.',
+    'feed.commentsLoadError': 'Impossible de charger les commentaires.',
+    'feed.commentError': 'Impossible d envoyer le commentaire.',
+    'feed.commentsTitle': 'Commentaires',
+    'feed.commentsLoading': 'Chargement des commentaires...',
+    'feed.commentsEmpty': 'Aucun commentaire pour le moment.',
+    'feed.commentPlaceholder': 'Ecris un commentaire...',
+    'feed.commentSend': 'Envoyer le commentaire',
+    'feed.shareCopied': 'Publication copiee.',
+    'feed.shareNotAvailable': 'Partage non disponible sur cet appareil.',
+    'feed.shareError': 'Impossible de partager cette publication.',
+    'feed.delete': 'Supprimer',
+    'feed.deleteConfirm': 'Supprimer cette publication ?',
+    'feed.deleteUnauthorized': 'Tu peux supprimer uniquement tes publications.',
+    'feed.deleteDone': 'Publication supprimee.',
+    'feed.deleteError': 'Impossible de supprimer la publication.',
+
+    'bible.action.strong': 'Strong',
+    'bible.action.interlinear': 'Interlineaire',
+    'bible.action.study': 'Etude',
+    'bible.toast.selectVerse': 'Selectionne un verset d abord',
+    'bible.toast.noStrong': 'Aucun Strong disponible pour ce verset',
+    'bible.hint.longPress': 'Appui long ou clic droit sur un verset pour ouvrir les actions rapides.',
+  },
+  en: {
+    'lang.label': 'Language',
+    'lang.fr': 'French',
+    'lang.en': 'English',
+
+    'nav.home': 'Home',
+    'nav.radio': 'Radio',
+    'nav.messages': 'Messages',
+    'nav.services': 'Services',
+    'nav.bible': 'Bible',
+    'nav.community': 'Community',
+    'nav.search': 'Search',
+    'nav.settings': 'Settings',
+
+    'settings.title': 'Settings',
+    'settings.language': 'App language',
+    'settings.languageHelp': 'Choose the primary interface language.',
+    'settings.close': 'Close',
+
+    'community.badge': 'Community',
+    'community.title': 'United in faith',
+    'community.subtitle': 'Prayer, help, announcements and content - no account needed.',
+    'community.navigation': 'Navigation',
+    'community.tab.all': 'News feed',
+    'community.tab.prayer': 'Prayer',
+    'community.tab.help': 'Help',
+    'community.tab.announcements': 'Announcements',
+    'community.tab.content': 'Content',
+    'community.tab.groups': 'Groups',
+    'community.tabDesc.all': 'All publication types',
+    'community.tabDesc.prayer': 'Requests, support, testimonies',
+    'community.tabDesc.help': 'Need / help offered',
+    'community.tabDesc.announcements': 'Official updates',
+    'community.tabDesc.content': 'Series, videos, resources',
+    'community.tabDesc.groups': 'Prayer, study and support groups with calls',
+    'community.placeholder.prayer': 'Share a prayer request or testimony...',
+    'community.placeholder.help': 'Describe your need or offer help...',
+    'community.placeholder.announcement': 'Official announcement...',
+    'community.placeholder.content': 'Share useful content (link, resource, video)...',
+    'community.submit.help': 'Post request',
+    'community.submit.announcement': 'Publish announcement',
+    'community.submit.content': 'Share',
+    'community.empty.prayer': 'No prayer posts yet.',
+    'community.empty.help': 'No help requests yet.',
+    'community.empty.announcements': 'No announcements yet.',
+    'community.empty.content': 'No shared content yet.',
+    'community.announcementsInfo': 'Official announcements are published by the team. (Admin mode to wire)',
+    'community.storageLocalOnly':
+      'Local mode is active: posts stay on this device until Supabase is configured.',
+    'community.groups.title': 'Groups',
+    'community.groups.subtitle': 'Create groups for prayer and Bible study together',
+    'community.groups.createTitle': 'Create a group',
+    'community.groups.name': 'Group name',
+    'community.groups.namePlaceholder': 'Ex: Morning Prayer',
+    'community.groups.description': 'Description',
+    'community.groups.descriptionPlaceholder': 'Group purpose, schedule, Bible topic...',
+    'community.groups.type': 'Type',
+    'community.groups.type.general': 'General',
+    'community.groups.type.prayer': 'Prayer',
+    'community.groups.type.study': 'Bible study',
+    'community.groups.type.support': 'Support',
+    'community.groups.callProvider': 'Call provider',
+    'community.groups.provider.none': 'No call',
+    'community.groups.provider.google_meet': 'Google Meet',
+    'community.groups.provider.facetime': 'FaceTime',
+    'community.groups.provider.skype': 'Skype',
+    'community.groups.provider.other': 'Other',
+    'community.groups.callLink': 'Call link',
+    'community.groups.callLinkPlaceholder': 'https://... or meeting id',
+    'community.groups.nextCall': 'Next call',
+    'community.groups.create': 'Create group',
+    'community.groups.creating': 'Creating...',
+    'community.groups.join': 'Join',
+    'community.groups.leave': 'Leave',
+    'community.groups.openCall': 'Open call',
+    'community.groups.open': 'Open',
+    'community.groups.active': 'Active group',
+    'community.groups.share': 'Share',
+    'community.groups.shareLabel': 'Join this group in the community',
+    'community.groups.linkCopied': 'Group link copied.',
+    'community.groups.callSettings': 'Call planning',
+    'community.groups.save': 'Save',
+    'community.groups.saved': 'Group updated.',
+    'community.groups.saveError': 'Unable to update the group.',
+    'community.groups.inAppCall': 'Built-in group call',
+    'community.groups.inAppCallHint': '{count} participant(s) in the room',
+    'community.groups.callJoin': 'Join call',
+    'community.groups.callJoining': 'Connecting...',
+    'community.groups.callModeAudio': 'Audio only',
+    'community.groups.callModeVideo': 'Audio + video',
+    'community.groups.callLeave': 'Leave call',
+    'community.groups.callMute': 'Mute mic',
+    'community.groups.callUnmute': 'Unmute mic',
+    'community.groups.callVideoOn': 'Turn camera on',
+    'community.groups.callVideoOff': 'Turn camera off',
+    'community.groups.callYou': 'You',
+    'community.groups.callMicOn': 'Mic on',
+    'community.groups.callMicOff': 'Mic off',
+    'community.groups.callVideoDisabled': 'Camera off',
+    'community.groups.callNotStarted': 'Call not started',
+    'community.groups.callSetupError': 'Call setup is unavailable.',
+    'community.groups.callPermissionError': 'Allow microphone/camera access to join the call.',
+    'community.groups.postPlaceholder': 'Write a message to the group...',
+    'community.groups.post': 'Post in group',
+    'community.groups.feedEmpty': 'No posts in this group yet.',
+    'community.groups.members': '{count} members',
+    'community.groups.joined': 'Joined',
+    'community.groups.empty': 'No groups yet.',
+    'community.groups.loading': 'Loading groups...',
+    'community.groups.loadError': 'Unable to load groups.',
+    'community.groups.createError': 'Unable to create group.',
+    'community.groups.actionError': 'Unable to process this group action.',
+    'community.groups.created': 'Group created.',
+    'community.groups.nameTooShort': 'Group name must contain at least 3 characters.',
+
+    'composer.noAccountPseudo': 'No account: choose a nickname.',
+    'composer.namePlaceholder': 'Your name or nickname...',
+    'composer.postAs': 'Posting as {name}',
+    'composer.defaultPlaceholder': 'Share a testimony, a verse, a thought...',
+    'composer.posting': 'Posting...',
+    'composer.publish': 'Publish',
+    'composer.publishStory': 'Post as story',
+    'composer.errorDefault': 'Error',
+    'composer.errorVerseLoad': 'Unable to load a verse from local Bible',
+    'composer.errorStoryCreate': 'Failed to create story',
+
+    'identity.title': 'Your nickname',
+    'identity.subtitle': 'No account. Just a display name.',
+    'identity.placeholder': 'Ex: Brother Gafard',
+    'identity.save': 'Save',
+    'identity.guest': 'Guest',
+
+    'feed.loading': 'Loading...',
+    'feed.loadError': 'Unable to load feed.',
+    'feed.emptyDefault': 'No post yet. Be the first to share!',
+    'feed.title': 'Community feed',
+    'feed.sortRecent': 'Recent',
+    'feed.sortPopular': 'Popular',
+    'feed.refresh': 'Refresh',
+    'feed.kind.general': 'Share',
+    'feed.kind.prayer': 'Prayer',
+    'feed.kind.help': 'Help',
+    'feed.kind.announcement': 'Announcement',
+    'feed.kind.content': 'Content',
+    'feed.like': 'Like',
+    'feed.comment': 'Comment',
+    'feed.share': 'Share',
+    'feed.likeError': 'Unable to update like.',
+    'feed.commentsLoadError': 'Unable to load comments.',
+    'feed.commentError': 'Unable to send comment.',
+    'feed.commentsTitle': 'Comments',
+    'feed.commentsLoading': 'Loading comments...',
+    'feed.commentsEmpty': 'No comment yet.',
+    'feed.commentPlaceholder': 'Write a comment...',
+    'feed.commentSend': 'Send comment',
+    'feed.shareCopied': 'Post copied.',
+    'feed.shareNotAvailable': 'Share is not available on this device.',
+    'feed.shareError': 'Unable to share this post.',
+    'feed.delete': 'Delete',
+    'feed.deleteConfirm': 'Delete this post?',
+    'feed.deleteUnauthorized': 'You can only delete your own posts.',
+    'feed.deleteDone': 'Post deleted.',
+    'feed.deleteError': 'Unable to delete this post.',
+
+    'bible.action.strong': 'Strong',
+    'bible.action.interlinear': 'Interlinear',
+    'bible.action.study': 'Study',
+    'bible.toast.selectVerse': 'Select a verse first',
+    'bible.toast.noStrong': 'No Strong data available for this verse',
+    'bible.hint.longPress': 'Long-press or right-click a verse to open quick actions.',
+  },
+};
+
+const I18nContext = createContext<I18nContextValue | null>(null);
+
+function interpolate(template: string, params?: TranslateParams) {
+  if (!params) return template;
+  return Object.entries(params).reduce((text, [key, value]) => {
+    return text.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+  }, template);
+}
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>('fr');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === 'fr' || saved === 'en') {
+      setLocaleState(saved);
+      return;
+    }
+    const browser = window.navigator.language.toLowerCase();
+    if (browser.startsWith('en')) {
+      setLocaleState('en');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, locale);
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = locale;
+    }
+  }, [locale]);
+
+  const value = useMemo<I18nContextValue>(() => {
+    return {
+      locale,
+      setLocale: setLocaleState,
+      t: (key: string, params?: TranslateParams) => {
+        const template = messages[locale][key] ?? messages.fr[key] ?? key;
+        return interpolate(template, params);
+      },
+    };
+  }, [locale]);
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() {
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error('useI18n must be used within I18nProvider');
+  }
+  return context;
+}
