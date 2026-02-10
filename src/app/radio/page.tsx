@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppShell from '../../components/AppShell';
+import { getRadioAudio, pauseRadio, playRadio } from '../../components/radioAudioEngine';
 
 type WpItem = {
   id: string;
@@ -19,6 +20,7 @@ export default function RadioPage() {
 function RadioPlayerContent() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [logoIndex, setLogoIndex] = useState(0);
 
   // Données temporaires (à remplacer ensuite par fetch WP si tu veux)
   const wpContent: WpItem[] = [];
@@ -28,6 +30,8 @@ function RadioPlayerContent() {
 
   const title = 'ICC WebRadio — En direct';
   const subtitle = 'Louange • Enseignements • Programmes';
+  const streamUrl = 'https://streamer.iccagoe.net:8443/live';
+  const logos = ['/icons/header-logo-web.jpg', '/icons/logo-sidebar.jpg', '/hero-radio.jpg'];
 
   const togglePlay = async () => {
     const a = audioRef.current;
@@ -35,23 +39,22 @@ function RadioPlayerContent() {
 
     try {
       if (a.paused) {
-        a.crossOrigin = 'anonymous';
-        a.src = 'https://streamer.iccagoe.net:8443/live';
-        await a.play();
+        await playRadio(streamUrl);
         setIsPlaying(true);
       } else {
-        a.pause();
+        pauseRadio();
         setIsPlaying(false);
       }
     } catch {
-      // certains navigateurs exigent un geste utilisateur (on est déjà sur click)
       setIsPlaying(!a.paused);
     }
   };
 
   useEffect(() => {
-    const a = audioRef.current;
+    const a = getRadioAudio(streamUrl);
+    audioRef.current = a;
     if (!a) return;
+    setIsPlaying(!a.paused);
 
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -87,11 +90,12 @@ function RadioPlayerContent() {
             <div className="relative flex items-center justify-between px-6 py-5">
               <div className="flex items-center gap-3">
                 <img
-                  src="/avatar.png"
+                  src={logos[Math.min(logoIndex, logos.length - 1)]}
                   alt=""
                   className="h-10 w-10 rounded-full object-cover ring-1 ring-white/15"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    (e.currentTarget as HTMLImageElement).style.display = 'block';
+                    setLogoIndex((prev) => Math.min(prev + 1, logos.length - 1));
                   }}
                 />
                 <div className="leading-tight">
@@ -247,8 +251,7 @@ function RadioPlayerContent() {
                     </div>
                   </div>
 
-                  {/* hidden audio element (control by UI) */}
-                  <audio ref={audioRef} preload="none" />
+                  {/* audio is handled by shared radioAudioEngine singleton */}
                 </div>
 
                 {/* Right: WP Content */}

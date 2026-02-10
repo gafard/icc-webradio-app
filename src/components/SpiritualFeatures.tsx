@@ -1106,11 +1106,20 @@ export const BibleIntegrationPanel = ({
         throw new Error(data?.error ?? 'Passage indisponible');
       }
 
+      const verses: BibleResult['verses'] = Array.isArray(data.verses)
+        ? data.verses.map((v: any) => ({
+            book_name: String(v?.book_name || ''),
+            chapter: Number(v?.chapter || 0),
+            verse: Number(v?.verse || 0),
+            text: String(v?.text || ''),
+          }))
+        : [];
+
       const resultData = {
         reference: data.reference || reference,
         text: data.text,
         translation: data.translation,
-        verses: data.verses || [],
+        verses,
       };
 
       setResult(resultData);
@@ -1119,7 +1128,7 @@ export const BibleIntegrationPanel = ({
       if (resultData.text && resultData.reference) {
         onPassageResolved?.({ reference: resultData.reference, text: resultData.text });
       } else if (resultData.verses && resultData.verses.length > 0) {
-        const text = resultData.verses.map(v => `${v.chapter}:${v.verse} ${v.text}`).join('\n');
+        const text = resultData.verses.map((v) => `${v.chapter}:${v.verse} ${v.text}`).join('\n');
         onPassageResolved?.({ reference: resultData.reference, text });
       }
     } catch (err: any) {

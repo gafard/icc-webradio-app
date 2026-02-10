@@ -35,7 +35,7 @@ import FeedHeader from '../../components/FeedHeader';
 import StoriesRow from '../../components/StoriesRow';
 import RightPanel from '../../components/RightPanel';
 import StoriesBar from '../../components/StoriesBar';
-import { getRandomLocalVerse } from '../../lib/localBible';
+import { getRandomLocalVerse, type LocalVerse } from '../../lib/localBible';
 
 const STORAGE_KEY = 'icc_spiritual_v1';
 const ADMIN_KEY = 'icc_spiritual_admin_mode';
@@ -43,6 +43,15 @@ const ADMIN_KEY = 'icc_spiritual_admin_mode';
 function makeId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toStoryVerse(verse: LocalVerse | null) {
+  if (!verse) return null;
+  return {
+    reference: `${verse.book} ${verse.chapter}:${verse.verse}`,
+    text: verse.text,
+    version: verse.version,
+  };
 }
 
 function buildMockData() {
@@ -347,7 +356,7 @@ const SpiritualPage = () => {
   }, [syncId, ready]);
 
   useEffect(() => {
-    getRandomLocalVerse().then(setStoryVerse);
+    getRandomLocalVerse().then((verse) => setStoryVerse(toStoryVerse(verse)));
   }, []);
 
   useEffect(() => {
@@ -842,7 +851,7 @@ const SpiritualPage = () => {
 
                     <button
                       className="btn-base btn-primary mt-4 px-4 py-2 text-sm"
-                      onClick={() => getRandomLocalVerse().then(setStoryVerse)}
+                      onClick={() => getRandomLocalVerse().then((verse) => setStoryVerse(toStoryVerse(verse)))}
                     >
                       Nouveau verset 🎲
                     </button>

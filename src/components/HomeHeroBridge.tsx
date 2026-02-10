@@ -3,7 +3,6 @@
 import { useMode } from '../contexts/ModeContext';
 import { useSettings } from '../contexts/SettingsContext';
 import HomeHeroOneToOne from './HomeHeroOneToOne';
-import MobileRadioPlayer from './MobileRadioPlayer';
 
 type Video = {
   id: string;
@@ -24,7 +23,6 @@ export default function HomeHeroBridge({
 
   return (
     <>
-      <MobileRadioPlayer streamUrl={radioStreamUrl} />
       <HomeHeroOneToOne
         mode={mode}
         latestVideo={latestVideo}

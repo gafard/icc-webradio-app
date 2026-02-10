@@ -1,0 +1,161 @@
+import { NextResponse } from 'next/server';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
+
+export const runtime = 'nodejs';
+
+type NaveTopic = {
+  name: string;
+  name_lower: string;
+  description: string;
+};
+
+const DEFAULT_LIMIT = 50;
+const SQLITE_BIN = process.env.SQLITE3_PATH || '/usr/bin/sqlite3';
+
+function resolveDbPath(): string | null {
+  const homeDir = process.env.HOME ? path.join(process.env.HOME, 'Downloads', 'g', 'bible-strong-databases') : null;
+  const baseFromStrong = process.env.STRONG_DB_PATH
+    ? path.dirname(process.env.STRONG_DB_PATH)
+    : null;
+  const rawCandidates = [
+    process.env.NAVE_DB_PATH,
+    baseFromStrong ? path.join(baseFromStrong, 'nave.sqlite') : null,
+    homeDir ? path.join(homeDir, 'nave.sqlite') : null,
+    path.join(process.cwd(), 'data', 'nave.sqlite'),
+    path.join(process.cwd(), 'public', 'data', 'nave.sqlite'),
+  ].filter(Boolean) as string[];
+
+  for (const candidate of rawCandidates) {
+    const resolved = path.resolve(candidate);
+    try {
+      const stat = fs.statSync(resolved);
+      if (stat.isDirectory()) {
+        const inDir = path.join(resolved, 'nave.sqlite');
+        if (fs.existsSync(inDir)) return inDir;
+      } else if (stat.isFile()) {
+        return resolved;
+      }
+    } catch {
+      // ignore invalid candidate
+    }
+  }
+
+  return null;
+}
+
+function formatParam(value: string | number): string {
+  if (typeof value === 'number') return String(value);
+  const safe = value.replace(/'/g, "''");
+  return `'${safe}'`;
+}
+
+function runQuery(sql: string, params: Record<string, string | number> = {}) {
+  const dbPath = resolveDbPath();
+  if (!dbPath) {
+    throw new Error('NAVE_DB_PATH introuvable. Définis NAVE_DB_PATH vers nave.sqlite.');
+  }
+  const args: string[] = ['-json'];
+  for (const [name, value] of Object.entries(params)) {
+    args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
+  }
+  args.push(dbPath);
+  args.push(sql);
+
+  console.log('[DEBUG Nave] Executing:', SQLITE_BIN, args);
+  try {
+    const output = execFileSync(SQLITE_BIN, args, { encoding: 'utf8' }).trim();
+    console.log('[DEBUG Nave] Output length:', output.length);
+    if (!output) return [];
+    return JSON.parse(output);
+  } catch (err) {
+    console.error('[DEBUG Nave] Error:', err);
+    return [];
+  }
+}
+
+function resolveBookNumber(bookId?: string | null): number | null {
+  if (!bookId) return null;
+  const index = BIBLE_BOOKS.findIndex((b) => b.id === bookId);
+  if (index === -1) return null;
+  return index + 1;
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const term = searchParams.get('term');
+  const bookId = searchParams.get('bookId');
+  const chapter = Number(searchParams.get('chapter') || 0);
+  const verse = Number(searchParams.get('verse') || 0);
+  const limitRaw = searchParams.get('limit');
+  const limit = Math.max(1, Math.min(Number(limitRaw ?? DEFAULT_LIMIT), 200));
+
+  try {
+    if (term) {
+      const like = `%${term.trim().toLowerCase()}%`;
+      console.log('[DEBUG Nave] Searching term:', like);
+      const sql =
+        `SELECT name, name_lower, description FROM TOPICS ` +
+        `WHERE name_lower LIKE @term OR name LIKE @term ` +
+        `ORDER BY name_lower ASC LIMIT ${limit};`;
+      const rows = runQuery(sql, { '@term': like });
+      const topics: NaveTopic[] = rows.map((row: any) => ({
+        name: row.name ?? '',
+        name_lower: row.name_lower ?? '',
+        description: row.description ?? '',
+      }));
+      return NextResponse.json({ topics });
+    }
+
+    if (bookId && chapter && verse) {
+      const bookNumber = resolveBookNumber(bookId);
+      if (!bookNumber) {
+        return NextResponse.json({ error: 'Livre invalide.' }, { status: 400 });
+      }
+      const id = `${bookNumber}-${chapter}-${verse}`;
+      const verseRows = runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
+        '@id': id,
+      });
+      const refRaw = verseRows[0]?.ref ?? '[]';
+      let topicIds: string[] = [];
+      try {
+        topicIds = JSON.parse(refRaw);
+      } catch {
+        topicIds = [];
+      }
+      const uniqueTopics = Array.from(new Set(topicIds)).slice(0, 200);
+      if (!uniqueTopics.length) {
+        return NextResponse.json({ id, topics: [] });
+      }
+
+      const params: Record<string, string> = {};
+      const placeholders = uniqueTopics.map((topic, idx) => {
+        const key = `@t${idx}`;
+        params[key] = topic;
+        return key;
+      });
+      const topicsSql =
+        `SELECT name, name_lower, description FROM TOPICS ` +
+        `WHERE name_lower IN (${placeholders.join(',')}) ORDER BY name_lower ASC;`;
+      const rows = runQuery(topicsSql, params);
+      const topics: NaveTopic[] = rows.map((row: any) => ({
+        name: row.name ?? '',
+        name_lower: row.name_lower ?? '',
+        description: row.description ?? '',
+      }));
+      return NextResponse.json({ id, topics });
+    }
+
+    return NextResponse.json(
+      { error: 'Paramètres manquants: term ou (bookId, chapter, verse).' },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message ?? 'Erreur interne.' },
+      { status: 500 }
+    );
+  }
+}

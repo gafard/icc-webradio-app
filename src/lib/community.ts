@@ -50,10 +50,18 @@ export function setGuestName(name: string) {
   localStorage.setItem(GUEST_NAME_KEY, clean || "Anonyme");
 }
 
+function getSupabaseOrThrow() {
+  if (!supabase) {
+    throw new Error("Supabase non configuré");
+  }
+  return supabase;
+}
+
 export async function createPost(content: string) {
+  const client = getSupabaseOrThrow();
   const guestId = getGuestId();
   const authorName = getGuestName();
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("community_posts")
     .insert([{ guest_id: guestId, author_name: authorName, content }])
     .select("*")
@@ -64,7 +72,8 @@ export async function createPost(content: string) {
 }
 
 export async function fetchFeed(limit = 20) {
-  const { data, error } = await supabase
+  const client = getSupabaseOrThrow();
+  const { data, error } = await client
     .from("community_posts")
     .select(`id, guest_id, author_name, author_avatar, content, created_at,
       media:community_post_media(id, kind, url)
@@ -78,7 +87,8 @@ export async function fetchFeed(limit = 20) {
 
 export async function fetchReactionsCounts(postIds: string[]) {
   if (!postIds.length) return {};
-  const { data, error } = await supabase
+  const client = getSupabaseOrThrow();
+  const { data, error } = await client
     .from("community_post_reactions")
     .select("post_id,reaction")
     .in("post_id", postIds);
@@ -96,10 +106,11 @@ export async function fetchReactionsCounts(postIds: string[]) {
 }
 
 export async function toggleReaction(postId: string, reaction: ReactionType) {
+  const client = getSupabaseOrThrow();
   const guestId = getGuestId();
 
   // check existing
-  const { data: existing, error: e1 } = await supabase
+  const { data: existing, error: e1 } = await client
     .from("community_post_reactions")
     .select("id")
     .eq("post_id", postId)
@@ -110,7 +121,7 @@ export async function toggleReaction(postId: string, reaction: ReactionType) {
   if (e1) throw e1;
 
   if (existing?.id) {
-    const { error } = await supabase
+    const { error } = await client
       .from("community_post_reactions")
       .delete()
       .eq("id", existing.id);
@@ -118,7 +129,7 @@ export async function toggleReaction(postId: string, reaction: ReactionType) {
     return { active: false };
   }
 
-  const { error } = await supabase
+  const { error } = await client
     .from("community_post_reactions")
     .insert([{ post_id: postId, guest_id: guestId, reaction }]);
   if (error) throw error;
@@ -126,7 +137,8 @@ export async function toggleReaction(postId: string, reaction: ReactionType) {
 }
 
 export async function fetchComments(postId: string) {
-  const { data, error } = await supabase
+  const client = getSupabaseOrThrow();
+  const { data, error } = await client
     .from("community_post_comments")
     .select("*")
     .eq("post_id", postId)
@@ -137,9 +149,10 @@ export async function fetchComments(postId: string) {
 }
 
 export async function addComment(postId: string, content: string) {
+  const client = getSupabaseOrThrow();
   const guestId = getGuestId();
   const authorName = getGuestName();
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("community_post_comments")
     .insert([{ post_id: postId, guest_id: guestId, author_name: authorName, content }])
     .select("*")
@@ -150,6 +163,7 @@ export async function addComment(postId: string, content: string) {
 }
 
 export async function uploadCommunityImage(file: File) {
+  const client = getSupabaseOrThrow();
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const allowed = ["jpg", "jpeg", "png", "webp"];
   if (!allowed.includes(ext)) throw new Error("Format non supporté (jpg/png/webp).");
@@ -161,25 +175,27 @@ export async function uploadCommunityImage(file: File) {
   const guestId = getGuestId();
   const path = `guest/${guestId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const { error: upErr } = await supabase.storage
+  const { error: upErr } = await client.storage
     .from("community-media")
     .upload(path, file, { cacheControl: "3600", upsert: false });
 
   if (upErr) throw upErr;
 
-  const { data } = supabase.storage.from("community-media").getPublicUrl(path);
+  const { data } = client.storage.from("community-media").getPublicUrl(path);
   return data.publicUrl;
 }
 
 export async function attachMediaToPost(postId: string, urls: string[]) {
+  const client = getSupabaseOrThrow();
   if (!urls.length) return;
   const rows = urls.map((url) => ({ post_id: postId, kind: "image", url }));
-  const { error } = await supabase.from("community_post_media").insert(rows);
+  const { error } = await client.from("community_post_media").insert(rows);
   if (error) throw error;
 }
 
 export function subscribeCommunity(onAnyChange: () => void) {
-  const channel = supabase
+  const client = getSupabaseOrThrow();
+  const channel = client
     .channel("community-realtime")
     .on(
       "postgres_changes",

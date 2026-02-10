@@ -12,17 +12,13 @@ declare global {
   var aaiCache: Cache | undefined;
 }
 
-let aaiCache: Cache;
+let aaiCache: Cache = new Map();
 
 if (process.env.NODE_ENV === 'production') {
   if (!global.aaiCache) {
     global.aaiCache = new Map();
   }
   aaiCache = global.aaiCache;
-} else {
-  if (!aaiCache) {
-    aaiCache = new Map();
-  }
 }
 
 export async function getCache(postKey: string): Promise<CacheEntry | null> {

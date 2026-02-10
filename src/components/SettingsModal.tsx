@@ -3,6 +3,7 @@
 import { X, Moon, Sun } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useMode } from '../contexts/ModeContext';
+import { useI18n } from '../contexts/I18nContext';
 
 export default function SettingsModal() {
   const {
@@ -36,6 +37,7 @@ export default function SettingsModal() {
   } = useSettings();
 
   const { mode, toggleMode } = useMode();
+  const { locale, setLocale, t } = useI18n();
 
   if (!open) return null;
 
@@ -45,11 +47,11 @@ export default function SettingsModal() {
 
       <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-3xl glass-panel card-anim text-[color:var(--foreground)] shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <div className="font-extrabold text-lg">Réglages</div>
+          <div className="font-extrabold text-lg">{t('settings.title')}</div>
           <button
             onClick={closeSettings}
             className="btn-icon"
-            aria-label="Fermer"
+            aria-label={t('settings.close')}
           >
             <X size={18} />
           </button>
@@ -69,6 +71,30 @@ export default function SettingsModal() {
               </div>
               <span className="text-xs opacity-60">Changer</span>
             </button>
+          </div>
+
+          <div className="border-t border-white/10" />
+
+          {/* Langue */}
+          <div>
+            <div className="text-xs font-semibold mb-3 opacity-70">{t('settings.language')}</div>
+            <div className="text-xs opacity-70 mb-3">{t('settings.languageHelp')}</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setLocale('fr')}
+                className={`btn-base text-xs px-3 py-2 ${locale === 'fr' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {t('lang.fr')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale('en')}
+                className={`btn-base text-xs px-3 py-2 ${locale === 'en' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {t('lang.en')}
+              </button>
+            </div>
           </div>
 
           <div className="border-t border-white/10" />
@@ -175,12 +201,16 @@ export default function SettingsModal() {
               value={notificationsEnabled}
               onChange={async (v) => {
                 if (v) {
-                  const { ensureNotificationPermission } = await import('./notifications');
+                  const { ensureNotificationPermission, syncPushSubscription } = await import('./notifications');
                   const perm = await ensureNotificationPermission();
                   if (perm !== 'granted') {
                     setNotificationsEnabled(false);
                     return;
                   }
+                  await syncPushSubscription(true);
+                } else {
+                  const { syncPushSubscription } = await import('./notifications');
+                  await syncPushSubscription(false);
                 }
                 setNotificationsEnabled(v);
               }}

@@ -275,7 +275,7 @@ export default function YoutubePlayerClient({
               setPlaying(false);
               saveProgressRef.current(1);
               if (autoPlayNext && upNext?.length) {
-                const nextId = upNext[0].id;
+                const nextId = upNext[0].videoId;
                 setNextTarget(`/y/watch/${nextId}${playlistId ? `?list=${playlistId}` : ''}`);
                 setNextCountdown(5);
               }
@@ -444,8 +444,8 @@ export default function YoutubePlayerClient({
                 <div className="space-y-3">
                   {upNext.map((it, index) => (
                     <a
-                      key={`upnext-${it.id}-${index}`}
-                      href={`/y/watch/${it.id}${playlistId ? `?list=${playlistId}` : ''}`}
+                      key={`upnext-${it.videoId}-${index}`}
+                      href={`/y/watch/${it.videoId}${playlistId ? `?list=${playlistId}` : ''}`}
                       className="group flex items-center gap-3 rounded-xl bg-white/[0.06] border border-white/[0.10] p-2 hover:bg-white/[0.10] hover:border-white/[0.16] transition card-anim"
                     >
                       <div className="h-14 w-20 rounded-lg overflow-hidden bg-black/25">
@@ -605,8 +605,8 @@ export default function YoutubePlayerClient({
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {upNext.map((it, index) => (
                   <a
-                    key={`upnext-mobile-${it.id}-${index}`}
-                    href={`/y/watch/${it.id}${playlistId ? `?list=${playlistId}` : ''}`}
+                    key={`upnext-mobile-${it.videoId}-${index}`}
+                    href={`/y/watch/${it.videoId}${playlistId ? `?list=${playlistId}` : ''}`}
                     className="shrink-0 w-[220px] rounded-xl bg-white/[0.06] border border-white/[0.10] p-2 hover:bg-white/[0.10] transition card-anim"
                   >
                     <div className="h-24 w-full rounded-lg overflow-hidden bg-black/25">

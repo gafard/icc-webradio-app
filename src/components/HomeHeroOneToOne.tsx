@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import type { Mode } from './themeMode';
+import { requestRadioPlay, subscribeRadioPlayback, RadioPlaybackState } from '../lib/radioPlayback';
 
 type Video = {
   id: string;
@@ -57,6 +58,25 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
         ? `Publié le ${new Date(latestVideo.published).toLocaleDateString('fr-FR')}`
         : 'Contenu récent';
 
+  const [radioState, setRadioState] = useState<RadioPlaybackState>({ target: null, playing: false });
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeRadioPlayback(setRadioState);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handle = () => setIsMobileView(window.matchMedia('(max-width: 640px)').matches);
+    handle();
+    const mql = window.matchMedia('(max-width: 640px)');
+    mql.addEventListener('change', handle);
+    return () => {
+      mql.removeEventListener('change', handle);
+    };
+  }, []);
+
   const primaryBtn =
     heroKind === 'radio'
       ? 'btn-base btn-white'
@@ -103,7 +123,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             {/* Top tiny label */}
             <div className="flex items-center gap-2 mb-4">
               {heroKind === 'radio' ? (
-                <div className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30">
+                <div className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-1 rounded-full bg-red-500/20 border border-red-500/70 text-red-100 shadow-[0_4px_20px_rgba(239,68,68,0.45)]">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   EN DIRECT
                 </div>
@@ -150,18 +170,22 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             <div className="mt-7 flex flex-wrap items-center gap-3">
               {heroKind === 'radio' ? (
                 <>
-                  <button
+                <button
                     type="button"
                     className={primaryBtn}
                     onClick={() => {
+                      const target = isMobileView ? 'mobile' : 'desktop';
+                      requestRadioPlay(target);
                       if (typeof window !== 'undefined') {
-                        import('./radioPlayer').then(({ playRadio }) => {
+                        import('./radioAudioEngine').then(({ playRadio }) => {
                           playRadio(radioStreamUrl).catch(() => {});
                         });
                       }
                     }}
                   >
-                    ▶ Écouter maintenant
+                    {radioState.playing && (radioState.target === 'any' || radioState.target === (isMobileView ? 'mobile' : 'desktop'))
+                      ? '❚❚ En direct'
+                      : '▶ Écouter maintenant'}
                   </button>
                   <Link
                     href="/radio"

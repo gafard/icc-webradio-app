@@ -7,24 +7,25 @@ import { useRef } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useMode } from '../contexts/ModeContext';
+import { useI18n } from '../contexts/I18nContext';
 import Image from 'next/image';
-
-const items = [
-  { href: '/', label: 'Accueil', icon: Home },
-  { href: '/radio', label: 'Radio', icon: Radio },
-  { href: '/explorer', label: 'Messages', icon: Mic2 },
-  { href: '/videos', label: 'Cultes', icon: Video },
-  { href: '/bible', label: 'Bible', icon: BookOpen },
-  { href: '/spiritual', label: 'Communauté', icon: Users },
-];
 
 export default function SidebarNav() {
   const pathname = usePathname();
   const { isExpanded, setExpanded } = useSidebar();
   const { openSettings } = useSettings();
   const { mode } = useMode();
+  const { t } = useI18n();
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const items = [
+    { href: '/', label: t('nav.home'), icon: Home },
+    { href: '/radio', label: t('nav.radio'), icon: Radio },
+    { href: '/explorer', label: t('nav.messages'), icon: Mic2 },
+    { href: '/videos', label: t('nav.services'), icon: Video },
+    { href: '/bible', label: t('nav.bible'), icon: BookOpen },
+    { href: '/community', label: t('nav.community'), icon: Users },
+  ];
 
   const shell =
     mode === 'night'
@@ -94,24 +95,24 @@ export default function SidebarNav() {
       <div className={`mt-auto flex flex-col gap-3 w-full pb-2`}>
         <Link
           href="/explorer"
-          title="Recherche"
+          title={t('nav.search')}
           className={`rounded-2xl flex items-center text-xl transition mx-2 ${
             isExpanded ? 'pl-3 h-12 justify-start gap-3' : 'justify-center h-10 p-2'
           } ${idle}`}
         >
-          <Search size={20} aria-label="Recherche" />
-          {isExpanded && <span className="text-xs truncate max-w-[80px]">Recherche</span>}
+          <Search size={20} aria-label={t('nav.search')} />
+          {isExpanded && <span className="text-xs truncate max-w-[80px]">{t('nav.search')}</span>}
         </Link>
 
         <button
           onClick={openSettings}
-          title="Réglages"
+          title={t('nav.settings')}
           className={`rounded-2xl flex items-center text-xl transition mx-2 ${
             isExpanded ? 'pl-3 h-12 justify-start gap-3' : 'justify-center h-10 p-2'
           } ${idle}`}
         >
-          <Settings size={20} aria-label="Réglages" />
-          {isExpanded && <span className="text-xs truncate max-w-[80px]">Réglages</span>}
+          <Settings size={20} aria-label={t('nav.settings')} />
+          {isExpanded && <span className="text-xs truncate max-w-[80px]">{t('nav.settings')}</span>}
         </button>
       </div>
     </aside>

@@ -8,6 +8,53 @@ type NotifyPayload = {
   tag?: string;
 };
 
+type SubscriptionResponse = {
+  ok: boolean;
+  error?: string;
+};
+
+const COMMUNITY_IDENTITY_KEY = 'icc_community_identity_v1';
+
+function makeDeviceId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getOrCreateCommunityDeviceId() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const raw = localStorage.getItem(COMMUNITY_IDENTITY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { deviceId?: string; displayName?: string };
+      if (parsed?.deviceId) return String(parsed.deviceId);
+      const next = {
+        deviceId: makeDeviceId(),
+        displayName: typeof parsed?.displayName === 'string' ? parsed.displayName : '',
+      };
+      localStorage.setItem(COMMUNITY_IDENTITY_KEY, JSON.stringify(next));
+      return next.deviceId;
+    }
+  } catch {
+    // Ignore parsing error and regenerate identity.
+  }
+  const next = { deviceId: makeDeviceId(), displayName: '' };
+  try {
+    localStorage.setItem(COMMUNITY_IDENTITY_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore local storage write errors.
+  }
+  return next.deviceId;
+}
+
+function toUint8Array(base64PublicKey: string) {
+  const padding = '='.repeat((4 - (base64PublicKey.length % 4)) % 4);
+  const base64 = (base64PublicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
 export async function ensureNotificationPermission() {
   if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
   if (Notification.permission === 'granted') return 'granted';
@@ -39,5 +86,68 @@ export async function sendNotification(payload: NotifyPayload) {
   const reg = await navigator.serviceWorker?.getRegistration?.();
   if (reg?.showNotification) {
     await reg.showNotification(payload.title, options);
+  }
+}
+
+export async function syncPushSubscription(enabled: boolean): Promise<SubscriptionResponse> {
+  if (typeof window === 'undefined') return { ok: false, error: 'Not in browser' };
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return { ok: false, error: 'Push not supported on this browser' };
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    const deviceId = getOrCreateCommunityDeviceId();
+
+    if (!enabled) {
+      if (existing) {
+        const json = existing.toJSON();
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: json.endpoint,
+            deviceId,
+          }),
+        });
+        await existing.unsubscribe();
+      }
+      return { ok: true };
+    }
+
+    const permission = await ensureNotificationPermission();
+    if (permission !== 'granted') {
+      return { ok: false, error: 'Notification permission denied' };
+    }
+
+    const vapidPublicKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim();
+    if (!vapidPublicKey) {
+      return { ok: false, error: 'NEXT_PUBLIC_VAPID_PUBLIC_KEY missing' };
+    }
+
+    const subscription =
+      existing ||
+      (await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: toUint8Array(vapidPublicKey),
+      }));
+
+    const response = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        subscription: subscription.toJSON(),
+        deviceId,
+        locale: navigator.language || 'fr',
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      return { ok: false, error: text || 'Subscription sync failed' };
+    }
+    return { ok: true };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || 'Push subscription failed' };
   }
 }

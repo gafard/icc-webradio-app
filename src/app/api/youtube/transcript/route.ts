@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getYoutubeTranscript, getYoutubeTranscriptDebug, TranscriptNotAvailableError } from '@/lib/youtube-transcript';
+import {
+  getYoutubeTranscript,
+  getYoutubeTranscriptDebug,
+  TranscriptNotAvailableError,
+} from '@/lib/youtube-transcript';
 import { getYoutubeTranscriptMcp } from '@/lib/youtube-transcript-mcp';
 
 export const runtime = 'nodejs';
@@ -16,9 +20,8 @@ export async function GET(req: Request) {
 
   if (debug) {
     const result = await getYoutubeTranscriptDebug(videoId, lang);
-    if (result.ok) {
-      return NextResponse.json(result);
-    }
+    if (result.ok) return NextResponse.json(result);
+
     try {
       const mcp = await getYoutubeTranscriptMcp(videoId, lang);
       return NextResponse.json({
@@ -29,7 +32,7 @@ export async function GET(req: Request) {
         },
       });
     } catch (error: any) {
-      const message = error?.message ?? 'MCP transcript indisponible';
+      const message = error?.message ?? 'MCP transcript unavailable';
       return NextResponse.json(
         {
           ok: false as const,
@@ -52,9 +55,15 @@ export async function GET(req: Request) {
         const mcp = await getYoutubeTranscriptMcp(videoId, lang);
         return NextResponse.json(mcp);
       } catch (mcpError: any) {
-        return NextResponse.json({ error: mcpError?.message ?? error.message }, { status: 404 });
+        return NextResponse.json(
+          { error: mcpError?.message ?? error.message },
+          { status: 404 }
+        );
       }
     }
-    return NextResponse.json({ error: error?.message ?? 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message ?? 'Server error' },
+      { status: 500 }
+    );
   }
 }

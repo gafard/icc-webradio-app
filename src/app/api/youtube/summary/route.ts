@@ -1,179 +1,287 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
+type SummaryPayload = {
+  summary: string;
+  bullets: string[];
+  warning?: string;
+};
+
+function clipText(input: string, max = 28000) {
+  return input.length > max ? input.slice(0, max) : input;
+}
+
+function splitSentences(text: string) {
+  return text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function fallbackSummary(text: string): SummaryPayload {
+  const sentences = splitSentences(text);
+  if (!sentences.length) {
+    return {
+      summary: 'No summary available for this transcript.',
+      bullets: [],
+      warning: 'Empty transcript',
+    };
+  }
+
+  const top = sentences.slice(0, Math.min(4, sentences.length));
+  const summary = top.join(' ');
+  const bullets = top.slice(0, 5);
+  return { summary, bullets };
+}
+
+function extractJsonObject(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Ignore and try bracket matching.
+  }
+
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    return JSON.parse(trimmed.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAiPayload(payload: any, fallback: SummaryPayload): SummaryPayload {
+  const summary =
+    typeof payload?.summary === 'string' && payload.summary.trim()
+      ? payload.summary.trim()
+      : fallback.summary;
+  const bullets =
+    Array.isArray(payload?.bullets) && payload.bullets.length
+      ? payload.bullets
+          .map((item: unknown) => String(item ?? '').trim())
+          .filter(Boolean)
+          .slice(0, 8)
+      : fallback.bullets;
+  return { summary, bullets };
+}
+
+async function askOpenAI(apiKey: string, text: string, title?: string) {
+  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+  const endpoint = `${baseUrl}/chat/completions`;
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    authorization: `Bearer ${apiKey}`,
+  };
+  // Optional OpenRouter metadata headers.
+  if (process.env.OPENROUTER_HTTP_REFERER) {
+    headers['HTTP-Referer'] = process.env.OPENROUTER_HTTP_REFERER;
+  }
+  if (process.env.OPENROUTER_X_TITLE) {
+    headers['X-Title'] = process.env.OPENROUTER_X_TITLE;
+  }
+  const configuredSingle = (process.env.OPENAI_SUMMARY_MODEL || '').trim();
+  const configuredMulti = (process.env.OPENAI_SUMMARY_MODELS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const isOpenRouter = /openrouter\.ai/i.test(baseUrl);
+  const candidateModels = configuredSingle
+    ? [configuredSingle]
+    : configuredMulti.length
+      ? configuredMulti
+      : isOpenRouter
+        ? [
+            // Defaults for OpenRouter free tier. Override with OPENAI_SUMMARY_MODEL(S) if needed.
+            'qwen/qwen3-30b-a3b:free',
+            'z-ai/glm-4.5-air:free',
+          ]
+        : ['gpt-4o-mini'];
+
+  const prompt = [
+    'Summarize this YouTube transcript in French.',
+    'Return strict JSON only: {"summary":"...", "bullets":["...", "..."]}.',
+    'Use 3 to 6 bullet points.',
+    title ? `Title: ${title}` : '',
+    '',
+    text,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const errors: string[] = [];
+  for (const model of candidateModels) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a precise summarizer. Output JSON only.',
+          },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      errors.push(`${model}: ${response.status} ${details}`);
+      continue;
+    }
+
+    const json = await response.json();
+    const content = json?.choices?.[0]?.message?.content ?? '';
+    const parsed = extractJsonObject(String(content));
+    if (parsed) return parsed;
+    errors.push(`${model}: invalid JSON output`);
+  }
+
+  throw new Error(`OpenAI-compatible summary failed (${errors.join(' | ')})`);
+}
+
+async function askAnthropic(apiKey: string, text: string, title?: string) {
+  const prompt = [
+    'Resume en francais cette transcription YouTube.',
+    'Reponds en JSON strict: {"summary":"...", "bullets":["...", "..."]}.',
+    '3 a 6 points.',
+    title ? `Titre: ${title}` : '',
+    '',
+    text,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: process.env.ANTHROPIC_SUMMARY_MODEL || 'claude-3-5-sonnet-latest',
+      max_tokens: 900,
+      temperature: 0.2,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Anthropic error ${response.status}: ${details}`);
+  }
+
+  const json = await response.json();
+  const content = json?.content?.[0]?.text ?? '';
+  return extractJsonObject(String(content));
+}
+
+async function askGemini(apiKey: string, text: string, title?: string) {
+  const prompt = [
+    'Resume en francais cette transcription YouTube.',
+    'Reponds en JSON strict: {"summary":"...", "bullets":["...", "..."]}.',
+    '3 a 6 points.',
+    title ? `Titre: ${title}` : '',
+    '',
+    text,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Gemini error ${response.status}: ${details}`);
+  }
+
+  const json = await response.json();
+  const content = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return extractJsonObject(String(content));
+}
+
+async function generateSummaryWithAI(text: string, title?: string) {
+  const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+  const fallback = fallbackSummary(text);
+
+  if (provider === 'anthropic') {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return { ...fallback, warning: 'ANTHROPIC_API_KEY missing' };
+    const payload = await askAnthropic(apiKey, text, title);
+    return normalizeAiPayload(payload, fallback);
+  }
+
+  if (provider === 'gemini') {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return { ...fallback, warning: 'GEMINI_API_KEY missing' };
+    const payload = await askGemini(apiKey, text, title);
+    return normalizeAiPayload(payload, fallback);
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return {
+      ...fallback,
+      warning: 'OPENAI_API_KEY/OPENROUTER_API_KEY missing',
+    };
+  }
+  const payload = await askOpenAI(apiKey, text, title);
+  return normalizeAiPayload(payload, fallback);
+}
+
 export async function POST(request: Request) {
   try {
-    const { text, videoId, title } = await request.json();
-    
-    // Valider les paramètres
-    if (!text) {
-      return NextResponse.json({ error: 'text est requis' }, { status: 400 });
+    const body = await request.json().catch(() => ({}));
+    const rawText = String(body?.text ?? '').trim();
+    const videoId = String(body?.videoId ?? '').trim();
+    const title = String(body?.title ?? '').trim();
+
+    if (!rawText) {
+      return NextResponse.json({ error: 'text is required' }, { status: 400 });
     }
 
-    // Vérifier la longueur du texte pour s'assurer qu'il y a assez de contenu à résumer
+    const text = clipText(rawText);
     if (text.length < 50) {
-      return NextResponse.json({ 
-        error: 'Texte trop court pour générer un résumé significatif', 
-        summary: 'Aucun résumé disponible : la transcription est trop courte.',
-        bullets: []
-      }, { status: 400 });
-    }
-
-    // Utiliser un modèle d'IA pour générer un résumé (OpenAI, Claude, ou autre)
-    // Vérifier d'abord si une clé API est disponible
-    const apiKey = process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
-    const provider = process.env.AI_PROVIDER || 'openai'; // 'openai', 'gemini', 'anthropic'
-
-    if (!apiKey) {
-      // Si aucune clé API n'est disponible, retourner un message d'erreur explicite
-      return NextResponse.json({ 
-        summary: "Le service d'IA n'est pas configuré. Veuillez contacter l'administrateur pour activer la génération de résumé.",
-        bullets: ["Ajoutez une clé API dans les variables d'environnement pour activer cette fonctionnalité."],
+      const fallback = fallbackSummary(text);
+      return NextResponse.json({
+        ...fallback,
         videoId,
-        title: title || 'Vidéo sans titre',
-        warning: 'Aucune clé API d\'IA configurée'
-      }, { status: 500 });
+        title,
+        warning: 'Transcript too short for AI summary',
+      });
     }
 
     try {
-      let aiResponse;
-      
-      // Selon le fournisseur d'IA configuré
-      if (provider === 'gemini') {
-        // Appel à Gemini API
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `En tant qu'expert en résumé de contenu vidéo, analyse cette transcription de vidéo YouTube intitulée "${title || 'sans titre'}" et fournis un résumé concis en français ainsi que 3 à 6 points clés :
-
-${text}
-
-Fournis ta réponse au format JSON avec deux champs : "summary" pour le résumé complet et "bullets" pour un tableau de points clés.`
-              }]
-            }]
-          })
-        });
-        
-        const geminiData = await geminiResponse.json();
-        if (geminiData.candidates && geminiData.candidates[0].content.parts[0].text) {
-          aiResponse = JSON.parse(geminiData.candidates[0].content.parts[0].text);
-        }
-      } else if (provider === 'anthropic') {
-        // Appel à Anthropic (Claude)
-        const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: 'claude-3-sonnet-20240229',
-            max_tokens: 1000,
-            messages: [{
-              role: 'user',
-              content: `En tant qu'expert en résumé de contenu vidéo, analyse cette transcription de vidéo YouTube intitulée "${title || 'sans titre'}" et fournis un résumé concis en français ainsi que 3 à 6 points clés :
-
-${text}
-
-Fournis ta réponse au format JSON avec deux champs : "summary" pour le résumé complet et "bullets" pour un tableau de points clés.`
-            }]
-          })
-        });
-        
-        const anthropicData = await anthropicResponse.json();
-        if (anthropicData.content && anthropicData.content[0].text) {
-          aiResponse = JSON.parse(anthropicData.content[0].text);
-        }
-      } else {
-        // Par défaut, utiliser OpenAI
-        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              {
-                role: 'system',
-                content: `Vous êtes un expert en résumé de contenu vidéo. Votre tâche est de créer un résumé clair, concis et informatif à partir de la transcription d'une vidéo YouTube. Le résumé doit capturer les points principaux du contenu, en conservant les idées essentielles sans ajouter d'informations extérieures. Répondez en français.`
-              },
-              {
-                role: 'user',
-                content: `Analyse cette transcription de vidéo YouTube intitulée "${title || 'sans titre'}" et fournis un résumé concis en français ainsi que 3 à 6 points clés :
-
-${text}
-
-Fournis ta réponse au format JSON avec deux champs : "summary" pour le résumé complet et "bullets" pour un tableau de points clés.`
-              }
-            ],
-            temperature: 0.3
-          })
-        });
-        
-        const openaiData = await openaiResponse.json();
-        if (openaiData.choices && openaiData.choices[0].message.content) {
-          aiResponse = JSON.parse(openaiData.choices[0].message.content);
-        }
-      }
-      
-      // Si la réponse contient les champs attendus
-      if (aiResponse && typeof aiResponse === 'object') {
-        return NextResponse.json({
-          summary: aiResponse.summary || "Le résumé n'a pas été extrait correctement de la réponse de l'IA.",
-          bullets: Array.isArray(aiResponse.bullets) ? aiResponse.bullets : [
-            "Le système n'a pas pu extraire les points clés correctement."
-          ],
-          videoId,
-          title: title || 'Vidéo sans titre'
-        });
-      } else {
-        // Si la réponse n'est pas au format attendu
-        return NextResponse.json({
-          summary: "Le résumé n'a pas été généré correctement par l'IA.",
-          bullets: ["Le format de réponse de l'IA n'était pas conforme."],
-          videoId,
-          title: title || 'Vidéo sans titre',
-          warning: 'Réponse IA non conforme'
-        });
-      }
-    } catch (aiError: any) {
-      console.error('Erreur lors de l\'appel à l\'IA pour le résumé:', aiError);
-      
-      // En cas d'erreur, tenter une approche de secours basique
-      const lines = text.split('.').filter(line => line.trim().length > 10);
-      const summary = lines.length > 0 
-        ? lines.slice(0, Math.min(5, lines.length)).join('. ') + (lines.length > 5 ? '...' : '.') 
-        : "Impossible de générer un résumé en raison d'une erreur de traitement.";
-      
-      return NextResponse.json({ 
-        summary: summary,
-        bullets: [
-          "La génération automatique de résumé a rencontré une erreur.",
-          "Veuillez consulter la transcription complète pour le détail.",
-          "Contactez l'administrateur si le problème persiste."
-        ],
+      const data = await generateSummaryWithAI(text, title);
+      return NextResponse.json({ ...data, videoId, title });
+    } catch (error: any) {
+      const fallback = fallbackSummary(text);
+      return NextResponse.json({
+        ...fallback,
         videoId,
-        title: title || 'Vidéo sans titre',
-        warning: 'Erreur lors de la génération du résumé par l\'IA'
+        title,
+        warning: error?.message ?? 'Summary generation failed',
       });
     }
-    
-    return NextResponse.json({
-      summary,
-      bullets,
-      videoId
-    });
   } catch (error: any) {
-    console.error('Erreur dans l\'API de résumé:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Erreur interne du serveur' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message ?? 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

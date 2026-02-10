@@ -2,7 +2,7 @@ import AppShell from '../components/AppShell';
 import HomeHeroBridge from '../components/HomeHeroBridge';
 import ContinueRail from '../components/ContinueRail';
 import RecentRail from '../components/RecentRail';
-import HomeRailsBridge, { type HomeSection } from '../components/HomeRailsBridge';
+import HomeRailsBridge from '../components/HomeRailsBridge';
 import { wpFetch } from '../lib/wp';
 import { XMLParser } from 'fast-xml-parser';
 
@@ -20,6 +20,13 @@ type Video = {
 };
 
 type WPTerm = { id: number; name: string; slug: string };
+
+type HomeSectionData = {
+  key: string;
+  title: string;
+  items: MediaItem[];
+  seeAllHref?: string;
+};
 
 async function getWpPosts(params: string, perPage = 12, order: 'asc'|'desc'='desc') {
   return (
@@ -151,7 +158,7 @@ export default async function Home() {
   const enseignementsItems = wpEns.map(mapWpToMediaItem);
 
   // 5) Thèmes (catégories si dispo, sinon tags)
-  const themeRails: HomeSection[] = [];
+  const themeRails: HomeSectionData[] = [];
   for (const name of themeWanted) {
     const category = flatThemeCategories.find(
       (c) => c?.name?.toLowerCase() === name.toLowerCase()
@@ -335,7 +342,7 @@ export default async function Home() {
   // Filtrer les vidéos YouTube
   const filteredYtItems = filterUniqueItems(ytItems.slice(0, 12));
 
-  const sections: HomeSection[] = [
+  const sections: HomeSectionData[] = [
     { key: 'new-week', title: 'Nouveautés cette semaine', items: filteredNouveautesSemaine },
 
     // ContinueRail est un composant à part (client) → tu le mets sous le hero
@@ -353,7 +360,7 @@ export default async function Home() {
             title: 'Séries',
             items: filteredSerieItems,
             seeAllHref: '/series',
-          } as HomeSection,
+          } as HomeSectionData,
         ]
       : []),
 

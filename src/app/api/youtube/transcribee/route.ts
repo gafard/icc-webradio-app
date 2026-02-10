@@ -18,23 +18,27 @@ function extractOutputDir(stdout: string) {
   const idx = stdout.lastIndexOf(marker);
   if (idx === -1) return '';
   const after = stdout.slice(idx + marker.length);
-  const lines = after.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = after
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
   return lines[0] ?? '';
 }
 
 export async function POST(request: Request) {
   try {
-    const { videoId, title } = await request.json();
-    
-    // Valider les paramètres
+    const body = await request.json().catch(() => ({}));
+    const videoId = String(body?.videoId ?? '').trim();
+    const title = String(body?.title ?? '').trim();
+
     if (!videoId) {
-      return NextResponse.json({ error: 'videoId est requis' }, { status: 400 });
+      return NextResponse.json({ error: 'videoId is required' }, { status: 400 });
     }
 
     const transcribeePath = resolveTranscribeePath();
     if (!transcribeePath) {
       return NextResponse.json(
-        { error: 'TRANSCRIBEE_PATH non defini dans .env.local' },
+        { error: 'TRANSCRIBEE_PATH is not configured' },
         { status: 500 }
       );
     }
@@ -43,19 +47,17 @@ export async function POST(request: Request) {
     await access(script);
 
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const { stdout, stderr } = await execFileAsync(
-      'bash',
-      [script, url],
-      {
-        cwd: transcribeePath,
-        maxBuffer: 10 * 1024 * 1024,
-        env: { ...process.env },
-      }
-    );
+    const { stdout, stderr } = await execFileAsync('bash', [script, url], {
+      cwd: transcribeePath,
+      maxBuffer: 10 * 1024 * 1024,
+      env: { ...process.env },
+    });
 
     const outputDir = extractOutputDir(stdout || '');
     if (!outputDir) {
-      throw new Error(`Transcribee termine sans chemin de sortie. Logs: ${stderr || stdout || 'n/a'}`);
+      throw new Error(
+        `Transcribee finished without output path. Logs: ${stderr || stdout || 'n/a'}`
+      );
     }
 
     const transcriptPath = path.join(outputDir, 'transcript.txt');
@@ -80,9 +82,9 @@ export async function POST(request: Request) {
       outputDir,
     });
   } catch (error: any) {
-    console.error('Erreur dans l\'API transcribee:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Erreur interne du serveur' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message ?? 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

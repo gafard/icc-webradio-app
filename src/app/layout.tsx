@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import { Manrope, Special_Elite, Libre_Baskerville } from 'next/font/google';
 import './globals.css';
 import DynamicRadioPlayer from '../components/DynamicRadioPlayer';
+import MobileRadioPlayer from '../components/MobileRadioPlayer';
 import { ModeProvider } from '../contexts/ModeContext';
 import { SettingsProvider } from '../contexts/SettingsContext';
+import { I18nProvider } from '../contexts/I18nContext';
 import SettingsModal from '../components/SettingsModal';
 
 const manrope = Manrope({
@@ -62,13 +64,16 @@ export default function RootLayout({
       className={`${manrope.variable} ${specialElite.variable} ${libreBaskerville.variable}`}
     >
       <body className="pb-[110px] font-sans antialiased" suppressHydrationWarning={true}>
-        <ModeProvider>
-          <SettingsProvider>
-            {children}
-            <SettingsModal />
-            <DynamicRadioPlayer />
-          </SettingsProvider>
-        </ModeProvider>
+        <I18nProvider>
+          <ModeProvider>
+            <SettingsProvider>
+              {children}
+              <SettingsModal />
+              <DynamicRadioPlayer />
+              <MobileRadioPlayer />
+            </SettingsProvider>
+          </ModeProvider>
+        </I18nProvider>
       </body>
     </html>
   );

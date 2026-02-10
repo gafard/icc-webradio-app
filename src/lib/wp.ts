@@ -1,5 +1,14 @@
 export const WP_BASE = process.env.NEXT_PUBLIC_WP_BASE_URL || 'https://webradio.iccagoe.net'; // ex: https://webradio.iccagoe.net
 
+export type WpPost = {
+  id: number | string;
+  date: string;
+  link: string;
+  title: { rendered: string };
+  excerpt: { rendered: string };
+  content: { rendered: string };
+};
+
 export async function wpFetch<T>(path: string, revalidate = 300): Promise<T | null> {
   const base = process.env.NEXT_PUBLIC_WP_BASE_URL || 'https://webradio.iccagoe.net';
   const url = `${base}${path}`;

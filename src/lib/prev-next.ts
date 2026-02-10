@@ -2,9 +2,19 @@ import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+type EpisodeRow = {
+  slug: string;
+  title: string;
+  serie: string | null;
+  serie_key: string | null;
+  episode_number: number | null;
+  published_at: string | null;
+  id: number;
+};
+
 export async function getPrevNextEpisodes(currentSlug: string, serieKey?: string | null) {
   let query = '';
-  let params: any[];
+  let params: Array<string>;
 
   if (serieKey) {
     // Navigation dans la série
@@ -31,7 +41,7 @@ export async function getPrevNextEpisodes(currentSlug: string, serieKey?: string
     params = [];
   }
 
-  const { rows } = await pool.query(query, params);
+  const { rows } = (await pool.query(query, params)) as { rows: EpisodeRow[] };
   
   const currentIndex = rows.findIndex(row => row.slug === currentSlug);
   

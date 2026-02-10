@@ -96,7 +96,11 @@ function buildSeries(posts: any[], seriesCategories: Array<{ id: number; name: s
       );
       if (!serieName) return;
       const key = normalizeSerie(serieName) || serieName.toLowerCase();
-      const bucket = map.get(key) ?? { name: serieName, byNumber: new Map(), noNumber: [] };
+      const bucket: BuildBucket = map.get(key) ?? {
+        name: serieName,
+        byNumber: new Map<number, EpisodeEntry>(),
+        noNumber: [],
+      };
 
       if (bucket.name.length < serieName.length) {
         bucket.name = serieName;

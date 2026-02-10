@@ -67,6 +67,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [notificationsEnabled, dataSaver]);
 
+  // Keep Web Push subscription in sync with user preference.
+  useEffect(() => {
+    if (!notificationsEnabled || typeof window === 'undefined') return;
+    let cancelled = false;
+    (async () => {
+      const { syncPushSubscription } = await import('./notifications');
+      if (!cancelled) await syncPushSubscription(true);
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [notificationsEnabled]);
+
   // Rappels personnalisés (quand l'app est ouverte)
   useEffect(() => {
     if (!remindersEnabled || typeof window === 'undefined') return;
@@ -152,9 +165,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const glow = mounted
     ? (mode === 'night'
-      ? 'before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_10%,rgba(59,130,246,0.18),transparent_55%)]'
-      : 'before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]')
-    : 'before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]'; // Valeur par défaut pendant le rendu serveur
+      ? 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_10%,rgba(59,130,246,0.18),transparent_55%)]'
+      : 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]')
+    : 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]'; // Valeur par défaut pendant le rendu serveur
 
   return (
     <SidebarProvider>

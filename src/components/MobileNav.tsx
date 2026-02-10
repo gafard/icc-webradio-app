@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Radio, Mic2, Video, Menu } from 'lucide-react';
-import { useMode } from './useMode';
+import { useMode } from '../contexts/ModeContext';
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const mode = useMode();
+  const { mode } = useMode();
 
   const isNight = mode === 'night';
 
