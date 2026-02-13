@@ -22,6 +22,16 @@ type ApiError = {
   error: string;
 };
 
+type StatsPayload = {
+  totalCases: number;
+  openCases: number;
+  reviewingCases: number;
+  actionedCases: number;
+  dismissedCases: number;
+  highRiskOpenCases: number;
+  unassignedOpenCases: number;
+};
+
 type QueueResponse = {
   ok: true;
   items: QueueItem[];
@@ -37,6 +47,12 @@ type CaseResponse = {
 type ActionResponse = {
   ok: true;
   detail: CaseDetail | null;
+  auth?: { mode?: string; role?: string | null };
+} | ApiError;
+
+type StatsResponse = {
+  ok: true;
+  stats: StatsPayload;
   auth?: { mode?: string; role?: string | null };
 } | ApiError;
 
@@ -68,6 +84,7 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
   const [notice, setNotice] = useState('');
   const [authRequired, setAuthRequired] = useState(false);
   const [role, setRole] = useState<string | null>(initialSessionRole);
+  const [stats, setStats] = useState<StatsPayload | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -133,6 +150,27 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
     }
   }, [adminKey, role, selectedCaseId, sort, statusFilter]);
 
+  const loadStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/moderation/stats', {
+        method: 'GET',
+        headers: buildHeaders(adminKey),
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as StatsResponse;
+      if (!response.ok || !payload.ok) {
+        const message = payload.ok ? 'Unable to load moderation stats.' : payload.error;
+        if (response.status === 401 || response.status === 403) setAuthRequired(true);
+        throw new Error(message);
+      }
+      setStats(payload.stats);
+      setRole(payload.auth?.role || role);
+      setAuthRequired(false);
+    } catch (statsError) {
+      setError((current) => current || formatApiError(statsError, 'Unable to load moderation stats.'));
+    }
+  }, [adminKey, role]);
+
   const loadCase = useCallback(
     async (caseId: string | null) => {
       if (!caseId) {
@@ -167,6 +205,10 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
   useEffect(() => {
     void loadQueue();
   }, [loadQueue]);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
 
   useEffect(() => {
     void loadCase(selectedCaseId);
@@ -210,13 +252,14 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
         setNotice(`Action "${action}" appliquée.`);
         if (result.detail) setDetail(result.detail);
         await loadQueue();
+        await loadStats();
       } catch (runError) {
         setError(formatApiError(runError, 'Unable to apply moderation action.'));
       } finally {
         setRunningAction(false);
       }
     },
-    [adminKey, detail, loadQueue]
+    [adminKey, detail, loadQueue, loadStats]
   );
 
   const runAssign = useCallback(
@@ -247,13 +290,14 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
         setNotice(mode === 'clear' ? 'Assignation retirée.' : 'Case assigné.');
         if (result.detail) setDetail(result.detail);
         await loadQueue();
+        await loadStats();
       } catch (assignError) {
         setError(formatApiError(assignError, 'Unable to assign moderation case.'));
       } finally {
         setRunningAction(false);
       }
     },
-    [adminKey, detail, loadQueue]
+    [adminKey, detail, loadQueue, loadStats]
   );
 
   const canModerate = role !== 'viewer';
@@ -313,6 +357,33 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
         </div>
         {banner ? <div className="mt-3">{banner}</div> : null}
       </section>
+
+      {stats ? (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="glass-panel rounded-2xl p-4">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Cases</div>
+            <div className="mt-1 text-2xl font-extrabold">{stats.totalCases}</div>
+            <div className="mt-1 text-xs text-[color:var(--foreground)]/70">Open: {stats.openCases}</div>
+          </article>
+          <article className="glass-panel rounded-2xl p-4">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">In Progress</div>
+            <div className="mt-1 text-2xl font-extrabold">{stats.reviewingCases}</div>
+            <div className="mt-1 text-xs text-[color:var(--foreground)]/70">Assigned queue</div>
+          </article>
+          <article className="glass-panel rounded-2xl p-4">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">High Risk</div>
+            <div className="mt-1 text-2xl font-extrabold text-red-500">{stats.highRiskOpenCases}</div>
+            <div className="mt-1 text-xs text-[color:var(--foreground)]/70">Open cases with risk ≥ 40</div>
+          </article>
+          <article className="glass-panel rounded-2xl p-4">
+            <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Backlog</div>
+            <div className="mt-1 text-2xl font-extrabold">{stats.unassignedOpenCases}</div>
+            <div className="mt-1 text-xs text-[color:var(--foreground)]/70">
+              Actioned: {stats.actionedCases} • Dismissed: {stats.dismissedCases}
+            </div>
+          </article>
+        </section>
+      ) : null}
 
       {authRequired && !adminKey ? (
         <section className="glass-panel rounded-3xl p-4 text-sm text-[color:var(--foreground)]/75">

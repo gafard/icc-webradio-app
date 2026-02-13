@@ -18,6 +18,16 @@ export type ModerationActionType =
 
 export type ModerationQueueSort = 'risk' | 'recent';
 
+export type ModerationStats = {
+  totalCases: number;
+  openCases: number;
+  reviewingCases: number;
+  actionedCases: number;
+  dismissedCases: number;
+  highRiskOpenCases: number;
+  unassignedOpenCases: number;
+};
+
 export type QueueItem = {
   id: string;
   targetType: ModerationTargetType;
@@ -298,6 +308,52 @@ export async function fetchModerationQueue(client: DbClient, options: FetchQueue
   return rows.map((row) =>
     buildQueueItem(row, previews.get(`${row.target_type}:${row.target_id}`))
   );
+}
+
+async function countCases(
+  client: DbClient,
+  decorate?: (query: any) => any
+): Promise<number> {
+  let query = client.from('moderation_cases').select('id', { count: 'exact', head: true });
+  if (decorate) {
+    query = decorate(query);
+  }
+  const { count, error } = await query;
+  if (error) {
+    if (isMissingTableError(error, 'moderation_cases')) return 0;
+    throw error;
+  }
+  return Number(count || 0);
+}
+
+export async function fetchModerationStats(client: DbClient): Promise<ModerationStats> {
+  const [
+    totalCases,
+    openCases,
+    reviewingCases,
+    actionedCases,
+    dismissedCases,
+    highRiskOpenCases,
+    unassignedOpenCases,
+  ] = await Promise.all([
+    countCases(client),
+    countCases(client, (query) => query.eq('status', 'open')),
+    countCases(client, (query) => query.eq('status', 'reviewing')),
+    countCases(client, (query) => query.eq('status', 'actioned')),
+    countCases(client, (query) => query.eq('status', 'dismissed')),
+    countCases(client, (query) => query.eq('status', 'open').gte('risk_score', 40)),
+    countCases(client, (query) => query.eq('status', 'open').is('assigned_to', null)),
+  ]);
+
+  return {
+    totalCases,
+    openCases,
+    reviewingCases,
+    actionedCases,
+    dismissedCases,
+    highRiskOpenCases,
+    unassignedOpenCases,
+  };
 }
 
 export async function fetchModerationCaseDetail(client: DbClient, caseId: string): Promise<CaseDetail | null> {
