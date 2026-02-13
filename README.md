@@ -35,6 +35,21 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Admin Moderation Panel
+
+- URL: `/admin`
+- Backend endpoint: `GET/POST /api/admin/moderation`
+- Required in production:
+  - `ADMIN_PANEL_KEY` (custom secret used by the admin panel)
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- Run SQL migration in Supabase:
+  - `icc-ai/admin_moderation_v1.sql`
+- The admin key is requested client-side and sent via `x-admin-key`.
+- Without `ADMIN_PANEL_KEY`:
+  - allowed in local development
+  - blocked in production
+
 ## SQLite Runtime Notes
 
 - SQLite databases are embedded in `data/`:

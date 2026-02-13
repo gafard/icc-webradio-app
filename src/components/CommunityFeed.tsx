@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Clock3,
   Flame,
+  Flag,
   Heart,
   Loader2,
   MessageCircle,
@@ -21,10 +22,12 @@ import {
   fetchComments,
   fetchPostById,
   fetchPosts,
+  reportPost,
   toggleLike,
   type CommunityComment,
   type CommunityKind,
   type CommunityPost,
+  type CommunityReportReason,
 } from './communityApi';
 import CommunityDeck from './CommunityDeck';
 import { useCommunityIdentity } from '../lib/useCommunityIdentity';
@@ -166,6 +169,7 @@ export default function CommunityFeed({
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({});
   const [deletingPost, setDeletingPost] = useState<Record<string, boolean>>({});
+  const [reportingPost, setReportingPost] = useState<Record<string, boolean>>({});
   const [heartAnimating, setHeartAnimating] = useState<Record<string, boolean>>({});
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -458,6 +462,54 @@ export default function CommunityFeed({
     }
   };
 
+  const onReportPost = async (post: CommunityPost) => {
+    const actor = identity ?? getOrCreateIdentity();
+    if (!post.id) return;
+
+    const raw = window.prompt(
+      t('feed.reportPrompt'),
+      'spam'
+    );
+    if (!raw) return;
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) return;
+
+    const knownReason: CommunityReportReason =
+      normalized === 'spam' || normalized === 'harassment' || normalized === 'illegal'
+        ? normalized
+        : 'other';
+
+    const message = knownReason === 'other' ? raw.trim() : undefined;
+
+    setReportingPost((prev) => ({ ...prev, [post.id]: true }));
+    try {
+      await reportPost({
+        targetId: post.id,
+        reason: knownReason,
+        message,
+        reporterDeviceId: actor.deviceId || undefined,
+      });
+      setFeedback(t('feed.reportDone'));
+      setPosts((prev) =>
+        prev.map((item) =>
+          item.id === post.id
+            ? {
+                ...item,
+                reported_count:
+                  typeof (item as any).reported_count === 'number'
+                    ? (item as any).reported_count + 1
+                    : 1,
+              }
+            : item
+        )
+      );
+    } catch {
+      setFeedback(t('feed.reportError'));
+    } finally {
+      setReportingPost((prev) => ({ ...prev, [post.id]: false }));
+    }
+  };
+
   const emptyState = status === 'idle' && displayedPosts.length === 0;
   const modalActor = identity ?? getOrCreateIdentity();
   const activeComments = activePost ? commentsByPost[activePost.id] ?? [] : [];
@@ -554,8 +606,10 @@ export default function CommunityFeed({
           posts={displayedPosts}
           showKind={showKind}
           tKindLabel={(k) => t(`feed.kind.${k}`)}
+          reportLabel={t('feed.report')}
           heartAnimating={heartAnimating}
           deletingPost={deletingPost}
+          reportingPost={reportingPost}
           canDelete={(post) => {
             const actor = identity ?? getOrCreateIdentity();
             return !!actor.deviceId && actor.deviceId === post.author_device_id;
@@ -563,6 +617,7 @@ export default function CommunityFeed({
           onOpenPost={onOpenPost}
           onLike={onLike}
           onShare={(p) => onShare({ ...p, author_device_id: p.author_device_id || '' } as CommunityPost)}
+          onReportPost={(p) => onReportPost({ ...p, author_device_id: p.author_device_id || '' } as CommunityPost)}
           onDeletePost={(p) => onDeletePost({ ...p, author_device_id: p.author_device_id || '' } as CommunityPost)}
           onToggleComments={onOpenPost}
         />
@@ -655,6 +710,16 @@ export default function CommunityFeed({
                   onClick={() => onShare(activePost)}
                 >
                   <Share2 size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/70 transition-all hover:bg-[color:var(--surface-strong)]"
+                  onClick={() => onReportPost(activePost)}
+                  disabled={!!reportingPost[activePost.id]}
+                  title={t('feed.report')}
+                  aria-label={t('feed.report')}
+                >
+                  {reportingPost[activePost.id] ? <Loader2 size={18} className="animate-spin" /> : <Flag size={18} />}
                 </button>
               </div>
 

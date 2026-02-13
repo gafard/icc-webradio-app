@@ -11,6 +11,7 @@ import CommunityStories from '../../components/CommunityStories';
 import CommunityGroups from '../../components/CommunityGroups';
 import { PrayerMap } from '../../components/SpiritualFeatures';
 import { SeriesList } from '../../components/SeriesManagement';
+import { canPublishAnnouncement } from '../../components/communityApi';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../contexts/I18nContext';
 import {
@@ -43,6 +44,8 @@ function CommunityPageInner() {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [feedRefreshToken, setFeedRefreshToken] = useState(0);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([]);
+  const [canPostAnnouncements, setCanPostAnnouncements] = useState(false);
+  const [announcementAccessChecked, setAnnouncementAccessChecked] = useState(false);
   const tabs = useMemo<Array<{ key: TabKey; label: string; icon: ElementType; description: string }>>(
     () => [
       {
@@ -102,6 +105,25 @@ function CommunityPageInner() {
     const groupId = searchParams.get('group');
     if (groupId) setActiveTab('groups');
   }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAnnouncementPermission = async () => {
+      try {
+        const allowed = await canPublishAnnouncement();
+        if (cancelled) return;
+        setCanPostAnnouncements(allowed);
+      } finally {
+        if (!cancelled) setAnnouncementAccessChecked(true);
+      }
+    };
+
+    void loadAnnouncementPermission();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addPrayerRequest = async (payload: { content: string; city: string }) => {
     const tempId = makeId();
@@ -265,11 +287,9 @@ function CommunityPageInner() {
 
             {activeTab === 'all' ? (
               <>
-                <CommunityComposer
-                  kind="general"
-                  placeholder={t('composer.defaultPlaceholder')}
-                  onPosted={bumpFeedRefresh}
-                />
+                <div className="glass-panel rounded-3xl p-4 text-sm text-[color:var(--foreground)]/70">
+                  {t('community.feedReadOnlyInfo')}
+                </div>
                 <Suspense fallback={feedFallback}>
                   <CommunityFeed
                     showKind
@@ -330,15 +350,19 @@ function CommunityPageInner() {
             {activeTab === 'announcements' ? (
               <>
                 <div className="glass-panel rounded-3xl p-4 text-sm text-[color:var(--foreground)]/70">
-                  {t('community.announcementsInfo')}
+                  {canPostAnnouncements
+                    ? t('community.announcementsInfo')
+                    : t('community.announcementAdminOnly')}
                 </div>
-                <CommunityComposer
-                  kind="announcement"
-                  allowStory={false}
-                  placeholder={t('community.placeholder.announcement')}
-                  submitLabel={t('community.submit.announcement')}
-                  onPosted={bumpFeedRefresh}
-                />
+                {announcementAccessChecked && canPostAnnouncements ? (
+                  <CommunityComposer
+                    kind="announcement"
+                    allowStory={false}
+                    placeholder={t('community.placeholder.announcement')}
+                    submitLabel={t('community.submit.announcement')}
+                    onPosted={bumpFeedRefresh}
+                  />
+                ) : null}
                 <Suspense fallback={feedFallback}>
                   <CommunityFeed
                     kind="announcement"

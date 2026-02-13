@@ -200,17 +200,25 @@ export default function SettingsModal() {
               label="Nouveaux contenus"
               value={notificationsEnabled}
               onChange={async (v) => {
+                const { syncPushSubscription } = await import('./notifications');
                 if (v) {
-                  const { ensureNotificationPermission, syncPushSubscription } = await import('./notifications');
+                  const { ensureNotificationPermission } = await import('./notifications');
                   const perm = await ensureNotificationPermission();
                   if (perm !== 'granted') {
                     setNotificationsEnabled(false);
                     return;
                   }
-                  await syncPushSubscription(true);
+                  const result = await syncPushSubscription(true);
+                  if (!result.ok) {
+                    console.error('[Notifications] subscribe failed:', result.error);
+                    setNotificationsEnabled(false);
+                    return;
+                  }
                 } else {
-                  const { syncPushSubscription } = await import('./notifications');
-                  await syncPushSubscription(false);
+                  const result = await syncPushSubscription(false);
+                  if (!result.ok) {
+                    console.error('[Notifications] unsubscribe failed:', result.error);
+                  }
                 }
                 setNotificationsEnabled(v);
               }}

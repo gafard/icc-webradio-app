@@ -969,6 +969,49 @@ export default function CommunityGroups({ initialGroupId }: { initialGroupId?: s
   }, [loadGroups]);
 
   useEffect(() => {
+    let timer: number | null = null;
+
+    const scheduleGroupsRefresh = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void loadGroups();
+        if (selectedGroupId) {
+          void loadGroupMembers(selectedGroupId);
+        }
+      }, 450);
+    };
+
+    if (!supabase) {
+      const poll = window.setInterval(() => {
+        void loadGroups();
+        if (selectedGroupId) {
+          void loadGroupMembers(selectedGroupId);
+        }
+      }, 30000);
+      return () => {
+        if (timer) window.clearTimeout(timer);
+        window.clearInterval(poll);
+      };
+    }
+
+    const realtimeClient = supabase;
+    const channel = realtimeClient
+      .channel('community_groups_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_groups' }, () => {
+        scheduleGroupsRefresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_group_members' }, () => {
+        scheduleGroupsRefresh();
+      })
+      .subscribe();
+
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      realtimeClient.removeChannel(channel);
+    };
+  }, [loadGroups, loadGroupMembers, selectedGroupId]);
+
+  useEffect(() => {
     if (!feedback) return;
     const timer = window.setTimeout(() => setFeedback(null), 2200);
     return () => window.clearTimeout(timer);

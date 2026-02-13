@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Heart, Loader2, MessageCircle, Share2, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Flag, Heart, Loader2, MessageCircle, Share2, Trash2 } from 'lucide-react';
 
 type CommunityPost = {
   id: string;
@@ -47,24 +47,30 @@ export default function CommunityDeck({
   posts,
   showKind,
   tKindLabel,
+  reportLabel,
   heartAnimating,
   deletingPost,
+  reportingPost,
   canDelete,
   onOpenPost,
   onLike,
   onShare,
+  onReportPost,
   onDeletePost,
   onToggleComments,
 }: {
   posts: CommunityPost[];
   showKind: boolean;
   tKindLabel: (kind: string) => string;
+  reportLabel: string;
   heartAnimating: Record<string, boolean>;
   deletingPost: Record<string, boolean>;
+  reportingPost: Record<string, boolean>;
   canDelete: (post: CommunityPost) => boolean;
   onOpenPost: (postId: string) => void;
   onLike: (postId: string) => void;
   onShare: (post: CommunityPost) => void;
+  onReportPost: (post: CommunityPost) => void;
   onDeletePost: (post: CommunityPost) => void;
   onToggleComments: (postId: string) => void;
 }) {
@@ -231,6 +237,24 @@ export default function CommunityDeck({
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onReportPost(current);
+                  }}
+                  disabled={!!reportingPost[current.id]}
+                  aria-label={reportLabel}
+                  title={reportLabel}
+                >
+                  {reportingPost[current.id] ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Flag size={16} />
+                  )}
+                </button>
+
                 {canDelete(current) ? (
                   <button
                     type="button"

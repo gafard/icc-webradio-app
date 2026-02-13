@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
-import { sendWebPush } from '@/lib/webPush';
+import { hasWebPushConfig, sendWebPush } from '@/lib/webPush';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +22,13 @@ export async function POST(req: Request) {
   if (!supabaseServer) {
     return NextResponse.json(
       { ok: false, error: 'SUPABASE_SERVICE_ROLE_KEY missing' },
+      { status: 503 }
+    );
+  }
+
+  if (!hasWebPushConfig()) {
+    return NextResponse.json(
+      { ok: false, error: 'VAPID config missing' },
       { status: 503 }
     );
   }

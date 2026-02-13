@@ -62,6 +62,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'community.empty.announcements': 'Aucune annonce pour l instant.',
     'community.empty.content': 'Aucun contenu partage pour l instant.',
     'community.announcementsInfo': 'Les annonces officielles sont publiees par l equipe. (Mode admin a brancher)',
+    'community.announcementAdminOnly':
+      "L onglet Annonces est reserve a l administration de l eglise.",
+    'community.feedReadOnlyInfo':
+      "Le fil d actualite est en lecture seule. Publie dans Priere, Entraide, Annonces ou Contenus.",
     'community.storageLocalOnly':
       'Mode local actif: les publications restent sur cet appareil tant que Supabase n est pas configure.',
     'community.groups.title': 'Groupes',
@@ -191,6 +195,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'feed.shareCopied': 'Publication copiee.',
     'feed.shareNotAvailable': 'Partage non disponible sur cet appareil.',
     'feed.shareError': 'Impossible de partager cette publication.',
+    'feed.report': 'Signaler',
+    'feed.reportPrompt': 'Motif (spam | harassment | illegal | autre texte libre)',
+    'feed.reportDone': 'Signalement envoyé.',
+    'feed.reportError': 'Impossible d’envoyer le signalement.',
     'feed.delete': 'Supprimer',
     'feed.deleteConfirm': 'Supprimer cette publication ?',
     'feed.deleteUnauthorized': 'Tu peux supprimer uniquement tes publications.',
@@ -251,6 +259,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'community.empty.announcements': 'No announcements yet.',
     'community.empty.content': 'No shared content yet.',
     'community.announcementsInfo': 'Official announcements are published by the team. (Admin mode to wire)',
+    'community.announcementAdminOnly':
+      'Announcements are reserved for church administrators.',
+    'community.feedReadOnlyInfo':
+      'News feed is read-only. Publish from Prayer, Help, Announcements or Content tabs.',
     'community.storageLocalOnly':
       'Local mode is active: posts stay on this device until Supabase is configured.',
     'community.groups.title': 'Groups',
@@ -380,6 +392,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'feed.shareCopied': 'Post copied.',
     'feed.shareNotAvailable': 'Share is not available on this device.',
     'feed.shareError': 'Unable to share this post.',
+    'feed.report': 'Report',
+    'feed.reportPrompt': 'Reason (spam | harassment | illegal | any free text)',
+    'feed.reportDone': 'Report sent.',
+    'feed.reportError': 'Unable to send report.',
     'feed.delete': 'Delete',
     'feed.deleteConfirm': 'Delete this post?',
     'feed.deleteUnauthorized': 'You can only delete your own posts.',

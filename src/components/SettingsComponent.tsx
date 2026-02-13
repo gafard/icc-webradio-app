@@ -144,12 +144,24 @@ export default function SettingsComponent() {
               <button
                 onClick={async () => {
                   const next = !notificationsEnabled;
+                  const { syncPushSubscription } = await import('./notifications');
                   if (next) {
                     const { ensureNotificationPermission } = await import('./notifications');
                     const perm = await ensureNotificationPermission();
                     if (perm !== 'granted') {
                       setNotificationsEnabled(false);
                       return;
+                    }
+                    const result = await syncPushSubscription(true);
+                    if (!result.ok) {
+                      console.error('[Notifications] subscribe failed:', result.error);
+                      setNotificationsEnabled(false);
+                      return;
+                    }
+                  } else {
+                    const result = await syncPushSubscription(false);
+                    if (!result.ok) {
+                      console.error('[Notifications] unsubscribe failed:', result.error);
                     }
                   }
                   setNotificationsEnabled(next);

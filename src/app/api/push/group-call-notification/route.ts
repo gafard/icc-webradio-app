@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!hasWebPushConfig) {
+  if (!hasWebPushConfig()) {
     console.error('VAPID config manquante');
     return NextResponse.json(
       { ok: false, error: 'VAPID config missing' },
@@ -54,14 +54,14 @@ export async function POST(req: Request) {
     console.log('Récupération des membres du groupe...');
     let { data: groupMembers, error: membersError } = await supabaseServer
       .from('community_group_members')
-      .select('device_id, guest_id, status')
+      .select('device_id, status')
       .eq('group_id', groupId);
 
     if (membersError && String(membersError.message).includes('status')) {
       console.log('Colonne status manquante, repli sur une sélection sans status');
       const fallback = await supabaseServer
         .from('community_group_members')
-        .select('device_id, guest_id')
+        .select('device_id')
         .eq('group_id', groupId);
       groupMembers = (fallback.data ?? []) as any[];
       membersError = fallback.error;
@@ -83,8 +83,8 @@ export async function POST(req: Request) {
 
     // Filtrer l'appelant (qui peut être device_id ou guest_id)
     const targetDeviceIds = approvedMembers
-      .map((member: any) => member.device_id || member.guest_id)
-      .filter(id => id && id !== callerDeviceId);
+      .map((member: any) => member.device_id)
+      .filter((id: string | null | undefined) => id && id !== callerDeviceId);
 
     console.log('IDs cibles pour notification:', targetDeviceIds);
 

@@ -14,7 +14,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   // Dev safety: prevent stale PWA caches/service worker from causing hydration mismatches.
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return;
+    const keepServiceWorkerInDev = process.env.NEXT_PUBLIC_ENABLE_SW_IN_DEV === '1';
+    if (
+      process.env.NODE_ENV !== 'development' ||
+      keepServiceWorkerInDev ||
+      typeof window === 'undefined'
+    ) {
+      return;
+    }
     if (!('serviceWorker' in navigator)) return;
 
     void (async () => {

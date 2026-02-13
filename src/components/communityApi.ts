@@ -39,6 +39,8 @@ export type CommunityStory = {
   image_url?: string | null;
 };
 
+export type CommunityReportReason = 'spam' | 'harassment' | 'illegal' | 'other';
+
 type LocalLikeMap = Record<string, string[]>;
 type LocalGroupMember = {
   device_id: string;
@@ -118,9 +120,40 @@ const LS_GROUP_MEMBERS_KEY = 'icc_local_community_group_members_v1';
 const INLINE_MEDIA_TAG = '[MEDIA_URL]';
 const INLINE_GROUP_TAG = '[GROUP_ID]';
 let likeStrategy: 'rpc' | 'counter' | 'local' = 'rpc';
+let announcementAdminCache: { value: boolean; expiresAt: number } | null = null;
 
 function isBrowser() {
   return typeof window !== 'undefined';
+}
+
+export async function canPublishAnnouncement(): Promise<boolean> {
+  if (!isBrowser()) return false;
+
+  if (announcementAdminCache && announcementAdminCache.expiresAt > Date.now()) {
+    return announcementAdminCache.value;
+  }
+
+  try {
+    const headers: HeadersInit = {};
+    const storedAdminKey = window.sessionStorage.getItem('icc_admin_panel_key') || '';
+    if (storedAdminKey.trim()) {
+      headers['x-admin-key'] = storedAdminKey.trim();
+      headers['x-admin-actor'] = 'community_composer';
+    }
+
+    const response = await fetch('/api/admin/role', {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+    const payload = (await response.json()) as { ok?: boolean; isAdmin?: boolean };
+    const allowed = !!payload?.ok && !!payload?.isAdmin;
+    announcementAdminCache = { value: allowed, expiresAt: Date.now() + 60 * 1000 };
+    return allowed;
+  } catch {
+    announcementAdminCache = { value: false, expiresAt: Date.now() + 15 * 1000 };
+    return false;
+  }
 }
 
 function makeId(prefix: string) {
@@ -197,6 +230,12 @@ function isNullViolationForColumn(error: any, column: string): boolean {
   const message = String(error.message || '').toLowerCase();
   const details = String(error.details || '').toLowerCase();
   return message.includes(needle) || details.includes(needle);
+}
+
+function isPublicVisibilityRow(row: any): boolean {
+  const visibility = String(row?.visibility ?? 'public').toLowerCase();
+  if (!visibility) return true;
+  return visibility === 'public';
 }
 
 function extractKindFromContent(content: string): { kind: CommunityKind; content: string } {
@@ -937,7 +976,7 @@ export async function fetchPosts(limit = 30, kind?: CommunityKind, groupId?: str
       .select('*')
       .order('created_at', { ascending: false });
 
-    let query = baseQuery;
+    let query = baseQuery.eq('visibility', 'public');
     if (kind && kind !== 'general') query = query.eq('kind', kind);
 
     if (groupId) {
@@ -951,6 +990,25 @@ export async function fetchPosts(limit = 30, kind?: CommunityKind, groupId?: str
       return (data ?? []).map(normalizePost);
     }
 
+    if (isMissingColumnError(error, 'visibility')) {
+      const fallback = await supabase
+        .from('community_posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(queryLimit);
+      if (fallback.error) throw fallback.error;
+      const normalized = (fallback.data ?? [])
+        .filter((row) => isPublicVisibilityRow(row))
+        .map(normalizePost);
+      const byGroup = groupId
+        ? normalized.filter((item) => item.group_id === groupId)
+        : normalized.filter((item) => !item.group_id);
+      return (kind && kind !== 'general'
+        ? byGroup.filter((row) => row.kind === kind)
+        : byGroup
+      ).slice(0, Math.max(1, limit));
+    }
+
     if (kind && kind !== 'general' && isMissingKindColumnError(error)) {
       const fallback = await supabase
         .from('community_posts')
@@ -958,7 +1016,9 @@ export async function fetchPosts(limit = 30, kind?: CommunityKind, groupId?: str
         .order('created_at', { ascending: false })
         .limit(queryLimit);
       if (fallback.error) throw fallback.error;
-      const normalized = (fallback.data ?? []).map(normalizePost);
+      const normalized = (fallback.data ?? [])
+        .filter((row) => isPublicVisibilityRow(row))
+        .map(normalizePost);
       const byGroup = groupId
         ? normalized.filter((item) => item.group_id === groupId)
         : normalized.filter((item) => !item.group_id);
@@ -973,6 +1033,7 @@ export async function fetchPosts(limit = 30, kind?: CommunityKind, groupId?: str
         .limit(queryLimit);
       if (fallback.error) throw fallback.error;
       return (fallback.data ?? [])
+        .filter((row) => isPublicVisibilityRow(row))
         .map(normalizePost)
         .filter((row) => row.group_id === groupId)
         .slice(0, Math.max(1, limit));
@@ -986,6 +1047,7 @@ export async function fetchPosts(limit = 30, kind?: CommunityKind, groupId?: str
         .limit(queryLimit);
       if (fallback.error) throw fallback.error;
       return (fallback.data ?? [])
+        .filter((row) => isPublicVisibilityRow(row))
         .map(normalizePost)
         .filter((row) => !row.group_id)
         .slice(0, Math.max(1, limit));
@@ -1003,12 +1065,23 @@ export async function fetchPostById(postId: string) {
   if (!supabase) return localFetchPostById(postId);
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('community_posts')
       .select('*')
       .eq('id', postId)
+      .eq('visibility', 'public')
       .maybeSingle();
+    if (error && isMissingColumnError(error, 'visibility')) {
+      const fallback = await supabase
+        .from('community_posts')
+        .select('*')
+        .eq('id', postId)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
     if (error) throw error;
+    if (data && !isPublicVisibilityRow(data)) return null;
     return data ? normalizePost(data) : null;
   } catch {
     return localFetchPostById(postId);
@@ -1025,6 +1098,12 @@ export async function createPost(payload: {
   group_id?: string | null;
 }) {
   const cleanContent = payload.content?.trim() || '';
+  if (payload.kind === 'announcement') {
+    const canPublish = await canPublishAnnouncement();
+    if (!canPublish) {
+      throw new Error('Seuls les administrateurs peuvent publier des annonces.');
+    }
+  }
   if (!supabase) return localCreatePost(payload);
 
   try {
@@ -1310,6 +1389,82 @@ export async function addComment(payload: {
   } catch (error: any) {
     throw new Error(error?.message || 'Erreur lors de l envoi du commentaire.');
   }
+}
+
+export async function reportPost(payload: {
+  targetId: string;
+  reason: CommunityReportReason;
+  message?: string;
+  reporterUserId?: string | null;
+  reporterDeviceId?: string | null;
+}) {
+  if (!payload.targetId) {
+    throw new Error('Publication introuvable.');
+  }
+  if (!supabase) {
+    throw new Error('Signalement indisponible en mode hors-ligne.');
+  }
+
+  const normalizedReason = (() => {
+    const value = String(payload.reason || 'other').toLowerCase();
+    if (value === 'spam') return 'spam';
+    if (value === 'harassment') return 'harassment';
+    if (value === 'illegal') return 'illegal';
+    return 'other';
+  })();
+
+  const variants: Array<Record<string, any>> = [
+    {
+      target_type: 'post',
+      target_id: payload.targetId,
+      reason: normalizedReason,
+      message: payload.message || null,
+      reporter_user_id: payload.reporterUserId || null,
+      reporter_device_id: payload.reporterDeviceId || null,
+      status: 'open',
+    },
+    {
+      target_type: 'post',
+      target_id: payload.targetId,
+      reason: normalizedReason,
+      message: payload.message || null,
+      reporter_device_id: payload.reporterDeviceId || null,
+      status: 'open',
+    },
+    {
+      target_type: 'post',
+      target_id: payload.targetId,
+      reason: normalizedReason,
+      message: payload.message || null,
+      status: 'open',
+    },
+    {
+      target_type: 'post',
+      target_id: payload.targetId,
+      reason: normalizedReason,
+      message: payload.message || null,
+    },
+  ];
+
+  let lastError: any = null;
+  for (const variant of variants) {
+    const attempt = await supabase.from('moderation_reports').insert(variant);
+    if (!attempt.error) return { ok: true as const };
+    lastError = attempt.error;
+    if (isMissingTableError(attempt.error, 'moderation_reports')) {
+      throw new Error('Signalements non configurés côté serveur.');
+    }
+    const expectedSchemaGap =
+      ('reporter_user_id' in variant && isMissingColumnError(attempt.error, 'reporter_user_id')) ||
+      ('reporter_device_id' in variant && isMissingColumnError(attempt.error, 'reporter_device_id')) ||
+      ('status' in variant && isMissingColumnError(attempt.error, 'status')) ||
+      ('message' in variant && isMissingColumnError(attempt.error, 'message'));
+    if (!expectedSchemaGap) {
+      throw attempt.error;
+    }
+  }
+
+  throw new Error(lastError?.message || 'Erreur lors du signalement.');
 }
 
 export async function deletePost(postId: string, actorDeviceId: string): Promise<DeletePostResult> {
