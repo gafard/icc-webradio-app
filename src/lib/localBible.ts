@@ -50,17 +50,61 @@ function normalizeBible(raw: LocalBible): LocalBible {
 // Cache par traduction
 const bibleCache = new Map<string, Promise<LocalBible>>();
 
+function readErrorMessage(err: unknown, fallback = 'Erreur inconnue') {
+  return err instanceof Error ? err.message : fallback;
+}
+
+function parseBiblePayload(raw: string) {
+  const cleaned = raw.replace(/^\uFEFF/, '').trim();
+  if (!cleaned) throw new Error('Fichier Bible vide');
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    try {
+      return Function(`"use strict"; return (${cleaned});`)();
+    } catch {
+      const flattened = cleaned.replace(/\r?\n+/g, ' ');
+      return Function(`"use strict"; return (${flattened});`)();
+    }
+  }
+}
+
 export async function loadLocalBible(translationId: string = 'LSG'): Promise<LocalBible> {
   if (bibleCache.has(translationId)) return bibleCache.get(translationId)!;
 
-  const p = fetch(`/bibles/${translationId}/bible.json`)
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`Impossible de charger bible.json pour la traduction ${translationId}`);
+  const p = (async () => {
+    const candidateIds = Array.from(
+      new Set(
+        [
+          translationId,
+          translationId.toUpperCase(),
+          translationId.toLowerCase(),
+          translationId === 'LSG' ? 'lsg' : null,
+        ].filter(Boolean) as string[]
+      )
+    );
+    const errors: string[] = [];
+
+    for (const id of candidateIds) {
+      const url = `/bibles/${id}/bible.json`;
+      try {
+        const res = await fetch(url, { cache: 'force-cache' });
+        if (!res.ok) {
+          errors.push(`${url} (${res.status})`);
+          continue;
+        }
+        const text = await res.text();
+        const raw = parseBiblePayload(text);
+        return normalizeBible(raw as LocalBible);
+      } catch (err) {
+        errors.push(`${url} (${readErrorMessage(err)})`);
       }
-      return res.json();
-    })
-    .then((raw) => normalizeBible(raw as LocalBible));
+    }
+
+    throw new Error(
+      `Impossible de charger bible.json pour la traduction ${translationId}: ${errors.join(', ')}`
+    );
+  })();
 
   bibleCache.set(translationId, p);
   return p;

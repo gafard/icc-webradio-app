@@ -1184,7 +1184,7 @@ export const BibleIntegrationPanel = ({
         </Link>
       </div>
 
-      {error ? <div className="mt-3 text-sm text-red-300">{error}</div> : null}
+      {error ? <div className="mt-3 text-sm text-rose-700 dark:text-rose-300">{error}</div> : null}
 
       {result ? (
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">

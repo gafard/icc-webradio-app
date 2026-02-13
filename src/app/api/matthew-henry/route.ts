@@ -3,10 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
+import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
 
 export const runtime = 'nodejs';
-
-const SQLITE_BIN = process.env.SQLITE3_PATH || '/usr/bin/sqlite3';
 
 function resolveDbPath(): string | null {
   const homeDir = process.env.HOME ? path.join(process.env.HOME, 'Downloads', 'g', 'bible-strong-databases') : null;
@@ -54,6 +53,7 @@ function runQuery(
   if (!dbPath) {
     throw new Error('MATTHEW_HENRY_DB_PATH introuvable. Définis MATTHEW_HENRY_DB_PATH vers matthew_henry.sqlite.');
   }
+  const sqlite = assertSqliteRuntime();
   const args: string[] = ['-json'];
   for (const [name, value] of Object.entries(params)) {
     args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
@@ -61,9 +61,9 @@ function runQuery(
   args.push(dbPath);
   args.push(sql);
 
-  console.log('[DEBUG MH] Executing sqlite3:', SQLITE_BIN, args);
+  console.log('[DEBUG MH] Executing sqlite3:', sqlite.binaryPath, args);
   try {
-    const output = execFileSync(SQLITE_BIN, args, { encoding: 'utf8' }).trim();
+    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
     console.log('[DEBUG MH] Output length:', output.length);
     if (!output) return [];
     return JSON.parse(output);

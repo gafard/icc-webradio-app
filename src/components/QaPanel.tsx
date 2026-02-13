@@ -90,10 +90,10 @@ export default function QaPanel({ postKey }: { postKey: string }) {
   };
 
   return (
-    <section className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+    <section className="mt-6 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-white/90 font-extrabold">Q&amp;A en direct</div>
-        <div className="text-xs text-white/50">{status === 'syncing' ? 'Sync...' : 'OK'}</div>
+        <div className="font-extrabold text-[color:var(--foreground)]">Q&amp;A en direct</div>
+        <div className="text-xs text-[color:var(--foreground)]/60">{status === 'syncing' ? 'Sync...' : 'OK'}</div>
       </div>
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3">
@@ -111,7 +111,7 @@ export default function QaPanel({ postKey }: { postKey: string }) {
         />
       </div>
 
-      {error ? <div className="mt-2 text-xs text-red-300">{error}</div> : null}
+      {error ? <div className="mt-2 text-xs text-rose-700 dark:text-rose-300">{error}</div> : null}
 
       <div className="mt-3 flex items-center gap-2">
         <button
@@ -122,22 +122,22 @@ export default function QaPanel({ postKey }: { postKey: string }) {
         >
           Envoyer
         </button>
-        <span className="text-xs text-white/50">Anonyme accepté • Temps réel</span>
+        <span className="text-xs text-[color:var(--foreground)]/60">Anonyme accepté • Temps réel</span>
       </div>
 
       <div className="mt-5 space-y-3">
         {items.length === 0 ? (
-          <div className="text-xs text-white/50">Aucune question pour l’instant.</div>
+          <div className="text-xs text-[color:var(--foreground)]/60">Aucune question pour l’instant.</div>
         ) : (
           items.map((c) => (
-            <div key={c.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div key={c.id} className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-white/90 text-sm font-semibold">{c.author}</div>
-                <div className="text-[11px] text-white/40">
+                <div className="text-sm font-semibold text-[color:var(--foreground)]/90">{c.author}</div>
+                <div className="text-[11px] text-[color:var(--foreground)]/55">
                   {new Date(c.createdAt).toLocaleString('fr-FR')}
                 </div>
               </div>
-              <div className="mt-2 text-white/75 text-sm leading-6">{c.question}</div>
+              <div className="mt-2 text-sm leading-6 text-[color:var(--foreground)]/80">{c.question}</div>
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
@@ -156,12 +156,12 @@ export default function QaPanel({ postKey }: { postKey: string }) {
                 >
                   {votes[c.id] ? '👍 Voté' : '👍 Voter'}
                 </button>
-                <span className="text-xs text-white/50">
+                <span className="text-xs text-[color:var(--foreground)]/60">
                   {voteCounts[c.id] ? `${voteCounts[c.id]} vote${voteCounts[c.id] > 1 ? 's' : ''}` : '0 vote'}
                 </span>
               </div>
               {c.status !== 'sent' ? (
-                <div className="mt-2 text-[11px] text-white/50">
+                <div className="mt-2 text-[11px] text-[color:var(--foreground)]/60">
                   {c.status === 'local' ? 'En attente de connexion…' : 'Erreur sync. Réessaiera.'}
                 </div>
               ) : null}

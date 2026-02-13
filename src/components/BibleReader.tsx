@@ -1,31 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BookOpen,
   ChevronLeft,
   ChevronRight,
-  Highlighter,
-  FileText,
+  Link2,
   Search,
   Sparkles,
-  Eye,
-  Clipboard,
-  BookText,
-  MessageSquare,
-  Play,
-  Pause,
   X,
 } from 'lucide-react';
-import { BIBLE_BOOKS, TESTAMENTS, type BibleBook } from '../lib/bibleCatalog';
-import { hasSelahAudio } from '../lib/bibleAudio';
-import { type StrongToken, parseStrong } from '../lib/strongVerse';
+import { BIBLE_BOOKS, type BibleBook } from '../lib/bibleCatalog';
+import { getSelahAudioAlignedTranslationId, hasSelahAudio } from '../lib/bibleAudio';
+import { audioEngine, type Mood as AudioMood } from '../lib/audioEngine';
+import { type StrongToken } from '../lib/strongVerse';
 import { useI18n } from '../contexts/I18nContext';
 
 // Import des composants pour les fonctionnalités avancées
 import BibleStrongViewer from './BibleStrongViewer';
 import InterlinearViewer from './InterlinearViewer';
 import AdvancedStudyTools from './AdvancedStudyTools';
+import BibleToolbar from './bible/BibleToolbar';
+import BibleLongPressSheet from './bible/BibleLongPressSheet';
+import BibleCompareModal from './bible/BibleCompareModal';
+import BibleStudyRadar from './bible/BibleStudyRadar';
+import BibleStudyBar from './bible/BibleStudyBar';
+import { useActiveVerse } from './bible/useActiveVerse';
+import { useVerseSync } from '../hooks/useVerseSync';
 
 // Import des services Strong
 import strongService, { type StrongEntry } from '../services/strong-service';
@@ -33,8 +34,7 @@ import BibleVersesStrongMap from '../services/bible-verses-strong-map';
 
 // Traductions de la Bible provenant du fichier centralisé
 const LOCAL_BIBLE_TRANSLATIONS = [
-  { id: 'LSG', label: 'Louis Segond (ton fichier LSG)', sourceLabel: 'Fichier local' },
-  { id: 'LSG1910', label: 'Louis Segond 1910', sourceLabel: 'Fichier local' },
+  { id: 'LSG', label: 'Louis Segond', sourceLabel: 'Fichier local' },
   { id: 'NOUVELLE_SEGOND', label: 'Nouvelle Segond', sourceLabel: 'Fichier local' },
   { id: 'FRANCAIS_COURANT', label: 'Français courant', sourceLabel: 'Fichier local' },
   { id: 'BDS', label: 'Bible du Semeur', sourceLabel: 'Fichier local' },
@@ -50,7 +50,7 @@ type VerseRow = {
 type ToolMode = 'read' | 'highlight' | 'note';
 
 // Type pour les couleurs de surlignage
-type HighlightColor = 'yellow' | 'green' | 'pink';
+type HighlightColor = 'yellow' | 'green' | 'pink' | 'blue' | 'orange' | 'purple';
 type HighlightMap = Record<number, HighlightColor>;
 
 type CommentaryEntry = {
@@ -84,6 +84,25 @@ type CompareRow = {
   error?: string;
 };
 
+type VttCue = {
+  start: number;
+  end: number;
+  verse: number | null;
+  text: string;
+};
+
+type VerseTiming = {
+  verse: number;
+  start: number;
+  end: number;
+};
+
+type AudioVerseSegment = {
+  verse: number;
+  start: number;
+  end: number;
+};
+
 type HoldMeta = {
   pointerId: number;
   startX: number;
@@ -91,27 +110,119 @@ type HoldMeta = {
   verse: VerseRow;
 };
 
-// Versions audio disponibles (temporairement désactivées)
-const AUDIO_VERSIONS = [
-  {
-    id: 'fre_lsng2013',
-    label: 'Louis Segond 2013 (Audio)',
-    baseUrl: '',
-    language: 'fr'
-  },
-  {
-    id: 'fre_neg79',
-    label: 'Nouvelle Edition de Genève (Audio)',
-    baseUrl: '',
-    language: 'fr'
-  },
-  {
-    id: 'fre_darby',
-    label: 'Darby Revu (Audio)',
-    baseUrl: '',
-    language: 'fr'
-  }
-];
+type ReaderModesMenuProps = {
+  immersiveEnabled: boolean;
+  ambientEnabled: boolean;
+  memoryMode: boolean;
+  clampedMemoryMaskLevel: number;
+  onToggleImmersion: () => void;
+  onToggleAmbient: () => void;
+  onToggleMemory: () => void;
+  onAdjustMemoryMaskLevel: (delta: number) => void;
+  className?: string;
+  align?: 'left' | 'right';
+};
+
+function ReaderModesMenu({
+  immersiveEnabled,
+  ambientEnabled,
+  memoryMode,
+  clampedMemoryMaskLevel,
+  onToggleImmersion,
+  onToggleAmbient,
+  onToggleMemory,
+  onAdjustMemoryMaskLevel,
+  className,
+  align = 'right',
+}: ReaderModesMenuProps) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onEscape);
+    };
+  }, [open]);
+
+  const itemClass = (enabled: boolean) =>
+    `w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-bold transition ${
+      enabled
+        ? 'border-orange-300/70 bg-orange-100/85 text-orange-800 dark:border-orange-300/45 dark:bg-orange-400/20 dark:text-orange-100'
+        : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/80 hover:bg-[color:var(--surface)]'
+    }`;
+
+  return (
+    <div ref={menuRef} className={`relative ${className ?? ''}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="btn-base btn-secondary inline-flex items-center gap-1.5 whitespace-nowrap text-xs px-2.5 py-1.5"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <Sparkles size={14} />
+        Modes
+      </button>
+
+      {open ? (
+        <div
+          className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-[calc(100%+8px)] z-[12020] min-w-[240px] rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl`}
+          role="menu"
+        >
+          <div className="space-y-1.5">
+            <button type="button" onClick={onToggleImmersion} aria-pressed={immersiveEnabled} className={itemClass(immersiveEnabled)}>
+              Immersion
+            </button>
+            <button type="button" onClick={onToggleAmbient} aria-pressed={ambientEnabled} className={itemClass(ambientEnabled)}>
+              Ambiance
+            </button>
+            <button type="button" onClick={onToggleMemory} aria-pressed={memoryMode} className={itemClass(memoryMode)}>
+              Memoire
+            </button>
+          </div>
+
+          {memoryMode ? (
+            <div className="mt-2 inline-flex w-full items-center justify-between gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-1.5 py-1">
+              <button
+                type="button"
+                onClick={() => onAdjustMemoryMaskLevel(-1)}
+                className="btn-icon h-7 w-7 text-[11px]"
+                aria-label="Diminuer masquage memoire"
+                title="Diminuer masquage memoire"
+              >
+                -
+              </button>
+              <span className="min-w-[68px] text-center text-[10px] font-bold text-[color:var(--foreground)]/75">
+                Niv {clampedMemoryMaskLevel}
+              </span>
+              <button
+                type="button"
+                onClick={() => onAdjustMemoryMaskLevel(1)}
+                className="btn-icon h-7 w-7 text-[11px]"
+                aria-label="Augmenter masquage memoire"
+                title="Augmenter masquage memoire"
+              >
+                +
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const STORAGE_KEYS = {
   settings: 'icc_bible_fr_settings_v1',
@@ -122,6 +233,8 @@ const STORAGE_KEYS = {
 
 const LONG_PRESS_DELAY_MS = 520;
 const LONG_PRESS_MOVE_PX = 12;
+const EMBEDDED_DOUBLE_TAP_DELAY_MS = 320;
+const EMBEDDED_DOUBLE_TAP_MOVE_PX = 20;
 const MAX_STRONG_WORDS = 8;
 const STRONG_STOP_WORDS = new Set([
   'a', 'au', 'aux', 'avec', 'car', 'ce', 'cela', 'ces', 'cet', 'cette',
@@ -133,6 +246,39 @@ const STRONG_STOP_WORDS = new Set([
 ]);
 
 const COMMENTARY_URL = '/bible/commentaires-fr.json';
+const MIN_READER_FONT_SCALE = 0.8;
+const MAX_READER_FONT_SCALE = 2.2;
+const RADAR_WORD_CLEAN_RE = /[.,;:!?()«»"“”'’]/g;
+const APPROX_AUDIO_INTRO_LEAD_SECONDS = 3;
+const BOOK_MOODS: Partial<Record<string, AudioMood>> = {
+  psa: 'meditative',
+  pro: 'calm',
+  rev: 'intense',
+  jhn: 'calm',
+  act: 'joy',
+};
+const BOOK_THEMES: Record<string, { accent: string; background: string }> = {
+  psa: {
+    accent: '#4f46e5',
+    background: 'radial-gradient(900px 600px at 20% 8%, rgba(79,70,229,0.16), transparent 58%), radial-gradient(820px 540px at 86% 86%, rgba(30,64,175,0.14), transparent 60%)',
+  },
+  pro: {
+    accent: '#f59e0b',
+    background: 'radial-gradient(900px 600px at 20% 8%, rgba(245,158,11,0.17), transparent 58%), radial-gradient(820px 540px at 86% 86%, rgba(180,83,9,0.14), transparent 60%)',
+  },
+  jhn: {
+    accent: '#0ea5e9',
+    background: 'radial-gradient(900px 600px at 20% 8%, rgba(14,165,233,0.16), transparent 58%), radial-gradient(820px 540px at 86% 86%, rgba(2,132,199,0.14), transparent 60%)',
+  },
+  rev: {
+    accent: '#b91c1c',
+    background: 'radial-gradient(920px 620px at 20% 8%, rgba(185,28,28,0.18), transparent 58%), radial-gradient(820px 540px at 86% 86%, rgba(127,29,29,0.16), transparent 60%)',
+  },
+  default: {
+    accent: '#f97316',
+    background: 'radial-gradient(860px 560px at 22% 10%, rgba(249,115,22,0.14), transparent 58%), radial-gradient(780px 520px at 86% 84%, rgba(251,191,36,0.12), transparent 60%)',
+  },
+};
 
 const OSIS_MAP: Record<string, string> = {
   gen: 'Gen',
@@ -228,6 +374,180 @@ function normalize(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '')
     .trim();
+}
+
+function clampReaderFontScale(value: number) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(MAX_READER_FONT_SCALE, Math.max(MIN_READER_FONT_SCALE, value));
+}
+
+function formatAudioClock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+  const safe = Math.floor(seconds);
+  const minutes = Math.floor(safe / 60);
+  const sec = safe % 60;
+  return `${minutes}:${String(sec).padStart(2, '0')}`;
+}
+
+function maskMemoryWordToken(
+  token: string,
+  wordIndex: number,
+  maskLevel: number,
+  revealUntilWord: number
+): string {
+  const safeMaskLevel = Math.max(2, Math.min(8, Math.floor(maskLevel || 4)));
+  if (wordIndex <= revealUntilWord) return token;
+  if (wordIndex % safeMaskLevel !== 0) return token;
+  if (!/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(token)) return token;
+  return token.replace(/[A-Za-zÀ-ÖØ-öø-ÿ]/g, '_');
+}
+
+function renderTextWithSearchMatch(text: string, query: string): ReactNode {
+  const term = query.trim();
+  if (!term) return text;
+
+  const lowerText = text.toLowerCase();
+  const lowerTerm = term.toLowerCase();
+  if (!lowerText.includes(lowerTerm)) return text;
+
+  const nodes: ReactNode[] = [];
+  let start = 0;
+  let key = 0;
+
+  while (start < text.length) {
+    const index = lowerText.indexOf(lowerTerm, start);
+    if (index === -1) {
+      if (start < text.length) nodes.push(<span key={`text-${key++}`}>{text.slice(start)}</span>);
+      break;
+    }
+    if (index > start) {
+      nodes.push(<span key={`text-${key++}`}>{text.slice(start, index)}</span>);
+    }
+    const end = index + term.length;
+    nodes.push(
+      <mark
+        key={`hit-${key++}`}
+        className="search-hit-marker text-[color:var(--foreground)]"
+      >
+        {text.slice(index, end)}
+      </mark>
+    );
+    start = end;
+  }
+
+  return nodes;
+}
+
+function parseTimeToSeconds(rawTime: string): number {
+  const normalized = rawTime.trim().replace(',', '.');
+  const parts = normalized.split(':');
+  const last = parts.pop() ?? '0';
+  const [secPart = '0', msPart = '0'] = last.split('.');
+  const seconds = Number(secPart);
+  const millis = Number(msPart.padEnd(3, '0').slice(0, 3));
+  const minutes = parts.length ? Number(parts.pop() ?? '0') : 0;
+  const hours = parts.length ? Number(parts.pop() ?? '0') : 0;
+  if (!Number.isFinite(seconds) || !Number.isFinite(millis) || !Number.isFinite(minutes) || !Number.isFinite(hours)) {
+    return 0;
+  }
+  return hours * 3600 + minutes * 60 + seconds + millis / 1000;
+}
+
+function parseVttToCues(vtt: string): VttCue[] {
+  const raw = vtt.replace(/^\uFEFF/, '').trim();
+  if (!raw.startsWith('WEBVTT')) return [];
+
+  const lines = raw.split(/\r?\n/);
+  const cues: VttCue[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index]?.trim() ?? '';
+    index += 1;
+
+    if (!line || line === 'WEBVTT') continue;
+    if (line.startsWith('NOTE')) {
+      while (index < lines.length && (lines[index]?.trim() ?? '') !== '') {
+        index += 1;
+      }
+      continue;
+    }
+
+    let timingLine = line;
+    if (!timingLine.includes('-->') && index < lines.length) {
+      timingLine = lines[index]?.trim() ?? '';
+      index += 1;
+    }
+    if (!timingLine.includes('-->')) continue;
+
+    const [startText, endWithSettings] = timingLine.split('-->');
+    if (!startText || !endWithSettings) continue;
+    const endText = endWithSettings.trim().split(/\s+/)[0] ?? '';
+    const start = parseTimeToSeconds(startText);
+    const end = parseTimeToSeconds(endText);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+
+    const textLines: string[] = [];
+    while (index < lines.length && (lines[index]?.trim() ?? '') !== '') {
+      textLines.push(lines[index] ?? '');
+      index += 1;
+    }
+    const cueText = textLines.join('\n').trim();
+    const verseWithPipe = cueText.match(/^(\d+)\|([\s\S]*)$/);
+    const firstLine = cueText.split('\n')[0]?.trim() ?? '';
+    const verseOnlyOnFirstLine = /^\d+$/.test(firstLine) ? Number(firstLine) : null;
+    const verse = verseWithPipe ? Number(verseWithPipe[1]) : verseOnlyOnFirstLine;
+    const cuePayloadText = verseWithPipe
+      ? verseWithPipe[2].trim()
+      : verseOnlyOnFirstLine !== null
+        ? cueText.split('\n').slice(1).join('\n').trim()
+        : cueText;
+    cues.push({
+      start,
+      end,
+      verse: Number.isFinite(verse ?? NaN) ? verse : null,
+      text: cuePayloadText,
+    });
+  }
+
+  return cues.sort((a, b) => a.start - b.start);
+}
+
+function generateApproximateTimings(
+  verses: VerseRow[],
+  duration: number,
+  introLeadSeconds = 0
+): VerseTiming[] {
+  if (!verses.length || !Number.isFinite(duration) || duration <= 0) return [];
+
+  // Weighted by verse length: long verses receive more playback time.
+  const weights = verses.map((verse) => {
+    const cleaned = verse.text.replace(/\s+/g, ' ').trim();
+    return Math.max(cleaned.length, 1);
+  });
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (!Number.isFinite(totalWeight) || totalWeight <= 0) return [];
+
+  const startOffset = Math.min(Math.max(0, introLeadSeconds), Math.max(0, duration - 0.01));
+  const readingDuration = Math.max(0.01, duration - startOffset);
+  let currentTime = startOffset;
+  const timings: VerseTiming[] = verses.map((verse, index) => {
+    const portion = weights[index] / totalWeight;
+    const verseDuration = index === verses.length - 1 ? duration - currentTime : portion * readingDuration;
+    const start = currentTime;
+    const end = Math.max(start + 0.001, Math.min(duration, start + verseDuration));
+    currentTime = end;
+    return { verse: verse.number, start, end };
+  });
+
+  if (timings.length > 0) {
+    timings[timings.length - 1] = {
+      ...timings[timings.length - 1],
+      end: duration,
+    };
+  }
+
+  return timings.filter((timing) => timing.end > timing.start);
 }
 
 function makeStorageKey(translationId: string, bookId: string, chapter: number) {
@@ -672,39 +992,6 @@ function readFromJson(data: any, book: BibleBook, chapter: number) {
   return [];
 }
 
-// Composant pour la grille de chapitres
-const ChapterGrid = ({ book, currentChapter, onSelectChapter }: {
-  book: BibleBook;
-  currentChapter: number;
-  onSelectChapter: (chapter: number) => void;
-}) => {
-  const chaptersPerRow = 10;
-  const rows = Math.ceil(book.chapters / chaptersPerRow);
-
-  return (
-    <div className="mt-3">
-      <div className="text-xs text-[color:var(--foreground)]/60 mb-2">
-        Chapitres de {book.name}
-      </div>
-      <div className="grid grid-cols-10 gap-1">
-        {Array.from({ length: book.chapters }, (_, i) => i + 1).map((chapterNum) => (
-          <button
-            key={chapterNum}
-            type="button"
-            onClick={() => onSelectChapter(chapterNum)}
-            className={`h-8 w-8 text-xs rounded-full flex items-center justify-center transition ${chapterNum === currentChapter
-              ? 'bg-orange-300 text-white font-bold'
-              : 'hover:bg-orange-100'
-              }`}
-          >
-            {chapterNum}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 function readFromOsis(doc: Document, book: BibleBook, chapter: number) {
   const osis = OSIS_MAP[book.id] || book.apiName;
   const bookNode = doc.querySelector(`div[osisID="${osis}"]`);
@@ -726,14 +1013,12 @@ function readFromOsis(doc: Document, book: BibleBook, chapter: number) {
     .filter(Boolean) as VerseRow[];
 }
 
-export default function BibleReader() {
+export default function BibleReader({ embedded = false }: { embedded?: boolean }) {
   const { t } = useI18n();
   const [isClient, setIsClient] = useState(false);
   const [translationId, setTranslationId] = useState(LOCAL_BIBLE_TRANSLATIONS[0]?.id ?? 'LSG');
   const [bookId, setBookId] = useState('jhn');
   const [chapter, setChapter] = useState(3);
-  const [searchBook, setSearchBook] = useState('');
-  const [filterTestament, setFilterTestament] = useState<'all' | 'OT' | 'NT'>('all');
   const [searchVerse, setSearchVerse] = useState('');
   const [fontScale, setFontScale] = useState(1);
   const [verses, setVerses] = useState<VerseRow[]>([]);
@@ -742,8 +1027,8 @@ export default function BibleReader() {
   const [strongOpenFor, setStrongOpenFor] = useState<{ bookId: string; chapter: number; verse: number } | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [highlights, setHighlights] = useState<Record<string, HighlightMap>>({});
-  const [booksCollapsed, setBooksCollapsed] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  const [embeddedFullscreen, setEmbeddedFullscreen] = useState(false);
   const [commentary, setCommentary] = useState<CommentaryEntry[]>([]);
   const [commentaryStatus, setCommentaryStatus] = useState<'idle' | 'error'>('idle');
   const [mhSections, setMhSections] = useState<Array<{ key: string; html: string }>>([]);
@@ -768,6 +1053,12 @@ export default function BibleReader() {
   const longPressTriggeredRef = useRef(false);
   const strongTokenCacheRef = useRef<Map<string, StrongToken[]>>(new Map());
   const strongSearchCacheRef = useRef<Map<string, StrongSearchResult[]>>(new Map());
+  const [strongLoadingFor, setStrongLoadingFor] = useState<string | null>(null);
+  const [vttCues, setVttCues] = useState<VttCue[]>([]);
+  const [approxVerseTimings, setApproxVerseTimings] = useState<VerseTiming[]>([]);
+  const [, setVttStatus] = useState<'idle' | 'loading' | 'missing' | 'error'>('idle');
+  const [activeCueVerse, setActiveCueVerse] = useState<number | null>(null);
+  const [activeVerseProgress, setActiveVerseProgress] = useState(0);
   // Changement : Utiliser noteOpenFor pour gérer la note ouverte par verset
   const [noteOpenFor, setNoteOpenFor] = useState<string | null>(null);
   const [pendingFocusRef, setPendingFocusRef] = useState<TreasuryRef | null>(null);
@@ -780,11 +1071,39 @@ export default function BibleReader() {
   const [currentStrongNumber, setCurrentStrongNumber] = useState<string | null>(null);
   const [compareRows, setCompareRows] = useState<CompareRow[]>([]);
   const [compareLoading, setCompareLoading] = useState(false);
-  const [mobilePanel, setMobilePanel] = useState<'focus' | 'notes' | 'comments'>('focus');
+  const [pendingAutoPlayAfterSync, setPendingAutoPlayAfterSync] = useState(false);
+  const [immersiveEnabled, setImmersiveEnabled] = useState(true);
+  const [immersiveMode, setImmersiveMode] = useState(false);
+  const [memoryMode, setMemoryMode] = useState(false);
+  const [memoryMaskLevel, setMemoryMaskLevel] = useState(4);
+  const [ambientEnabled, setAmbientEnabled] = useState(true);
+  const [zenMode] = useState(true);
+  const [uiHidden, setUiHidden] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [chapterSceneDirection, setChapterSceneDirection] = useState<1 | -1>(1);
+  const [radarOpen, setRadarOpen] = useState(false);
+  const [radarPos, setRadarPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [radarVerse, setRadarVerse] = useState<VerseRow | null>(null);
+  const [radarWord, setRadarWord] = useState('');
+  const [radarRefsSheetOpen, setRadarRefsSheetOpen] = useState(false);
+  const [radarPreferredBubble, setRadarPreferredBubble] = useState<'strong' | 'refs' | 'note' | null>(null);
+  const [studyBarOpen, setStudyBarOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const rootSectionRef = useRef<HTMLElement | null>(null);
+  const verseScrollRef = useRef<HTMLDivElement | null>(null);
+  const verseNodeRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const chapterScenePosRef = useRef<number | null>(null);
+  const scrollIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const embeddedTapRef = useRef<{ timestamp: number; x: number; y: number } | null>(null);
+  const lastAudioCueVerseRef = useRef<number | null>(null);
+  const effectiveAudioCuesRef = useRef<VttCue[]>([]);
+  const approximateAudioSyncRef = useRef<{ verse: number | null; progress: number }>({
+    verse: null,
+    progress: 0,
+  });
 
   useEffect(() => {
     setIsClient(true);
@@ -817,23 +1136,91 @@ export default function BibleReader() {
     });
     return `/api/bible/audio?${params.toString()}`;
   }, [audioAvailable, translation?.id, book.id, chapter]);
-
-  const filteredBooks = useMemo(() => {
-    const query = normalize(searchBook);
-    return BIBLE_BOOKS.filter((item) => {
-      if (filterTestament !== 'all' && item.testament !== filterTestament) return false;
-      if (!query) return true;
-      return (
-        normalize(item.name).includes(query) ||
-        normalize(item.apiName).includes(query) ||
-        normalize(item.slug).includes(query)
-      );
+  const vttTranslationId = useMemo(() => {
+    const aligned = getSelahAudioAlignedTranslationId(translation?.id ?? '');
+    return (aligned ?? translation?.id ?? 'LSG').toUpperCase();
+  }, [translation?.id]);
+  const { activeVerse: approximatedActiveVerse, activeProgress: approximatedVerseProgress } = useVerseSync(
+    vttCues.length > 0 ? null : audioRef.current,
+    verses,
+    {
+      enabled: audioAvailable,
+      introLeadSeconds: APPROX_AUDIO_INTRO_LEAD_SECONDS,
+    }
+  );
+  const effectiveAudioCues = useMemo<VttCue[]>(() => {
+    return vttCues;
+  }, [vttCues]);
+  const segmentSourceCues = useMemo<VttCue[]>(() => {
+    if (vttCues.length > 0) return vttCues;
+    if (approxVerseTimings.length === 0) return [];
+    return approxVerseTimings.map((timing) => {
+      const verseRow = verses.find((row) => row.number === timing.verse);
+      return {
+        start: timing.start,
+        end: timing.end,
+        verse: timing.verse,
+        text: verseRow?.text ?? '',
+      };
     });
-  }, [filterTestament, searchBook]);
+  }, [vttCues, approxVerseTimings, verses]);
+  const audioVerseSegments = useMemo<AudioVerseSegment[]>(() => {
+    if (segmentSourceCues.length === 0) return [];
+
+    const byVerse = new Map<number, AudioVerseSegment>();
+    for (const cue of segmentSourceCues) {
+      if (!cue.verse || cue.end <= cue.start) continue;
+      const existing = byVerse.get(cue.verse);
+      if (!existing) {
+        byVerse.set(cue.verse, {
+          verse: cue.verse,
+          start: cue.start,
+          end: cue.end,
+        });
+        continue;
+      }
+      existing.start = Math.min(existing.start, cue.start);
+      existing.end = Math.max(existing.end, cue.end);
+    }
+
+    return Array.from(byVerse.values())
+      .filter((segment) => segment.end > segment.start)
+      .sort((a, b) => a.start - b.start);
+  }, [segmentSourceCues]);
+  useEffect(() => {
+    effectiveAudioCuesRef.current = effectiveAudioCues;
+  }, [effectiveAudioCues]);
+  useEffect(() => {
+    approximateAudioSyncRef.current = {
+      verse: approximatedActiveVerse ?? null,
+      progress: approximatedVerseProgress,
+    };
+  }, [approximatedActiveVerse, approximatedVerseProgress]);
+  const currentBookMood = useMemo<AudioMood>(
+    () => BOOK_MOODS[book.id] ?? 'calm',
+    [book.id]
+  );
+  const currentBookTheme = useMemo(
+    () => BOOK_THEMES[book.id] ?? BOOK_THEMES.default,
+    [book.id]
+  );
 
   const referenceKey = makeStorageKey(translation?.id ?? 'fr', book.id, chapter);
   // Changement : Utiliser le nouveau type HighlightMap
   const highlightMap: HighlightMap = highlights[referenceKey] || {};
+  const scrollVerseIntoView = useCallback(
+    (verseNumber: number, behavior: ScrollBehavior = 'smooth') => {
+      if (!Number.isFinite(verseNumber) || verseNumber <= 0) return;
+      const element =
+        verseNodeRefs.current[verseNumber] ??
+        (typeof document !== 'undefined'
+          ? (document.getElementById(`verse-${book.id}-${chapter}-${verseNumber}`) as HTMLButtonElement | null)
+          : null);
+      if (!element) return;
+      element.scrollIntoView({ behavior, block: 'center', inline: 'nearest' });
+    },
+    [book.id, chapter]
+  );
 
   useEffect(() => {
     const saved = safeParse<{
@@ -842,10 +1229,15 @@ export default function BibleReader() {
       chapter?: number;
       fontScale?: number;
     }>(typeof window === 'undefined' ? null : localStorage.getItem(STORAGE_KEYS.settings), {});
-    if (saved.translationId) setTranslationId(saved.translationId);
+    if (saved.translationId) {
+      const migratedTranslationId = saved.translationId === 'LSG1910' ? 'LSG' : saved.translationId;
+      setTranslationId(migratedTranslationId);
+    }
     if (saved.bookId) setBookId(saved.bookId);
     if (saved.chapter) setChapter(saved.chapter);
-    if (saved.fontScale) setFontScale(saved.fontScale);
+    if (typeof saved.fontScale === 'number') {
+      setFontScale(clampReaderFontScale(saved.fontScale));
+    }
 
     setNotes(
       safeParse<Record<string, string>>(
@@ -903,6 +1295,18 @@ export default function BibleReader() {
     }
     return undefined;
   }, [fullScreen]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleFullscreenChange = () => {
+      const root = rootSectionRef.current;
+      setEmbeddedFullscreen(Boolean(root && document.fullscreenElement === root));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!translation) return;
@@ -1051,22 +1455,170 @@ export default function BibleReader() {
   }, [selectedVerse?.number, book.id, chapter]);
 
   const visibleVerses = useMemo(() => {
-    if (!searchVerse.trim()) return verses;
+    // In embedded call mode, always render full chapter text even if a previous
+    // hidden search filter exists on this client.
+    if (embedded || !searchVerse.trim()) return verses;
     const query = searchVerse.toLowerCase();
     return verses.filter((verse) => verse.text.toLowerCase().includes(query));
-  }, [searchVerse, verses]);
+  }, [embedded, searchVerse, verses]);
+  const searchQuery = embedded ? '' : searchVerse.trim();
+  const activeVerseId = useActiveVerse({
+    root: verseScrollRef.current ?? undefined,
+    rootMargin: '-35% 0px -45% 0px',
+  });
+  const activeSignature = useMemo(() => {
+    const verseNumber = selectedVerse?.number ?? 1;
+    return (verseNumber * 97 + chapter * 13 + book.id.length * 7) % 360;
+  }, [selectedVerse?.number, chapter, book.id]);
+  const chapterSceneKey = `${translation?.id ?? 'fr'}-${book.id}-${chapter}`;
+  const chapterScenePosition = useMemo(() => {
+    const index = BIBLE_BOOKS.findIndex((item) => item.id === book.id);
+    return index * 1000 + chapter;
+  }, [book.id, chapter]);
 
   const chapterNotes = notes[referenceKey] || '';
-  const chapterCommentary = commentariesFor(commentary, book.id, chapter);
   const selectedVerseNoteKey = selectedVerse
     ? verseKey(translation?.id ?? 'fr', book.id, chapter, selectedVerse.number)
     : null;
   const selectedVerseNote = selectedVerseNoteKey ? (verseNotes[selectedVerseNoteKey] ?? '') : '';
+  const selectedStrongCacheKey = selectedVerse
+    ? `${book.id}:${chapter}:${selectedVerse.number}`
+    : null;
+  const selectedVerseHasLoadedStrongTokens = Boolean(
+    selectedVerse &&
+    strongOpenFor &&
+    strongOpenFor.bookId === book.id &&
+    strongOpenFor.chapter === chapter &&
+    strongOpenFor.verse === selectedVerse.number
+  );
+  const selectedVerseStrongTokens = selectedVerseHasLoadedStrongTokens ? strongTokens : [];
+  const selectedVerseStrongLoading =
+    selectedStrongCacheKey !== null &&
+    strongLoadingFor === selectedStrongCacheKey;
+  const studyRefLabel = selectedVerse ? `${book.name} ${chapter}:${selectedVerse.number}` : '';
+  const studyVerseText = selectedVerse?.text ?? '';
+  const studyNoteKey = selectedVerse
+    ? verseKey(translation?.id ?? 'fr', book.id, chapter, selectedVerse.number)
+    : null;
+  const studyHasNote = studyNoteKey ? Boolean((verseNotes[studyNoteKey] ?? '').trim()) : false;
+  const radarRefLabel = radarVerse ? `${book.name} ${chapter}:${radarVerse.number}` : '';
+  const radarNoteKey = radarVerse
+    ? verseKey(translation?.id ?? 'fr', book.id, chapter, radarVerse.number)
+    : null;
+  const radarHasNote = radarNoteKey ? Boolean((verseNotes[radarNoteKey] ?? '').trim()) : false;
+  const radarRefsCount =
+    radarVerse && selectedVerse?.number === radarVerse.number
+      ? treasuryRefs.length
+      : 0;
+  const radarRefsSubtitle =
+    treasuryStatus === 'loading'
+      ? 'Chargement...'
+      : radarRefsCount
+        ? `${radarRefsCount} trouvées`
+        : 'Aucune';
+
+  const radarBubbles = [
+    {
+      id: 'strong' as const,
+      title: 'Strong',
+      subtitle: radarWord ? `Mot: ${radarWord}` : undefined,
+      disabled: !radarVerse,
+      onClick: async () => {
+        if (!radarVerse) return;
+        const tokens = await loadStrongTokensForVerse(radarVerse);
+        if (!tokens.length) {
+          showToast(t('bible.toast.noStrong'));
+          setRadarOpen(false);
+          return;
+        }
+        const hint = normalize(radarWord);
+        const tokenMatch = hint
+          ? tokens.find((token) => {
+            const wordNorm = normalize(token.w);
+            return wordNorm.includes(hint) || hint.includes(wordNorm);
+          })
+          : null;
+        setCurrentStrongNumber((tokenMatch ?? tokens[0]).strong);
+        setShowStrongViewer(true);
+        setRadarOpen(false);
+        setRadarPreferredBubble(null);
+      },
+    },
+    {
+      id: 'refs' as const,
+      title: 'Références',
+      subtitle: radarRefsSubtitle,
+      disabled: !radarVerse,
+      onClick: () => {
+        setRadarRefsSheetOpen(true);
+        setRadarOpen(false);
+        setRadarPreferredBubble(null);
+      },
+    },
+    {
+      id: 'note' as const,
+      title: radarHasNote ? 'Note' : 'Créer une note',
+      subtitle: radarHasNote ? 'Déjà enregistrée' : 'Ajouter un mémo',
+      disabled: !radarVerse,
+      onClick: () => {
+        if (radarNoteKey) setNoteOpenFor(radarNoteKey);
+        setRadarOpen(false);
+        setRadarPreferredBubble(null);
+      },
+    },
+  ];
 
   const showToast = (message: string) => {
     setToast(message);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(null), 1400);
+  };
+
+  const revealUI = useCallback(() => {
+    setUiHidden(false);
+    if (scrollIdleRef.current) clearTimeout(scrollIdleRef.current);
+    scrollIdleRef.current = setTimeout(() => {
+      if (zenMode) setUiHidden(true);
+    }, 1100);
+  }, [zenMode]);
+
+  const stopAmbientLayer = useCallback((fadeMs = 420) => {
+    audioEngine.fadeOutAmbient(false, fadeMs);
+  }, []);
+
+  const startAmbientLayer = useCallback(
+    async (mood: AudioMood) => {
+      audioEngine.setVoiceElement(audioRef.current);
+      audioEngine.setMood(mood);
+      audioEngine.setAmbientEnabled(ambientEnabled);
+      await audioEngine.syncWithVoiceState();
+    },
+    [ambientEnabled]
+  );
+
+  const toggleReaderFullscreen = async () => {
+    if (!embedded) {
+      setFullScreen((prev) => !prev);
+      return;
+    }
+    if (typeof document === 'undefined') return;
+
+    const root = rootSectionRef.current;
+    if (!root || !document.fullscreenEnabled) {
+      setFullScreen((prev) => !prev);
+      return;
+    }
+
+    try {
+      if (document.fullscreenElement === root) {
+        await document.exitFullscreen();
+      } else {
+        await root.requestFullscreen();
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Plein écran indisponible');
+    }
   };
 
   const navigateToVerse = (ref: TreasuryRef) => {
@@ -1090,14 +1642,10 @@ export default function BibleReader() {
     setSelectedVerse(verseRow);
     setPendingFocusRef(null);
 
-    const targetId = `verse-${book.id}-${chapter}-${verseRow.number}`;
     setTimeout(() => {
-      const element = typeof document !== 'undefined' ? document.getElementById(targetId) : null;
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      scrollVerseIntoView(verseRow.number, 'smooth');
     }, 80);
-  }, [pendingFocusRef, book.id, chapter, verses]);
+  }, [pendingFocusRef, book.id, chapter, verses, scrollVerseIntoView]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -1109,31 +1657,186 @@ export default function BibleReader() {
       setPlayerPosition(0);
       setPlayerDuration(0);
       setPlayerPlaying(false);
+      setApproxVerseTimings([]);
+      setActiveCueVerse(null);
+      setActiveVerseProgress(0);
+      lastAudioCueVerseRef.current = null;
       return;
+    }
+    // Always enforce normal narration speed when source changes.
+    audio.defaultPlaybackRate = 1;
+    audio.playbackRate = 1;
+    if ('preservesPitch' in audio) {
+      // Keep natural voice tone if browser supports it.
+      (audio as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch = true;
     }
     const resolvedAudioUrl = normalizeAudioSourceUrl(audioUrl);
     if (audio.src !== resolvedAudioUrl && audio.currentSrc !== resolvedAudioUrl) {
+      audio.pause();
       audio.src = audioUrl;
       audio.load();
+    }
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // ignore browsers that block currentTime before metadata.
     }
     setPlayerPosition(0);
     setPlayerDuration(0);
     setPlayerPlaying(false);
+    setApproxVerseTimings([]);
+    setActiveCueVerse(null);
+    setActiveVerseProgress(0);
+    lastAudioCueVerseRef.current = null;
   }, [audioAvailable, audioUrl]);
+
+  useEffect(() => {
+    if (!audioAvailable) {
+      setVttCues([]);
+      setApproxVerseTimings([]);
+      setVttStatus('idle');
+      setActiveCueVerse(null);
+      setActiveVerseProgress(0);
+      lastAudioCueVerseRef.current = null;
+      return;
+    }
+
+    let active = true;
+    setVttStatus('loading');
+    setVttCues([]);
+    setApproxVerseTimings([]);
+    setActiveCueVerse(null);
+    setActiveVerseProgress(0);
+    lastAudioCueVerseRef.current = null;
+
+    const url = `/api/bible/vtt?translation=${encodeURIComponent(vttTranslationId)}&book=${encodeURIComponent(book.id)}&chapter=${encodeURIComponent(String(chapter))}`;
+    fetch(url, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!active) return;
+        if (!response.ok) {
+          setVttStatus('missing');
+          return;
+        }
+        const text = await response.text();
+        const parsedCues = parseVttToCues(text);
+        setVttCues(parsedCues);
+        setVttStatus(parsedCues.length ? 'idle' : 'missing');
+      })
+      .catch(() => {
+        if (!active) return;
+        setVttStatus('error');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [audioAvailable, vttTranslationId, book.id, chapter]);
+
+  useEffect(() => {
+    if (vttCues.length > 0) {
+      setApproxVerseTimings([]);
+      return;
+    }
+    if (!audioAvailable || playerDuration <= 0 || verses.length === 0) {
+      setApproxVerseTimings([]);
+      return;
+    }
+    setApproxVerseTimings(
+      generateApproximateTimings(verses, playerDuration, APPROX_AUDIO_INTRO_LEAD_SECONDS)
+    );
+  }, [audioAvailable, vttCues, playerDuration, verses]);
+
+  useEffect(() => {
+    if (!pendingAutoPlayAfterSync) return;
+    if (!audioAvailable || !audioUrl) {
+      setPendingAutoPlayAfterSync(false);
+      return;
+    }
+    const audio = audioRef.current;
+    if (!audio) {
+      setPendingAutoPlayAfterSync(false);
+      return;
+    }
+    const launch = async () => {
+      try {
+        const resolvedAudioUrl = normalizeAudioSourceUrl(audioUrl);
+        if (!audio.src || (audio.src !== resolvedAudioUrl && audio.currentSrc !== resolvedAudioUrl)) {
+          audio.src = audioUrl;
+          audio.load();
+        }
+        audio.defaultPlaybackRate = 1;
+        audio.playbackRate = 1;
+        await audio.play();
+      } catch (error) {
+        console.error(error);
+        showToast("Impossible de lancer l'audio");
+      } finally {
+        setPendingAutoPlayAfterSync(false);
+      }
+    };
+    void launch();
+  }, [pendingAutoPlayAfterSync, audioAvailable, audioUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const handleTimeUpdate = () => {
-      setPlayerPosition(Math.floor(audio.currentTime || 0));
+      const currentTime = audio.currentTime || 0;
+      setPlayerPosition(currentTime);
+      const cues = effectiveAudioCuesRef.current;
+
+      if (cues.length === 0) {
+        const fallbackVerse = approximateAudioSyncRef.current.verse;
+        const fallbackProgress = fallbackVerse ? approximateAudioSyncRef.current.progress : 0;
+
+        setActiveCueVerse((prev) => (prev === fallbackVerse ? prev : fallbackVerse));
+        setActiveVerseProgress((prev) =>
+          Math.abs(prev - fallbackProgress) < 0.01 ? prev : fallbackProgress
+        );
+
+        if (!fallbackVerse || audio.paused) {
+          if (!fallbackVerse) lastAudioCueVerseRef.current = null;
+          return;
+        }
+        if (lastAudioCueVerseRef.current === fallbackVerse) return;
+        lastAudioCueVerseRef.current = fallbackVerse;
+        scrollVerseIntoView(fallbackVerse, 'smooth');
+        return;
+      }
+
+      const cue = cues.find((item) => currentTime >= item.start && currentTime < item.end) ?? null;
+      const verse = cue?.verse ?? null;
+
+      setActiveCueVerse((prev) => (prev === verse ? prev : verse));
+      if (cue && verse) {
+        const cueSpan = Math.max(0.001, cue.end - cue.start);
+        const progress = Math.min(1, Math.max(0, (currentTime - cue.start) / cueSpan));
+        // Avoid noisy sub-1% updates while keeping animation smooth.
+        setActiveVerseProgress((prev) => (Math.abs(prev - progress) < 0.01 ? prev : progress));
+      } else {
+        setActiveVerseProgress((prev) => (prev === 0 ? prev : 0));
+      }
+
+      if (!verse || audio.paused) {
+        if (!verse) lastAudioCueVerseRef.current = null;
+        return;
+      }
+      if (lastAudioCueVerseRef.current === verse) return;
+      lastAudioCueVerseRef.current = verse;
+      scrollVerseIntoView(verse, 'smooth');
     };
     const handleLoaded = () => {
-      const duration = Number.isFinite(audio.duration) ? Math.floor(audio.duration) : 0;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
       setPlayerDuration(duration);
     };
     const handlePlay = () => setPlayerPlaying(true);
     const handlePause = () => setPlayerPlaying(false);
-    const handleEnded = () => setPlayerPlaying(false);
+    const handleEnded = () => {
+      setPlayerPlaying(false);
+      setActiveCueVerse(null);
+      setActiveVerseProgress(0);
+      lastAudioCueVerseRef.current = null;
+    };
     const handleError = () => {
       setPlayerPlaying(false);
       showToast('Audio indisponible pour ce chapitre');
@@ -1153,11 +1856,18 @@ export default function BibleReader() {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [scrollVerseIntoView]);
 
   const togglePlayer = async () => {
     if (!audioAvailable || !audioUrl) {
       showToast(`Audio non disponible pour ${translation?.label ?? 'cette traduction'}`);
+      return;
+    }
+    const alignedTranslationId = getSelahAudioAlignedTranslationId(translationId);
+    if (alignedTranslationId && alignedTranslationId !== translationId) {
+      setPendingAutoPlayAfterSync(true);
+      setTranslationId(alignedTranslationId);
+      showToast(`Texte synchronisé avec l'audio (${alignedTranslationId})`);
       return;
     }
     const audio = audioRef.current;
@@ -1172,6 +1882,11 @@ export default function BibleReader() {
           audio.src = audioUrl;
           audio.load();
         }
+        audio.defaultPlaybackRate = 1;
+        audio.playbackRate = 1;
+        if (audio.duration && audio.currentTime >= Math.max(0, audio.duration - 0.35)) {
+          audio.currentTime = 0;
+        }
         await audio.play();
       } else {
         audio.pause();
@@ -1182,7 +1897,54 @@ export default function BibleReader() {
     }
   };
 
+  const seekToAudioVerse = useCallback(
+    (verseNumber: number) => {
+      const segment = audioVerseSegments.find((item) => item.verse === verseNumber);
+      if (!segment) return;
+
+      const targetTime = Math.max(0, segment.start + 0.01);
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      const applySeek = () => {
+        try {
+          audio.currentTime = targetTime;
+        } catch {
+          return;
+        }
+        setPlayerPosition(targetTime);
+        setActiveCueVerse(verseNumber);
+        lastAudioCueVerseRef.current = verseNumber;
+      };
+
+      const resolvedAudioUrl = audioUrl ? normalizeAudioSourceUrl(audioUrl) : '';
+      const needsSource =
+        Boolean(audioUrl) && (!audio.src || (audio.src !== resolvedAudioUrl && audio.currentSrc !== resolvedAudioUrl));
+
+      if (needsSource && audioUrl) {
+        audio.src = audioUrl;
+        audio.load();
+        const onLoaded = () => applySeek();
+        audio.addEventListener('loadedmetadata', onLoaded, { once: true });
+      } else {
+        applySeek();
+      }
+
+      const verseRow = verses.find((verse) => verse.number === verseNumber);
+      if (verseRow) {
+        setSelectedVerse(verseRow);
+      }
+      scrollVerseIntoView(verseNumber, 'smooth');
+    },
+    [audioVerseSegments, audioUrl, verses, scrollVerseIntoView]
+  );
+
   const playerProgress = playerDuration ? playerPosition / playerDuration : 0;
+  const globalAudioProgress = Math.max(0, Math.min(1, playerProgress));
+  const clampedMemoryMaskLevel = Math.max(2, Math.min(8, memoryMaskLevel));
+  const adjustMemoryMaskLevel = (delta: number) => {
+    setMemoryMaskLevel((prev) => Math.max(2, Math.min(8, prev + delta)));
+  };
 
   const exportNotesPdf = () => {
     if (typeof window === 'undefined') return;
@@ -1292,42 +2054,47 @@ export default function BibleReader() {
       return cachedTokens;
     }
 
-    let tokens: StrongToken[] = [];
-    const mapping = BibleVersesStrongMap.findStrongMappingsByText(
-      book.id,
-      chapter,
-      verse.number,
-      verse.text
-    );
+    setStrongLoadingFor(cacheKey);
+    try {
+      let tokens: StrongToken[] = [];
+      const mapping = BibleVersesStrongMap.findStrongMappingsByText(
+        book.id,
+        chapter,
+        verse.number,
+        verse.text
+      );
 
-    if (mapping?.wordMappings?.length) {
-      for (const wm of mapping.wordMappings) {
-        const entry = await strongService.getEntry(wm.strongNumber, wm.language);
-        if (!entry) continue;
-        tokens.push({
-          w: wm.word,
-          lang: wm.language,
-          strong: `${wm.language === 'hebrew' ? 'H' : 'G'}${wm.strongNumber}`,
-          originalForm: wm.originalForm ?? entry.hebreu ?? entry.grec,
-          phonetic: wm.phonetic ?? entry.phonetique,
-        });
+      if (mapping?.wordMappings?.length) {
+        for (const wm of mapping.wordMappings) {
+          const entry = await strongService.getEntry(wm.strongNumber, wm.language);
+          if (!entry) continue;
+          tokens.push({
+            w: wm.word,
+            lang: wm.language,
+            strong: `${wm.language === 'hebrew' ? 'H' : 'G'}${wm.strongNumber}`,
+            originalForm: wm.originalForm ?? entry.hebreu ?? entry.grec,
+            phonetic: wm.phonetic ?? entry.phonetique,
+          });
+        }
       }
-    }
 
-    if (!tokens.length) {
-      tokens = await inferStrongTokensFromVerseText(verse);
-    }
+      if (!tokens.length) {
+        tokens = await inferStrongTokensFromVerseText(verse);
+      }
 
-    if (!tokens.length) {
-      setStrongTokens([]);
-      setStrongOpenFor(null);
-      return [];
-    }
+      if (!tokens.length) {
+        setStrongTokens([]);
+        setStrongOpenFor(null);
+        return [];
+      }
 
-    strongTokenCacheRef.current.set(cacheKey, tokens);
-    setStrongTokens(tokens);
-    setStrongOpenFor({ bookId: book.id, chapter, verse: verse.number });
-    return tokens;
+      strongTokenCacheRef.current.set(cacheKey, tokens);
+      setStrongTokens(tokens);
+      setStrongOpenFor({ bookId: book.id, chapter, verse: verse.number });
+      return tokens;
+    } finally {
+      setStrongLoadingFor((prev) => (prev === cacheKey ? null : prev));
+    }
   };
 
   useEffect(() => {
@@ -1349,6 +2116,9 @@ export default function BibleReader() {
   }, [selectedVerse?.number, book.id, chapter, strongOpenFor, strongTokens.length]);
 
   const handleVerseClick = (verse: VerseRow) => {
+    setRadarOpen(false);
+    setRadarRefsSheetOpen(false);
+    setRadarPreferredBubble(null);
     setSelectedVerse(verse);
 
     if (tool === 'highlight') {
@@ -1360,6 +2130,24 @@ export default function BibleReader() {
       setNoteOpenFor(verseKey(translation?.id ?? 'fr', book.id, chapter, verse.number));
       return;
     }
+
+    setStudyBarOpen(true);
+  };
+
+  const openRadarAt = (
+    x: number,
+    y: number,
+    verse: VerseRow,
+    word: string,
+    preferredBubble: 'strong' | 'refs' | 'note' | null = null
+  ) => {
+    setSelectedVerse(verse);
+    setStudyBarOpen(false);
+    setRadarVerse(verse);
+    setRadarWord(word);
+    setRadarPos({ x, y });
+    setRadarPreferredBubble(preferredBubble);
+    setRadarOpen(true);
   };
 
   const prevChapter = () => {
@@ -1432,6 +2220,39 @@ export default function BibleReader() {
     clearHoldTimer();
   };
 
+  const handleEmbeddedReaderPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!embedded || event.pointerType !== 'touch') return;
+
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        '[data-no-embedded-fullscreen="true"],input,select,textarea'
+      )
+    ) {
+      return;
+    }
+
+    const now = Date.now();
+    const previousTap = embeddedTapRef.current;
+    embeddedTapRef.current = {
+      timestamp: now,
+      x: event.clientX,
+      y: event.clientY,
+    };
+
+    if (!previousTap) return;
+    if (now - previousTap.timestamp > EMBEDDED_DOUBLE_TAP_DELAY_MS) return;
+    if (
+      Math.abs(event.clientX - previousTap.x) > EMBEDDED_DOUBLE_TAP_MOVE_PX ||
+      Math.abs(event.clientY - previousTap.y) > EMBEDDED_DOUBLE_TAP_MOVE_PX
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    void toggleReaderFullscreen();
+  };
+
   const openStrongViewerForVerse = async (verse: VerseRow | null = selectedVerse) => {
     if (!verse) {
       showToast(t('bible.toast.selectVerse'));
@@ -1491,7 +2312,7 @@ export default function BibleReader() {
     }
   };
 
-  const handleLongPressAction = async (action: 'strong' | 'compare' | 'memorize' | 'meditate') => {
+  const handleLongPressAction = async (action: 'strong' | 'refs' | 'note' | 'compare') => {
     if (!longPressTarget) return;
     const { verse, ref } = longPressTarget;
     setSelectedVerse(verse);
@@ -1500,15 +2321,18 @@ export default function BibleReader() {
         await openStrongViewerForVerse(verse);
         break;
       }
-      case 'compare':
-        await openCompareForVerse(verse);
+      case 'refs':
+        setRadarVerse(verse);
+        setRadarWord('');
+        setRadarOpen(false);
+        setRadarRefsSheetOpen(true);
         break;
-      case 'memorize':
+      case 'note':
         setNoteOpenFor(verseKey(translation?.id ?? 'fr', book.id, chapter, verse.number));
         showToast(`Note créée pour ${ref}`);
         break;
-      case 'meditate':
-        setShowAdvancedStudyTools(true);
+      case 'compare':
+        await openCompareForVerse(verse);
         break;
       default:
         break;
@@ -1523,19 +2347,124 @@ export default function BibleReader() {
     setShowAdvancedStudyTools(true);
   };
 
+  useEffect(() => {
+    if (!activeVerseId) return;
+    if (tool !== 'read') return;
+
+    const parts = activeVerseId.split('-');
+    const verseNumber = Number(parts[parts.length - 1]);
+    if (!Number.isFinite(verseNumber)) return;
+
+    const row = verses.find((verse) => verse.number === verseNumber);
+    if (!row) return;
+
+    setSelectedVerse((prev) => (prev?.number === row.number ? prev : row));
+  }, [activeVerseId, tool, verses]);
+
+  useEffect(() => {
+    if (!zenMode) {
+      setUiHidden(false);
+      if (scrollIdleRef.current) {
+        clearTimeout(scrollIdleRef.current);
+        scrollIdleRef.current = null;
+      }
+      return;
+    }
+    revealUI();
+  }, [zenMode, book.id, chapter, revealUI]);
+
+  useEffect(() => {
+    setImmersiveMode(playerPlaying && immersiveEnabled);
+  }, [playerPlaying, immersiveEnabled]);
+
+  useEffect(() => {
+    if (!ambientEnabled || !playerPlaying) {
+      stopAmbientLayer(420);
+      return;
+    }
+    void startAmbientLayer(currentBookMood);
+  }, [ambientEnabled, playerPlaying, currentBookMood, startAmbientLayer, stopAmbientLayer]);
+
+  useEffect(() => {
+    setRadarOpen(false);
+    setRadarRefsSheetOpen(false);
+    setRadarPreferredBubble(null);
+  }, [book.id, chapter, translation?.id, tool]);
+
+  useEffect(() => {
+    setStudyBarOpen(false);
+  }, [book.id, chapter]);
+
+  useEffect(() => {
+    if (!selectedVerse) {
+      setStudyBarOpen(false);
+    }
+  }, [selectedVerse]);
+
+  useEffect(() => {
+    return () => {
+      stopAmbientLayer(180);
+      audioEngine.dispose();
+      if (scrollIdleRef.current) {
+        clearTimeout(scrollIdleRef.current);
+      }
+    };
+  }, [stopAmbientLayer]);
+
+  useEffect(() => {
+    setScrollProgress(0);
+  }, [book.id, chapter, translation?.id]);
+
+  useEffect(() => {
+    const previous = chapterScenePosRef.current;
+    if (previous !== null) {
+      setChapterSceneDirection(chapterScenePosition >= previous ? 1 : -1);
+    }
+    chapterScenePosRef.current = chapterScenePosition;
+  }, [chapterScenePosition]);
+
+  useEffect(() => {
+    const element = verseScrollRef.current;
+    if (!element) return;
+    element.scrollTop = 0;
+  }, [chapterSceneKey]);
+
+  const readerIsFullscreen = embedded
+    ? (embeddedFullscreen || fullScreen)
+    : fullScreen;
+
   return (
     <section
-      className={`relative px-4 pb-16 pt-8${fullScreen
-        ? ' fixed inset-0 z-[12000] overflow-hidden bg-[color:var(--background)]'
-        : ''
-        }`}
+      ref={rootSectionRef}
+      className={`relative transition-all duration-700 ${
+        embedded ? 'bible-embedded-shell bible-enter h-full flex flex-col overflow-hidden p-0 bg-transparent' : 'px-4 pb-16 pt-8'
+      } ${immersiveMode ? 'text-white' : ''} ${fullScreen ? 'fixed inset-0 z-[12000] overflow-hidden bg-[color:var(--background)]' : ''}`}
+      style={{
+        ['--accent' as any]: currentBookTheme.accent,
+        ...(embedded
+          ? {}
+          : immersiveMode
+            ? {
+                background: `radial-gradient(circle at center, rgba(249,115,22,0.08), rgba(2,6,23,0.95) 70%), ${currentBookTheme.background}`,
+              }
+            : { background: currentBookTheme.background }),
+      }}
     >
-      <div className="absolute -top-24 right-6 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-44 w-72 rounded-full bg-orange-200/25 blur-3xl" />
+      {embedded ? (
+        <>
+          <div className="pointer-events-none absolute -top-20 left-1/3 h-52 w-52 rounded-full bg-amber-200/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 right-8 h-56 w-56 rounded-full bg-blue-300/10 blur-3xl" />
+        </>
+      ) : (
+        <>
+          <div className="absolute -top-24 right-6 h-48 w-48 rounded-full bg-amber-200/30 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-44 w-72 rounded-full bg-orange-200/25 blur-3xl" />
+        </>
+      )}
 
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <header className={`bible-paper rounded-3xl p-6 md:p-8 ${fullScreen || !isClient ? 'hidden lg:block' : ''}`}>
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className={`mx-auto w-full ${embedded ? 'h-full min-h-0 flex flex-col' : 'max-w-6xl space-y-6'}`}>
+        {!embedded && (
+          <header className={`bible-paper rounded-3xl p-6 md:p-8 ${fullScreen || !isClient ? 'hidden lg:block' : ''}`}>
             <div className="space-y-3">
               <div className="text-xs uppercase tracking-[0.3em] text-orange-400/80">
                 Bible francaise
@@ -1552,170 +2481,220 @@ export default function BibleReader() {
                 <span className="chip-soft">Notes personnelles</span>
               </div>
             </div>
-
-            <div className="bible-paper rounded-2xl p-4 min-w-[240px]">
-              <div className="text-xs text-[color:var(--foreground)]/60">Traduction</div>
-              <select
-                value={translation?.id}
-                onChange={(e) => setTranslationId(e.target.value)}
-                className="select-field mt-2 text-sm"
-              >
-                {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2 text-xs text-[color:var(--foreground)]/60">
-                Source: {translation?.sourceLabel ?? 'locale'}
-              </div>
-              <button
-                type="button"
-                onClick={() => setFullScreen(true)}
-                className="btn-base btn-secondary mt-3 text-xs px-3 py-2"
-              >
-                Mode plein ecran
-              </button>
-            </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         <div
-          className={`grid gap-6 ${fullScreen || !isClient
-            ? 'lg:grid-cols-1'
-            : booksCollapsed
-              ? 'lg:grid-cols-[90px_1fr_300px]'
-              : 'lg:grid-cols-[250px_1fr_300px]'
+          className={`grid gap-6 ${embedded
+            ? 'h-full min-h-0 grid-cols-1 overflow-hidden'
+            : 'lg:grid-cols-1'
             }`}
         >
-          <aside className={`bible-paper rounded-3xl p-4 ${fullScreen || !isClient ? 'hidden' : 'hidden lg:block'}`}>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold">Livres</div>
-              <div className="flex items-center gap-2">
-                <BookOpen size={18} className="text-orange-300" />
-                <button
-                  type="button"
-                  onClick={() => setBooksCollapsed((prev) => !prev)}
-                  className="btn-icon h-8 w-8"
-                  aria-expanded={!booksCollapsed}
-                  aria-label={booksCollapsed ? 'Déplier' : 'Replier'}
-                >
-                  {booksCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 space-y-3">
-              {!booksCollapsed && (
-                <>
-                  <input
-                    value={searchBook}
-                    onChange={(e) => setSearchBook(e.target.value)}
-                    placeholder="Rechercher un livre"
-                    className="input-field text-sm"
-                  />
-                  <div className="bible-tabs flex flex-wrap gap-2">
-                    {(['all', 'OT', 'NT'] as const).map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setFilterTestament(item)}
-                        className={`bible-tab${filterTestament === item ? ' is-active' : ''}`}
-                      >
-                        {item === 'all'
-                          ? 'Tous'
-                          : TESTAMENTS.find((t) => t.id === item)?.label ?? item}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div className={`max-h-[360px] space-y-2 overflow-auto pr-1${booksCollapsed ? ' pt-2' : ''}`}>
-                {booksCollapsed ? (
-                  filteredBooks.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setBookId(item.id);
-                        setChapter(1);
-                        setSelectedVerse(null);
-                      }}
-                      title={item.name}
-                      className={`flex w-full items-center justify-between rounded-2xl border px-3 py-2 text-sm transition ${item.id === book.id
-                        ? 'border-orange-300/70 bg-orange-100/60'
-                        : 'border-white/30 hover:bg-white/40'
-                        }`}
-                    >
-                      <span className="text-xs font-semibold">
-                        {item.name.slice(0, 3)}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <>
-                    {filteredBooks.map((item) => (
-                      <div key={item.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBookId(item.id);
-                            setChapter(1);
-                            setSelectedVerse(null);
-                          }}
-                          title={item.name}
-                          className={`flex w-full items-center justify-between rounded-2xl border px-3 py-2 text-sm transition ${item.id === book.id
-                            ? 'border-orange-300/70 bg-orange-100/60'
-                            : 'border-white/30 hover:bg-white/40'
-                            }`}
-                        >
-                          <span className="text-sm">
-                            {item.name}
-                          </span>
-                          <span className="text-xs text-[color:var(--foreground)]/60">
-                            {item.chapters} ch.
-                          </span>
-                        </button>
-
-                        {item.id === book.id && (
-                          <div className="ml-4 mt-2">
-                            <ChapterGrid
-                              book={item}
-                              currentChapter={chapter}
-                              onSelectChapter={setChapter}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          </aside>
-
           <main
-            className={`bible-grid relative flex flex-col rounded-3xl border border-[#e9dec9] overflow-hidden py-5 px-4 pl-12 sm:px-5 sm:pl-14 md:py-6 md:px-6 md:pl-20 ${fullScreen || !isClient ? 'min-h-screen' : 'min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]'
+            className={`bible-grid relative flex flex-col rounded-3xl overflow-hidden ${embedded ? 'bible-embedded-grid light-particles flex-1 h-full min-h-0 !p-0' : 'border border-[#e9dec9] py-5 px-4 pl-6 sm:px-5 sm:pl-6 md:py-6 md:px-6 md:pl-6 lg:pl-16 '}${!embedded && (fullScreen || !isClient) ? 'min-h-screen' : !embedded ? 'min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]' : ''
               }`}
           >
-            <div className="bible-margin-line hidden sm:block" />
-            <div className="bible-holes hidden sm:grid">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div
+                className="absolute -left-24 -top-24 h-[360px] w-[360px] rounded-full blur-3xl opacity-40"
+                style={{
+                  background: `radial-gradient(circle at 30% 30%, hsla(${activeSignature}, 90%, 65%, 0.35), transparent 60%)`,
+                  transform: 'translate3d(0,0,0)',
+                  transition: 'background 600ms ease',
+                }}
+              />
+              <div
+                className="absolute -bottom-28 -right-20 h-[420px] w-[420px] rounded-full blur-3xl opacity-35"
+                style={{
+                  background: `radial-gradient(circle at 70% 70%, hsla(${(activeSignature + 90) % 360}, 90%, 70%, 0.28), transparent 60%)`,
+                  transform: 'translate3d(0,0,0)',
+                  transition: 'background 600ms ease',
+                }}
+              />
+            </div>
+            <div className={`${embedded ? 'hidden' : 'bible-margin-line hidden lg:block'}`} />
+            <div className={`${embedded ? 'hidden' : 'bible-holes hidden lg:grid'}`}>
               <span />
               <span />
               <span />
               <span />
             </div>
-            <div className="bible-paper rounded-2xl p-3 mb-4 lg:hidden">
-              <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/60">
-                Lecture mobile
+            {!embedded ? (
+              <div className="bible-paper rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
+                <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/60">
+                  Lecture mobile
+                </div>
+                <div className="mt-1 text-lg font-extrabold">
+                  {book.name} {chapter}
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    value={translation?.id}
+                    onChange={(e) => setTranslationId(e.target.value)}
+                    className="select-field text-sm"
+                  >
+                    {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={book.id}
+                    onChange={(e) => {
+                      setBookId(e.target.value);
+                      setChapter(1);
+                      setSelectedVerse(null);
+                    }}
+                    className="select-field text-sm"
+                  >
+                    {BIBLE_BOOKS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <button type="button" onClick={prevChapter} className="btn-icon h-9 w-9">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <select
+                    value={chapter}
+                    onChange={(e) => setChapter(Number(e.target.value))}
+                    className="select-field text-sm"
+                  >
+                    {Array.from({ length: book.chapters }, (_, idx) => idx + 1).map((num) => (
+                      <option key={num} value={num}>
+                        Chapitre {num}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={nextChapter} className="btn-icon h-9 w-9">
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void toggleReaderFullscreen();
+                    }}
+                    className="btn-base btn-secondary ml-auto text-xs px-3 py-2"
+                  >
+                    {readerIsFullscreen ? 'Quitter' : 'Plein ecran'}
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <ReaderModesMenu
+                    immersiveEnabled={immersiveEnabled}
+                    ambientEnabled={ambientEnabled}
+                    memoryMode={memoryMode}
+                    clampedMemoryMaskLevel={clampedMemoryMaskLevel}
+                    onToggleImmersion={() => setImmersiveEnabled((prev) => !prev)}
+                    onToggleAmbient={() => setAmbientEnabled((prev) => !prev)}
+                    onToggleMemory={() => setMemoryMode((prev) => !prev)}
+                    onAdjustMemoryMaskLevel={adjustMemoryMaskLevel}
+                    className="ml-auto"
+                    align="right"
+                  />
+                </div>
               </div>
-              <div className="mt-1 text-lg font-extrabold">
-                {book.name} {chapter}
+            ) : (
+              <div
+                className="bible-paper mb-2 rounded-2xl p-2 lg:hidden"
+                data-no-embedded-fullscreen="true"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-bold text-[color:var(--foreground)]">
+                    {book.name} {chapter}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void toggleReaderFullscreen();
+                    }}
+                    className="btn-base btn-secondary text-[11px] px-2 py-1.5"
+                  >
+                    {readerIsFullscreen ? 'Quitter' : 'Plein ecran'}
+                  </button>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    value={translation?.id}
+                    onChange={(e) => setTranslationId(e.target.value)}
+                    className="select-field min-w-0 text-xs"
+                  >
+                    {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={book.id}
+                    onChange={(e) => {
+                      setBookId(e.target.value);
+                      setChapter(1);
+                      setSelectedVerse(null);
+                    }}
+                    className="select-field min-w-0 text-xs"
+                  >
+                    {BIBLE_BOOKS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <button type="button" onClick={prevChapter} className="btn-icon h-8 w-8">
+                    <ChevronLeft size={14} />
+                  </button>
+                  <select
+                    value={chapter}
+                    onChange={(e) => setChapter(Number(e.target.value))}
+                    className="select-field max-w-[110px] text-xs"
+                  >
+                    {Array.from({ length: book.chapters }, (_, idx) => idx + 1).map((num) => (
+                      <option key={num} value={num}>
+                        Ch {num}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={nextChapter} className="btn-icon h-8 w-8">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <ReaderModesMenu
+                    immersiveEnabled={immersiveEnabled}
+                    ambientEnabled={ambientEnabled}
+                    memoryMode={memoryMode}
+                    clampedMemoryMaskLevel={clampedMemoryMaskLevel}
+                    onToggleImmersion={() => setImmersiveEnabled((prev) => !prev)}
+                    onToggleAmbient={() => setAmbientEnabled((prev) => !prev)}
+                    onToggleMemory={() => setMemoryMode((prev) => !prev)}
+                    onAdjustMemoryMaskLevel={adjustMemoryMaskLevel}
+                    className="ml-auto"
+                    align="right"
+                  />
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            )}
+
+            <div className="hidden lg:flex items-center justify-between gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 px-2.5 py-2">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--foreground)]/55">
+                  Lecture
+                </span>
+                <span className="truncate text-xl font-black tracking-tight text-[color:var(--foreground)]">
+                  {book.name} {chapter}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
                 <select
                   value={translation?.id}
                   onChange={(e) => setTranslationId(e.target.value)}
-                  className="select-field text-sm"
+                  className="select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none"
                 >
                   {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -1730,7 +2709,7 @@ export default function BibleReader() {
                     setChapter(1);
                     setSelectedVerse(null);
                   }}
-                  className="select-field text-sm"
+                  className="select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none"
                 >
                   {BIBLE_BOOKS.map((item) => (
                     <option key={item.id} value={item.id}>
@@ -1738,15 +2717,13 @@ export default function BibleReader() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
                 <button type="button" onClick={prevChapter} className="btn-icon h-9 w-9">
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={18} />
                 </button>
                 <select
                   value={chapter}
                   onChange={(e) => setChapter(Number(e.target.value))}
-                  className="select-field text-sm"
+                  className="select-field !h-9 !w-[118px] !px-2.5 !py-1.5 text-xs shadow-none"
                 >
                   {Array.from({ length: book.chapters }, (_, idx) => idx + 1).map((num) => (
                     <option key={num} value={num}>
@@ -1755,172 +2732,291 @@ export default function BibleReader() {
                   ))}
                 </select>
                 <button type="button" onClick={nextChapter} className="btn-icon h-9 w-9">
-                  <ChevronRight size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFullScreen(true)}
-                  className="btn-base btn-secondary ml-auto text-xs px-3 py-2"
-                >
-                  Plein ecran
-                </button>
-              </div>
-            </div>
-
-            <div className="hidden lg:flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-xs text-[color:var(--foreground)]/60">Lecture</div>
-                <div className="text-2xl font-extrabold">{book.name}</div>
-                <div className="text-xs text-[color:var(--foreground)]/60">Chapitre {chapter}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={prevChapter} className="btn-icon">
-                  <ChevronLeft size={18} />
-                </button>
-                <select
-                  value={chapter}
-                  onChange={(e) => setChapter(Number(e.target.value))}
-                  className="select-field text-sm max-w-[140px]"
-                >
-                  {Array.from({ length: book.chapters }, (_, idx) => idx + 1).map((num) => (
-                    <option key={num} value={num}>
-                      Chapitre {num}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={nextChapter} className="btn-icon">
                   <ChevronRight size={18} />
                 </button>
-                {fullScreen ? (
+                {readerIsFullscreen ? (
                   <button
                     type="button"
-                    onClick={() => setFullScreen(false)}
-                    className="btn-base btn-secondary text-xs px-3 py-2"
+                    onClick={() => {
+                      void toggleReaderFullscreen();
+                    }}
+                    className="btn-base btn-secondary whitespace-nowrap text-xs px-2.5 py-1.5"
                   >
                     Quitter
                   </button>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setFullScreen(true)}
-                    className="btn-base btn-secondary text-xs px-3 py-2"
+                    onClick={() => {
+                      void toggleReaderFullscreen();
+                    }}
+                    className="btn-base btn-secondary whitespace-nowrap text-xs px-2.5 py-1.5"
                   >
                     Plein ecran
                   </button>
                 )}
+                <ReaderModesMenu
+                  immersiveEnabled={immersiveEnabled}
+                  ambientEnabled={ambientEnabled}
+                  memoryMode={memoryMode}
+                  clampedMemoryMaskLevel={clampedMemoryMaskLevel}
+                  onToggleImmersion={() => setImmersiveEnabled((prev) => !prev)}
+                  onToggleAmbient={() => setAmbientEnabled((prev) => !prev)}
+                  onToggleMemory={() => setMemoryMode((prev) => !prev)}
+                  onAdjustMemoryMaskLevel={adjustMemoryMaskLevel}
+                  align="right"
+                />
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative flex-1 min-w-[180px]">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground)]/50" />
-                <input
-                  ref={searchInputRef}
-                  value={searchVerse}
-                  onChange={(e) => setSearchVerse(e.target.value)}
-                  placeholder="Rechercher dans le chapitre"
-                  className="input-field pl-9 text-sm"
-                />
+            {!embedded ? (
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground)]/50" />
+                  <input
+                    ref={searchInputRef}
+                    value={searchVerse}
+                    onChange={(e) => setSearchVerse(e.target.value)}
+                    placeholder="Rechercher dans le chapitre"
+                    className="input-field !pl-11 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-[color:var(--foreground)]/60">Taille</span>
+                  <button
+                    type="button"
+                    className="btn-icon h-8 w-8"
+                    onClick={() => setFontScale((prev) => clampReaderFontScale(prev - 0.1))}
+                    aria-label="Diminuer la taille"
+                    title="Diminuer la taille"
+                  >
+                    A-
+                  </button>
+                  <input
+                    type="range"
+                    min={MIN_READER_FONT_SCALE}
+                    max={MAX_READER_FONT_SCALE}
+                    step={0.05}
+                    value={fontScale}
+                    onChange={(e) => setFontScale(clampReaderFontScale(Number(e.target.value)))}
+                    className="accent-orange-400"
+                  />
+                  <button
+                    type="button"
+                    className="btn-icon h-8 w-8"
+                    onClick={() => setFontScale((prev) => clampReaderFontScale(prev + 0.1))}
+                    aria-label="Augmenter la taille"
+                    title="Augmenter la taille"
+                  >
+                    A+
+                  </button>
+                  <span className="min-w-[44px] text-right text-[11px] font-bold text-[color:var(--foreground)]/70">
+                    {Math.round(fontScale * 100)}%
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-[color:var(--foreground)]/60">Taille</span>
-                <input
-                  type="range"
-                  min={0.9}
-                  max={1.3}
-                  step={0.05}
-                  value={fontScale}
-                  onChange={(e) => setFontScale(Number(e.target.value))}
-                  className="accent-orange-400"
-                />
-              </div>
-            </div>
+            ) : null}
 
             {(() => {
-              const basePx = 16;
-              const lineHeight = 1.85;
+              const basePx = 18;
+              const lineHeight = 1.8;
+              const verseFontPx = Math.round(basePx * fontScale);
+              const verseNumberFontPx = Math.max(12, Math.min(16, Math.round(12 * fontScale)));
               const lhPx = Math.round(basePx * fontScale * lineHeight);
 
               return (
-                <div
-                  className="mt-5 flex-1 pr-2 bible-type font-serif"
-                  style={{ fontSize: `${fontScale}rem`, lineHeight }}
-                >
-                  <div
-                    className="verse-paper p-4 md:p-5 h-[58vh] min-h-[340px] max-h-[58vh] md:h-[70vh] md:min-h-[400px] md:max-h-[70vh] overflow-y-auto"
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={chapterSceneKey}
+                    className={`bible-enter ${embedded ? 'mt-2' : 'mt-5'} flex-1 min-h-0 pr-2 bible-type`}
                     style={{
-                      ['--lh' as any]: `${lhPx}px`,
-                      overflowY: 'auto',
-                      WebkitOverflowScrolling: 'touch',
+                      fontSize: `${verseFontPx}px`,
+                      lineHeight,
+                      letterSpacing: '0.006em',
                     }}
+                    initial={{
+                      opacity: 0,
+                      y: 18,
+                      x: chapterSceneDirection > 0 ? 28 : -28,
+                      filter: 'blur(5px)',
+                    }}
+                    animate={{ opacity: 1, y: 0, x: 0, filter: 'blur(0px)' }}
+                    exit={{
+                      opacity: 0,
+                      y: -8,
+                      x: chapterSceneDirection > 0 ? -18 : 18,
+                      filter: 'blur(4px)',
+                    }}
+                    transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <div className="mb-4 bg-inherit z-50"> {/* Toolbar au-dessus du contenu */}
-                      <BibleToolbar
-                        tool={tool}
-                        setTool={setTool}
-                        fontScale={fontScale}
-                        setFontScale={setFontScale}
-                        highlightColor={highlightColor}
-                        setHighlightColor={setHighlightColor}
-                        onCopy={() => {
-                          if (!selectedVerse) return;
-                          const ref = `${book.name} ${chapter}:${selectedVerse.number}`;
-                          const text = `${ref}\n${selectedVerse.text}`;
-                          navigator.clipboard?.writeText(text);
-                          showToast('Verset copié ✅');
-                        }}
-                        onOpenCompare={() => {
-                          void openCompareForVerse();
-                        }}
-                        onOpenAdvancedStudyTools={openAdvancedStudyTools}
-                        playerProgress={playerProgress}
-                        playerPlaying={playerPlaying}
-                        onTogglePlayer={togglePlayer}
-                        audioAvailable={audioAvailable}
-                        isClient={isClient}
-                      />
+                    <div
+                      ref={verseScrollRef}
+                      className={`verse-paper custom-scrollbar overflow-y-auto overscroll-y-contain touch-pan-y ${
+                        embedded
+                          ? 'h-full min-h-[260px] max-h-full p-4 md:p-5'
+                          : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${
+                              studyBarOpen ? 'pb-[48vh]' : 'pb-32'
+                            } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
+                      }`}
+                      style={{
+                        ['--lh' as any]: `${lhPx}px`,
+                        WebkitOverflowScrolling: 'touch',
+                        scrollSnapType: 'y mandatory',
+                        scrollPaddingTop: '22vh',
+                        scrollPaddingBottom: '28vh',
+                      }}
+                      onScroll={(event) => {
+                        revealUI();
+                        if (radarOpen || radarRefsSheetOpen) {
+                          setRadarOpen(false);
+                          setRadarRefsSheetOpen(false);
+                          setRadarPreferredBubble(null);
+                        }
+                        const element = event.currentTarget;
+                        const maxScroll = element.scrollHeight - element.clientHeight;
+                        const progress = maxScroll > 0 ? element.scrollTop / maxScroll : 0;
+                        setScrollProgress(progress);
+                      }}
+                      onPointerMove={() => revealUI()}
+                      onTouchStart={() => revealUI()}
+                      onPointerUp={handleEmbeddedReaderPointerUp}
+                    >
+                    <div
+                      className={`pointer-events-none absolute inset-0 rounded-[22px] transition-opacity duration-700 ${
+                        playerPlaying && activeCueVerse !== null ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{
+                        background:
+                          'radial-gradient(circle at 50% 42%, rgba(249,115,22,0.09), transparent 72%)',
+                      }}
+                    />
+                    <div className="sticky top-0 z-40 transition-opacity duration-300 opacity-100">
+                      {playerPlaying ? (
+                        <div
+                          className={`rounded-xl border backdrop-blur-xl overflow-hidden ${
+                            immersiveMode
+                              ? 'border-white/15 bg-black/55 text-white'
+                              : 'border-black/10 bg-white/55 text-[color:var(--foreground)]'
+                          }`}
+                        >
+                          <div className="px-3 py-1.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold">
+                              <span className="truncate">
+                                {book.name} {chapter}
+                              </span>
+                              {playerDuration > 0 ? (
+                                <span>{formatAudioClock(playerPosition)} / {formatAudioClock(playerDuration)}</span>
+                              ) : (
+                                <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--foreground)]/65">
+                                  {translation?.label ?? 'Lecture'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="h-[2px] w-full bg-black/8 dark:bg-white/12">
+                            <div
+                              className="h-full bg-orange-500 transition-[width] duration-200"
+                              style={{
+                                width: `${Math.round(
+                                  (playerDuration > 0 ? globalAudioProgress : scrollProgress) * 100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void openStrongViewerForVerse();
-                        }}
-                        className="btn-base btn-secondary text-xs px-3 py-2"
-                      >
-                        {t('bible.action.strong')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={openInterlinearForVerse}
-                        className="btn-base btn-secondary text-xs px-3 py-2"
-                      >
-                        {t('bible.action.interlinear')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={openAdvancedStudyTools}
-                        className="btn-base btn-secondary text-xs px-3 py-2"
-                      >
-                        {t('bible.action.study')}
-                      </button>
-                      <span className="text-xs text-[color:var(--foreground)]/60">
-                        {t('bible.hint.longPress')}
-                      </span>
-                    </div>
+                    {!studyBarOpen ? (
+                      <div
+                        className={`sticky z-50 mb-2 md:mb-4 ${
+                          playerPlaying ? 'top-[28px] md:top-[32px]' : 'top-0 md:top-0'
+                        }${embedded ? ' hidden' : ''}`}
+                        data-no-embedded-fullscreen="true"
+                      > {/* Toolbar au-dessus du contenu */}
+                        <div className="transition-all duration-300 opacity-100">
+                          <BibleToolbar
+                            tool={tool}
+                            setTool={setTool}
+                            highlightColor={highlightColor}
+                            setHighlightColor={setHighlightColor}
+                            onCopy={() => {
+                              if (!selectedVerse) return;
+                              const ref = `${book.name} ${chapter}:${selectedVerse.number}`;
+                              const text = `${ref}\n${selectedVerse.text}`;
+                              navigator.clipboard?.writeText(text);
+                              showToast('Verset copié ✅');
+                            }}
+                            onOpenCompare={() => {
+                              void openCompareForVerse();
+                            }}
+                            onOpenAdvancedStudyTools={openAdvancedStudyTools}
+                            playerProgress={playerProgress}
+                            playerPlaying={playerPlaying}
+                            onTogglePlayer={togglePlayer}
+                            audioAvailable={audioAvailable}
+                            isClient={isClient}
+                            audioVerseSegments={audioVerseSegments}
+                            activeAudioVerseNumber={activeCueVerse}
+                            onSeekToAudioVerse={seekToAudioVerse}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                     {loading && <div className="text-sm text-[color:var(--foreground)]/60">Chargement...</div>}
-                    {error && <div className="text-sm text-red-300">{error}</div>}
+                    {error && <div className="text-sm text-rose-700 dark:text-rose-300">{error}</div>}
                     {!loading && !error && visibleVerses.length === 0 && (
                       <div className="text-sm text-[color:var(--foreground)]/60">Aucun verset trouve.</div>
                     )}
                     {!loading && !error && visibleVerses.map((verse) => {
+                      const audioImmersionMode = playerPlaying && activeCueVerse !== null;
                       const verseHighlightColor = highlightMap[verse.number];
                       const highlightClass = verseHighlightColor
                         ? `marker-${verseHighlightColor}`
                         : '';
+                      const verseId = `${book.id}-${chapter}-${verse.number}`;
+                      const isActive = activeVerseId === verseId;
+                      const isSelected = selectedVerse?.number === verse.number;
+                      const isAudioActive = activeCueVerse === verse.number;
+                      const verseAudioProgress = isAudioActive ? activeVerseProgress : 0;
+                      const verseAudioPercent = Math.round(Math.min(1, Math.max(0, verseAudioProgress)) * 100);
+                      const verseWordCount = (verse.text.match(/\S+/g) ?? []).length;
+                      const activeWordIndex =
+                        isAudioActive && verseWordCount > 0
+                          ? Math.min(
+                              verseWordCount - 1,
+                              Math.max(0, Math.floor(verseWordCount * verseAudioProgress))
+                            )
+                          : -1;
+                      const memoryRevealUntil = memoryMode && isAudioActive ? activeWordIndex : -1;
+                      let spokenWordIndex = -1;
+                      const cardOpacity = audioImmersionMode
+                        ? isAudioActive
+                          ? 1
+                          : 0.42
+                        : isActive
+                          ? 1
+                          : 0.55;
+                      const cardScale = audioImmersionMode
+                        ? isAudioActive
+                          ? 1.02
+                          : 0.982
+                        : isActive
+                          ? 1
+                          : 0.985;
+                      const cardY = audioImmersionMode
+                        ? isAudioActive
+                          ? 0
+                          : 6
+                        : isActive
+                          ? 0
+                          : 4;
 
                       return (
-                        <button
+                        <motion.button
+                          ref={(el) => {
+                            verseNodeRefs.current[verse.number] = el;
+                          }}
+                          data-verse-id={verseId}
                           id={`verse-${book.id}-${chapter}-${verse.number}`}
                           key={`${verse.number}-${verse.text.slice(0, 6)}`}
                           type="button"
@@ -1932,8 +3028,7 @@ export default function BibleReader() {
                             }
                             handleVerseClick(verse);
                           }}
-                          className="verse-line w-full text-left font-serif"
-                          onContextMenu={(event) => {
+                          onContextMenu={embedded ? undefined : (event) => {
                             event.preventDefault();
                             longPressTriggeredRef.current = true;
                             setLongPressTarget({
@@ -1941,551 +3036,344 @@ export default function BibleReader() {
                               ref: `${book.name} ${chapter}:${verse.number}`,
                             });
                           }}
-                          onPointerDown={(event) => {
+                          onPointerDown={embedded ? undefined : (event) => {
                             startHold(verse, event);
                           }}
-                          onPointerMove={cancelHoldIfMoved}
-                          onPointerUp={endHold}
-                          onPointerCancel={endHold}
-                          onPointerLeave={endHold}
+                          onPointerMove={embedded ? undefined : cancelHoldIfMoved}
+                          onPointerUp={embedded ? undefined : endHold}
+                          onPointerCancel={embedded ? undefined : endHold}
+                          onPointerLeave={embedded ? undefined : endHold}
+                          style={{ scrollSnapAlign: 'center' }}
+                          initial={false}
+                          animate={{
+                            opacity: cardOpacity,
+                            scale: cardScale,
+                            y: cardY,
+                          }}
+                          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                          className={[
+                            'group relative my-2 w-full touch-pan-y text-left rounded-[26px] py-4 pl-8 pr-4',
+                            'border border-black/10 dark:border-white/10',
+                            'bg-white/70 dark:bg-white/5 backdrop-blur-xl',
+                            'shadow-[0_18px_60px_rgba(0,0,0,0.10)]',
+                            'hover:bg-white/85 dark:hover:bg-white/7 transition',
+                            audioImmersionMode && !isAudioActive ? 'blur-[0.5px]' : '',
+                            isAudioActive
+                              ? 'bible-wave-active verse-pulse-soft ring-2 ring-orange-400/65 shadow-[0_0_0_2px_rgba(251,146,60,0.25)] before:pointer-events-none before:absolute before:-inset-2 before:-z-10 before:rounded-[30px] before:bg-orange-400/18 before:blur-md before:animate-pulse before:content-[""]'
+                              : isSelected
+                                ? 'ring-1 ring-orange-300/50'
+                                : '',
+                          ].join(' ')}
                         >
-                          <span className="verse-num">{verse.number}</span>
-
-                          <span className="verse-text">
-                            <span className={highlightClass}>
-                              {verse.text}
-                            </span>
+                          <div
+                            className={[
+                              'pointer-events-none absolute inset-0 rounded-[26px] opacity-0 transition-opacity duration-300',
+                              isActive ? 'opacity-100' : 'opacity-0',
+                            ].join(' ')}
+                            style={{
+                              background:
+                                'radial-gradient(1200px 380px at 50% 0%, rgba(255,173,51,0.22), transparent 55%), radial-gradient(800px 240px at 20% 10%, rgba(99,179,237,0.16), transparent 60%)',
+                            }}
+                          />
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute left-2 top-3 bottom-3 z-10 w-[6px] overflow-hidden rounded-full bg-black/12 dark:bg-white/12"
+                          >
+                            <span
+                              className="absolute bottom-0 left-0 w-full rounded-full bg-[color:var(--accent)] transition-[height] duration-[120ms] ease-linear"
+                              style={{ height: isAudioActive ? `${verseAudioPercent}%` : '0%' }}
+                            />
                           </span>
-                        </button>
+                          {isAudioActive ? (
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute left-0 top-0 bottom-0 z-0 w-20"
+                              style={{
+                                background:
+                                  'linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
+                              }}
+                            />
+                          ) : null}
+
+                          <div className="relative z-10 flex items-start gap-3">
+                            <span
+                              className="inline-flex h-9 min-w-[40px] shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/5 px-2 font-black tracking-wide dark:border-white/10 dark:bg-white/10"
+                              style={{ fontSize: `${verseNumberFontPx}px` }}
+                            >
+                              {verse.number}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className={[
+                                  'text-[color:var(--foreground)]/90 leading-relaxed',
+                                  isActive ? 'font-semibold' : 'font-medium',
+                                ].join(' ')}
+                              >
+                                <span className={highlightClass}>
+                                  {verse.text.split(/(\s+)/).map((token, index) => {
+                                    if (!token) return null;
+                                    const isSpace = /^\s+$/.test(token);
+                                    if (isSpace) {
+                                      return <span key={`${verse.number}-space-${index}`}>{token}</span>;
+                                    }
+                                    spokenWordIndex += 1;
+
+                                    const cleanWord = token.replace(RADAR_WORD_CLEAN_RE, '');
+                                    const displayToken = memoryMode
+                                      ? maskMemoryWordToken(
+                                          token,
+                                          spokenWordIndex,
+                                          clampedMemoryMaskLevel,
+                                          memoryRevealUntil
+                                        )
+                                      : token;
+                                    const wordIsMasked = memoryMode && displayToken !== token;
+                                    const displayWord = memoryMode
+                                      ? displayToken
+                                      : renderTextWithSearchMatch(token, searchQuery);
+                                    const clickable = tool === 'read' && zenMode;
+                                    const wordIsPast = isAudioActive && spokenWordIndex < activeWordIndex;
+                                    const wordIsCurrent = isAudioActive && spokenWordIndex === activeWordIndex;
+                                    const wordClassName = wordIsPast
+                                      ? 'text-orange-600 transition-colors duration-200 dark:text-orange-300'
+                                      : wordIsCurrent
+                                        ? 'relative inline-block font-semibold text-[color:var(--foreground)] transition-all duration-200'
+                                        : wordIsMasked
+                                          ? 'tracking-[0.08em] text-[color:var(--foreground)]/72 transition-colors duration-200'
+                                        : 'transition-colors duration-200';
+
+                                    if (!clickable) {
+                                      return (
+                                        <span key={`${verse.number}-word-${index}`} className={wordClassName}>
+                                          {wordIsCurrent ? (
+                                            <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-orange-500/26 via-orange-300/40 to-transparent blur-[2px] animate-pulse" />
+                                          ) : null}
+                                          {displayWord}
+                                        </span>
+                                      );
+                                    }
+
+                                    return (
+                                      <span
+                                        key={`${verse.number}-word-${index}`}
+                                        onClick={(event) => {
+                                          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                                          const centerX = rect.left + rect.width / 2;
+                                          const centerY = rect.top + rect.height / 2;
+                                          openRadarAt(
+                                            centerX,
+                                            centerY,
+                                            verse,
+                                            cleanWord || token,
+                                            null
+                                          );
+                                          event.stopPropagation();
+                                        }}
+                                        className={`cursor-pointer ${wordClassName}`}
+                                      >
+                                        {wordIsCurrent ? (
+                                          <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-orange-500/26 via-orange-300/40 to-transparent blur-[2px] animate-pulse" />
+                                        ) : null}
+                                        {displayWord}
+                                      </span>
+                                    );
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.button>
                       );
                     })}
                   </div>
-                </div>
+                </motion.div>
+              </AnimatePresence>
               );
             })()}
-
-            <div className="mt-4 space-y-3 lg:hidden">
-              <div className="bible-paper rounded-2xl p-2">
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { key: 'focus', label: 'Focus' },
-                    { key: 'notes', label: 'Notes' },
-                    { key: 'comments', label: 'Commentaires' },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setMobilePanel(item.key as 'focus' | 'notes' | 'comments')}
-                      className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${mobilePanel === item.key
-                        ? 'bg-orange-100 border-orange-300 text-[color:var(--foreground)]'
-                        : 'bg-white/50 border-white/30 text-[color:var(--foreground)]/75'
-                        }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {mobilePanel === 'focus' ? (
-                <div className="bible-paper rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Verset focus</div>
-                    <Highlighter size={16} className="text-orange-400" />
-                  </div>
-                  {selectedVerse ? (
-                    <div className="mt-3 space-y-3 text-sm">
-                      <div className="text-xs text-[color:var(--foreground)]/60">
-                        {book.name} {chapter}:{selectedVerse.number}
-                      </div>
-                      <div className="font-medium">{selectedVerse.text}</div>
-                      <div>
-                        <div className="text-xs font-semibold opacity-70 mb-2">Mots Strong</div>
-                        {strongTokens.length === 0 ? (
-                          <div className="text-xs opacity-60">{t('bible.toast.noStrong')}</div>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {strongTokens.map((token, idx) => (
-                              <button
-                                key={`${token.strong}-${idx}`}
-                                type="button"
-                                className="rounded-full border px-3 py-1 text-xs font-bold bg-white/60"
-                                onClick={() => {
-                                  setCurrentStrongNumber(token.strong);
-                                  setShowStrongViewer(true);
-                                }}
-                              >
-                                {token.w} · {token.strong}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold opacity-70 mb-2">Références croisées</div>
-                        {treasuryStatus === 'loading' ? (
-                          <div className="text-xs opacity-60">Chargement des références...</div>
-                        ) : treasuryRefs.length === 0 ? (
-                          <div className="text-xs opacity-60">Aucune référence trouvée.</div>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {treasuryRefs.slice(0, 8).map((ref) => (
-                              <button
-                                key={ref.id}
-                                type="button"
-                                onClick={() => navigateToVerse(ref)}
-                                className="rounded-full border px-3 py-1 text-xs font-bold bg-white/60"
-                              >
-                                {ref.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {selectedVerseNoteKey ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMobilePanel('notes');
-                          }}
-                          className="btn-base btn-secondary text-xs px-3 py-2"
-                        >
-                          Écrire une note
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                      Sélectionne un verset pour voir le focus.
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {mobilePanel === 'notes' ? (
-                <div className="bible-sticky rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Notes</div>
-                    <FileText size={16} className="text-orange-500" />
-                  </div>
-                  <textarea
-                    value={chapterNotes}
-                    onChange={(e) =>
-                      setNotes((prev) => ({
-                        ...prev,
-                        [referenceKey]: e.target.value,
-                      }))
-                    }
-                    placeholder="Ecris ce que Dieu te montre ici..."
-                    className="input-field mt-3 min-h-[130px] text-sm"
-                  />
-                  {selectedVerseNoteKey ? (
-                    <div className="mt-3">
-                      <div className="text-xs text-[color:var(--foreground)]/60 mb-1">
-                        Note du verset {book.name} {chapter}:{selectedVerse?.number}
-                      </div>
-                      <textarea
-                        value={selectedVerseNote}
-                        onChange={(e) =>
-                          setVerseNotes((prev) =>
-                            selectedVerseNoteKey
-                              ? { ...prev, [selectedVerseNoteKey]: e.target.value }
-                              : prev
-                          )
-                        }
-                        placeholder="Ajoute une note pour ce verset..."
-                        className="input-field min-h-[100px] text-sm"
-                      />
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={exportNotesPdf}
-                    className="btn-base btn-secondary mt-3 text-xs px-3 py-2"
-                  >
-                    Exporter notes (PDF)
-                  </button>
-                </div>
-              ) : null}
-
-              {mobilePanel === 'comments' ? (
-                <div className="bible-paper rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">Commentaires</div>
-                    <Sparkles size={16} className="text-orange-300" />
-                  </div>
-                  {mhStatus === 'loading' ? (
-                    <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                      Chargement du commentaire Matthew Henry...
-                    </div>
-                  ) : mhSections.length > 0 ? (
-                    <div className="mt-3 space-y-3">
-                      {mhSections.slice(0, 3).map((section) => (
-                        <div
-                          key={section.key}
-                          className="rounded-2xl border border-white/30 bg-white/60 p-3 text-sm"
-                          dangerouslySetInnerHTML={{ __html: section.html }}
-                        />
-                      ))}
-                    </div>
-                  ) : chapterCommentary.length > 0 ? (
-                    <div className="mt-3 space-y-3">
-                      {chapterCommentary.slice(0, 3).map((entry, idx) => (
-                        <div
-                          key={`${entry.bookId}-${entry.chapter}-${idx}`}
-                          className="rounded-2xl border border-white/30 bg-white/60 p-3 text-sm"
-                        >
-                          {entry.title ? <div className="font-semibold">{entry.title}</div> : null}
-                          <div className="text-[color:var(--foreground)]/80">{entry.text}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                      Aucun commentaire pour ce chapitre.
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
           </main>
 
-          <aside className={`space-y-4 ${fullScreen || !isClient ? 'hidden' : 'hidden lg:block'}`}>
-            <div className="bible-sticky rounded-3xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Notes</div>
-                <FileText size={18} className="text-orange-500" />
-              </div>
-              <textarea
-                value={chapterNotes}
-                onChange={(e) =>
-                  setNotes((prev) => ({
+          {noteOpenFor && !embedded && (
+            <div className="fixed inset-0 z-[15000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+              <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 text-[color:var(--foreground)] shadow-[var(--shadow-soft)]">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold">
+                    Note pour {book.name} {chapter}:{selectedVerse?.number}
+                  </h3>
+                  <button
+                    onClick={() => setNoteOpenFor(null)}
+                    className="text-[color:var(--foreground)]/55 transition-colors hover:text-[color:var(--foreground)]"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  value={verseNotes[noteOpenFor] || ''}
+                  onChange={(e) => setVerseNotes((prev) => ({
                     ...prev,
-                    [referenceKey]: e.target.value,
-                  }))
-                }
-                placeholder="Ecris ce que Dieu te montre ici..."
-                className="input-field mt-3 min-h-[140px] text-sm"
-              />
-              <div className="mt-2 text-xs text-[color:var(--foreground)]/60">
-                {book.name} {chapter}
-              </div>
-              <button
-                type="button"
-                onClick={exportNotesPdf}
-                className="btn-base btn-secondary mt-3 text-xs px-3 py-2"
-              >
-                Exporter notes (PDF)
-              </button>
-            </div>
-
-            <div className="bible-paper rounded-3xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Verset focus</div>
-                <Highlighter size={18} className="text-orange-400" />
-              </div>
-              {selectedVerse ? (
-                <div className="mt-3 space-y-2 text-sm">
-                  <div className="text-xs text-[color:var(--foreground)]/60">
-                    {book.name} {chapter}:{selectedVerse.number}
-                  </div>
-                  <div className="font-medium">{selectedVerse.text}</div>
-
-                  {/* Section pour afficher les mots Strong du verset */}
-                  <div className="mt-4">
-                    <div className="text-xs font-semibold opacity-70 mb-2">Mots Strong</div>
-                    {strongTokens.length === 0 ? (
-                      <div className="text-xs opacity-60">{t('bible.toast.noStrong')}</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {strongTokens.map((token, idx) => (
-                          <button
-                            key={`${token.strong}-${idx}`}
-                            className="rounded-full border px-3 py-1 text-xs font-bold bg-white/60 hover:bg-white/80"
-                            onClick={() => {
-                              // Ouvre la vue Strong pour ce mot spécifique
-                              const parsed = parseStrong(token.strong);
-                              if (parsed) {
-                                setCurrentStrongNumber(token.strong);
-                                setShowStrongViewer(true);
-                              }
-                            }}
-                            title={`${token.w} (${token.strong})`}
-                          >
-                            {token.w} · {token.strong}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="text-xs font-semibold opacity-70 mb-2">Références croisées</div>
-                    {treasuryStatus === 'loading' && (
-                      <div className="text-xs opacity-60">Chargement des références...</div>
-                    )}
-                    {treasuryStatus === 'error' && (
-                      <div className="text-xs text-red-500">Impossible de charger les références.</div>
-                    )}
-                    {treasuryStatus === 'idle' && treasuryRefs.length === 0 && (
-                      <div className="text-xs opacity-60">Aucune référence trouvée.</div>
-                    )}
-                    {treasuryRefs.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {treasuryRefs.slice(0, 12).map((ref) => (
-                          <button
-                            key={ref.id}
-                            type="button"
-                            onClick={() => navigateToVerse(ref)}
-                            className="rounded-full border px-3 py-1 text-xs font-bold bg-white/60 hover:bg-white/80"
-                            title={`Aller à ${ref.label}`}
-                          >
-                            {ref.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {(() => {
-                    const key = selectedVerse
-                      ? verseKey(translation?.id ?? 'fr', book.id, chapter, selectedVerse.number)
-                      : null;
-                    const value = key ? (verseNotes[key] ?? '') : '';
-                    return (
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          className="btn-base btn-secondary text-xs px-3 py-2"
-                          onClick={() => setNoteOpenFor(key)}
-                        >
-                          📝 Écrire une note
-                        </button>
-                        {noteOpenFor === key ? (
-                          <div className="mt-3">
-                            <textarea
-                              value={value}
-                              onChange={(e) =>
-                                setVerseNotes((prev) =>
-                                  key ? { ...prev, [key]: e.target.value } : prev
-                                )
-                              }
-                              placeholder="Note liée à ce verset…"
-                              className="input-field min-h-[120px] text-sm"
-                            />
-                            <div className="mt-2 flex justify-end">
-                              <button
-                                type="button"
-                                className="btn-base btn-secondary text-xs px-3 py-2"
-                                onClick={() => setNoteOpenFor(null)}
-                              >
-                                Fermer
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                  Clique sur un verset pour le surligner.
-                </div>
-              )}
-            </div>
-
-            {/* Modal pour les notes de verset */}
-            {noteOpenFor && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[15000] p-4">
-                <div className="bg-white rounded-3xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold">
-                      Note pour {book.name} {chapter}:{selectedVerse?.number}
-                    </h3>
-                    <button
-                      onClick={() => setNoteOpenFor(null)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <textarea
-                    value={verseNotes[noteOpenFor] || ''}
-                    onChange={(e) => setVerseNotes(prev => ({
-                      ...prev,
-                      [noteOpenFor]: e.target.value
-                    }))}
-                    placeholder="Écrivez votre note ici..."
-                    className="w-full h-40 p-3 border rounded-lg"
-                  />
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      onClick={() => setNoteOpenFor(null)}
-                      className="btn-base btn-primary"
-                    >
-                      Sauvegarder
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bible-paper rounded-3xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Commentaires</div>
-                <Sparkles size={18} className="text-orange-300" />
-              </div>
-              {mhStatus === 'loading' ? (
-                <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                  Chargement du commentaire Matthew Henry...
-                </div>
-              ) : mhSections.length > 0 ? (
-                <div className="mt-3 space-y-3">
-                  {mhSections.slice(0, 3).map((section) => (
-                    <div
-                      key={section.key}
-                      className="rounded-2xl border border-white/30 bg-white/60 p-3 text-sm"
-                      dangerouslySetInnerHTML={{ __html: section.html }}
-                    />
-                  ))}
-                </div>
-              ) : commentariesFor(commentary, book.id, chapter).length > 0 ? (
-                <div className="mt-3 space-y-3">
-                  {commentariesFor(commentary, book.id, chapter)
-                    .slice(0, 3)
-                    .map((entry, idx) => (
-                      <div key={`${entry.bookId}-${entry.chapter}-${idx}`} className="rounded-2xl border border-white/30 bg-white/60 p-3 text-sm">
-                        {entry.title ? <div className="font-semibold">{entry.title}</div> : null}
-                        <div className="text-[color:var(--foreground)]/80">{entry.text}</div>
-                        {entry.source ? (
-                          <div className="mt-2 text-xs text-[color:var(--foreground)]/60">
-                            {entry.source}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                </div>
-              ) : mhStatus === 'error' || commentaryStatus === 'error' ? (
-                <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                  Aucun commentaire disponible pour ce chapitre.
-                </div>
-              ) : (
-                <div className="mt-3 text-sm text-[color:var(--foreground)]/60">
-                  Aucun commentaire pour ce chapitre.
-                </div>
-              )}
-            </div>
-          </aside>
-          {longPressTarget && (
-            <div className="fixed inset-0 z-[14000] flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 py-6">
-              <div className="bible-paper w-full max-w-xl rounded-3xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-[color:var(--foreground)]/60">
-                      <Sparkles size={12} className="accent-text" />
-                      Étude rapide
-                    </div>
-                    <div className="font-bold">{longPressTarget.ref}</div>
-                  </div>
+                    [noteOpenFor]: e.target.value,
+                  }))}
+                  placeholder="Écrivez votre note ici..."
+                  className="h-40 w-full rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 text-[color:var(--foreground)] outline-none"
+                />
+                <div className="mt-4 flex justify-end">
                   <button
-                    type="button"
-                    onClick={() => setLongPressTarget(null)}
-                    className="btn-icon h-9 w-9 bg-white/80"
-                    aria-label="Fermer"
-                    title="Fermer"
+                    onClick={() => setNoteOpenFor(null)}
+                    className="btn-base btn-primary"
                   >
-                    <X size={16} />
+                    Sauvegarder
                   </button>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Strong', icon: <BookText size={14} className="accent-text" />, action: () => handleLongPressAction('strong') },
-                    { label: 'Comparer', icon: <Search size={14} className="accent-text" />, action: () => handleLongPressAction('compare') },
-                    { label: 'Mémoriser', icon: <FileText size={14} className="accent-text" />, action: () => handleLongPressAction('memorize') },
-                    { label: 'Méditation', icon: <Sparkles size={14} className="accent-text" />, action: () => handleLongPressAction('meditate') },
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={item.action}
-                      className="btn-base btn-secondary w-full text-xs font-semibold px-3 py-3"
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
                 </div>
               </div>
             </div>
           )}
-          {showCompareViewer && selectedVerse && (
-            <div className="fixed inset-0 z-[14500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bible-paper w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b border-black/10 dark:border-white/10">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.28em] text-[color:var(--foreground)]/60">
-                      Comparer les versions
-                    </div>
-                    <div className="text-lg font-bold">
-                      {book.name} {chapter}:{selectedVerse.number}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowCompareViewer(false)}
-                    className="btn-icon h-9 w-9"
-                    aria-label="Fermer comparaison"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  {compareLoading ? (
-                    <div className="h-32 flex items-center justify-center">
-                      <div
-                        className="animate-spin rounded-full h-8 w-8 border-b-2"
-                        style={{ borderColor: 'var(--accent)' }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {compareRows.map((row) => (
-                        <div key={row.id} className="glass-panel rounded-2xl p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="font-semibold">{row.label}</div>
-                            <span className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--foreground)]/55">
-                              {row.sourceLabel}
-                            </span>
-                          </div>
-                          {row.text ? (
-                            <p className="mt-2 text-[color:var(--foreground)]/85 leading-relaxed">
-                              {row.text}
-                            </p>
-                          ) : (
-                            <p className="mt-2 text-sm text-[color:var(--foreground)]/60">
-                              {row.error
-                                ? `Indisponible: ${row.error}`
-                                : 'Aucun texte trouvé pour ce verset dans cette traduction.'}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+
+          <BibleLongPressSheet
+            target={longPressTarget}
+            onClose={() => setLongPressTarget(null)}
+            onAction={(action) => {
+              void handleLongPressAction(action);
+            }}
+          />
+
+          <BibleCompareModal
+            isOpen={showCompareViewer}
+            bookName={book.name}
+            chapter={chapter}
+            verseNumber={selectedVerse?.number ?? null}
+            compareLoading={compareLoading}
+            compareRows={compareRows}
+            onClose={() => setShowCompareViewer(false)}
+          />
         </div>
       </div>
+
       <audio ref={audioRef} preload="none" />
+      <BibleStudyBar
+        open={Boolean(!embedded && selectedVerse && studyBarOpen)}
+        refLabel={studyRefLabel}
+        verseText={studyVerseText}
+        hasNote={studyHasNote}
+        refsCount={selectedVerse ? treasuryRefs.length : 0}
+        highlightColor={highlightColor}
+        onClose={() => setStudyBarOpen(false)}
+        onStrong={() => {
+          void openStrongViewerForVerse(selectedVerse);
+        }}
+        onRefs={() => {
+          if (!selectedVerse) return;
+          setRadarVerse(selectedVerse);
+          setRadarWord('');
+          setRadarOpen(false);
+          setRadarPreferredBubble(null);
+          setRadarRefsSheetOpen(true);
+        }}
+        onHighlight={() => {
+          if (!selectedVerse) return;
+          toggleHighlight(selectedVerse, highlightColor);
+          showToast('Surlignage mis à jour ✅');
+        }}
+        onNote={() => {
+          if (!studyNoteKey) return;
+          setNoteOpenFor(studyNoteKey);
+        }}
+        onCompare={() => {
+          void openCompareForVerse(selectedVerse);
+        }}
+        onCopy={() => {
+          if (!selectedVerse) return;
+          navigator.clipboard?.writeText(`${studyRefLabel}\n${selectedVerse.text}`);
+          showToast('Verset copié ✅');
+        }}
+        strongTokens={selectedVerseStrongTokens}
+        strongLoading={selectedVerseStrongLoading}
+        onStrongToken={(strong) => {
+          setCurrentStrongNumber(strong);
+          setShowStrongViewer(true);
+        }}
+      />
+      <BibleStudyRadar
+        open={radarOpen}
+        x={radarPos.x}
+        y={radarPos.y}
+        refLabel={radarRefLabel}
+        bubbles={radarBubbles}
+        preferredBubbleId={radarPreferredBubble}
+        onClose={() => {
+          setRadarOpen(false);
+          setRadarPreferredBubble(null);
+        }}
+      />
+      {radarRefsSheetOpen ? (
+        <div
+          className="fixed inset-0 z-[16100] bg-black/30 backdrop-blur-[4px]"
+          onMouseDown={() => setRadarRefsSheetOpen(false)}
+          onTouchStart={() => setRadarRefsSheetOpen(false)}
+        >
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-4">
+            <div
+              className="pointer-events-auto w-full max-w-xl rounded-t-[26px] rounded-b-[20px] border border-white/15 bg-black/65 p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.45)] sm:p-5"
+              onMouseDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">Radar</div>
+                  <div className="text-base font-extrabold">Références croisées</div>
+                  <div className="text-xs text-white/70">{radarRefLabel || `${book.name} ${chapter}`}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRadarRefsSheetOpen(false)}
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-white/10 text-white/80"
+                  aria-label="Fermer les références"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {treasuryStatus === 'loading' ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
+                  Chargement des références...
+                </div>
+              ) : null}
+
+              {treasuryStatus !== 'loading' && treasuryRefs.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
+                  Aucune référence disponible pour ce verset.
+                </div>
+              ) : null}
+
+              {treasuryRefs.length > 0 ? (
+                <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
+                  {treasuryRefs.slice(0, 18).map((ref) => (
+                    <button
+                      key={`radar-ref-${ref.id}`}
+                      type="button"
+                      onClick={() => {
+                        navigateToVerse(ref);
+                        setRadarRefsSheetOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/10 px-3 py-2 text-left transition hover:bg-white/15"
+                    >
+                      <span className="truncate text-sm font-bold">{ref.label}</span>
+                      <span className="ml-3 shrink-0 rounded-lg border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/75">
+                        <Link2 size={12} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
       {toast ? (
-        <div className="fixed bottom-6 left-1/2 z-[13000] -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white shadow-xl">
+        <div className="fixed bottom-[calc(162px+env(safe-area-inset-bottom))] left-1/2 z-[13000] -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white shadow-xl md:bottom-6">
           {toast}
         </div>
       ) : null}
 
-      {/* Modals pour les nouvelles fonctionnalités */}
       <BibleStrongViewer
         isOpen={showStrongViewer}
         onClose={() => setShowStrongViewer(false)}
@@ -2510,174 +3398,6 @@ export default function BibleReader() {
     </section>
   );
 }
-
 function commentariesFor(entries: CommentaryEntry[], bookId: string, chapter: number) {
   return entries.filter((entry) => entry.bookId === bookId && entry.chapter === chapter);
-}
-
-function BibleToolbar({
-  tool,
-  setTool,
-  fontScale,
-  setFontScale,
-  onCopy,
-  onOpenCompare,
-  highlightColor,
-  setHighlightColor,
-  onOpenAdvancedStudyTools,
-  playerProgress,
-  playerPlaying,
-  onTogglePlayer,
-  audioAvailable,
-  isClient,
-}: {
-  tool: ToolMode;
-  setTool: (t: ToolMode) => void;
-  fontScale: number;
-  setFontScale: (n: number) => void;
-  onCopy: () => void;
-  onOpenCompare: () => void;
-  highlightColor: HighlightColor;
-  setHighlightColor: (color: HighlightColor) => void;
-  onOpenAdvancedStudyTools: () => void;
-  playerProgress: number;
-  playerPlaying: boolean;
-  onTogglePlayer: () => void;
-  audioAvailable: boolean;
-  isClient: boolean;
-}) {
-  const COLOR_DOT: Record<HighlightColor, string> = {
-    yellow: 'bg-yellow-300',
-    green: 'bg-green-300',
-    pink: 'bg-pink-300',
-  };
-
-  const Btn = ({
-    active,
-    label,
-    icon,
-    onClick,
-  }: {
-    active: boolean;
-    label: string;
-    icon: React.ReactNode;
-    onClick: () => void;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-extrabold transition ${active
-        ? 'bg-white/70 border-white/50'
-        : 'bg-white/30 border-white/20 hover:bg-white/50'
-        }`}
-      title={label}
-    >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </button>
-  );
-
-  return (
-    <div className="sticky top-3 z-40">
-      <div className="bible-paper rounded-3xl px-3 py-2 flex items-center gap-2 flex-wrap shadow-md">
-        <Btn
-          active={tool === 'read'}
-          label="Lecture"
-          icon={<Eye size={16} />}
-          onClick={() => setTool('read')}
-        />
-        <div className="relative">
-          <Btn
-            active={tool === 'highlight'}
-            label="Surligner"
-            icon={<Highlighter size={16} />}
-            onClick={() => setTool(tool === 'highlight' ? 'read' : 'highlight')}
-          />
-
-          {/* Menu déroulant pour choisir la couleur de surlignage */}
-          {tool === 'highlight' && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-2xl shadow-lg p-2 min-w-[120px]">
-              {(['yellow', 'green', 'pink'] as HighlightColor[]).map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full text-left px-3 py-2 rounded-xl mb-1 last:mb-0 ${highlightColor === color ? 'bg-orange-100' : 'hover:bg-gray-100'
-                    }`}
-                  onClick={() => setHighlightColor(color)}
-                >
-                  <span className={`inline-block w-3 h-3 rounded-full mr-2 ${COLOR_DOT[color]}`}></span>
-                  {color.charAt(0).toUpperCase() + color.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <Btn
-          active={tool === 'note'}
-          label="Note"
-          icon={<FileText size={16} />}
-          onClick={() => setTool('note')}
-        />
-        <Btn
-          active={false}
-          label="Comparer"
-          icon={<Search size={16} />}
-          onClick={onOpenCompare}
-        />
-
-        <div className="relative">
-          <svg className="pointer-events-none absolute -inset-1 h-12 w-12" viewBox="0 0 48 48">
-            <circle
-              cx="24"
-              cy="24"
-              r="18"
-              stroke="var(--border-soft)"
-              strokeWidth="3"
-              fill="none"
-            />
-            <circle
-              cx="24"
-              cy="24"
-              r="18"
-              stroke="var(--accent)"
-              strokeWidth="3"
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 18}
-              strokeDashoffset={2 * Math.PI * 18 * (1 - playerProgress)}
-              style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-            />
-          </svg>
-          <button
-            type="button"
-            onClick={onTogglePlayer}
-            className={`btn-icon h-10 w-10 bg-white/80${isClient && audioAvailable ? '' : ' opacity-50 cursor-not-allowed'}`}
-            aria-label={playerPlaying ? 'Pause' : 'Play'}
-            title={playerPlaying ? 'Pause' : 'Play'}
-            disabled={!isClient || !audioAvailable}
-          >
-            {playerPlaying ? <Pause size={16} /> : <Play size={16} />}
-          </button>
-        </div>
-
-        <div className="mx-1 h-7 w-px bg-black/10" />
-
-        <button
-          type="button"
-          onClick={onOpenAdvancedStudyTools}
-          className="h-10 px-3 rounded-2xl border border-white/40 bg-white/60 font-extrabold text-sm flex items-center gap-1"
-        >
-          <MessageSquare size={16} /> <span className="hidden sm:inline">Étude</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onCopy}
-          className="h-10 px-3 rounded-2xl border border-white/40 bg-white/60 font-extrabold text-sm flex items-center gap-1"
-        >
-          <Clipboard size={16} /> <span className="hidden sm:inline">Copier</span>
-        </button>
-      </div>
-    </div>
-  );
 }

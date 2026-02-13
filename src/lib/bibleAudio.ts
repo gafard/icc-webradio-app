@@ -42,6 +42,13 @@ export function hasSelahAudio(translationId: string): boolean {
   return resolveAudioProfile(translationId) !== 'none';
 }
 
+export function getSelahAudioAlignedTranslationId(translationId: string): string | null {
+  const profile = resolveAudioProfile(translationId);
+  if (profile === 'lsg') return 'LSG';
+  if (profile === 'bds') return 'BDS';
+  return null;
+}
+
 function getLsgAudioCandidates(bookNum: number, chapter: number): string[] {
   const bookNumStr = String(bookNum);
   const preferredBase = LSG_AUDIO_V2.has(bookNumStr)

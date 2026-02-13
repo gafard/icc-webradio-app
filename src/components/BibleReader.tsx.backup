@@ -1385,7 +1385,7 @@ export default function BibleReader() {
 
               return (
                 <div
-                  className="mt-5 flex-1 pr-2 bible-type font-serif"
+                  className="mt-5 flex-1 pr-2 bible-type"
                   style={{ fontSize: `${fontScale}rem`, lineHeight }}
                 >
                   <div
@@ -1437,7 +1437,7 @@ export default function BibleReader() {
                           key={`${verse.number}-${verse.text.slice(0, 6)}`}
                           type="button"
                           onClick={() => handleVerseClick(verse)}
-                          className="verse-line w-full text-left font-serif"
+                          className="verse-line w-full text-left"
                           onContextMenu={(event) => {
                             event.preventDefault();
                             setLongPressTarget({

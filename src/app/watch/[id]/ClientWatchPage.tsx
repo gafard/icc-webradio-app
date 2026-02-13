@@ -375,7 +375,7 @@ export default function ClientWatchPage({
 
   if (!post) {
     return (
-      <div className="px-4 py-10 text-white/80">
+      <div className="px-4 py-10 text-[color:var(--foreground)]/80">
         Post introuvable.
       </div>
     );
@@ -617,7 +617,7 @@ export default function ClientWatchPage({
                     </button>
 
                     {offlineError ? (
-                      <span className="text-[11px] text-red-300 font-semibold">{offlineError}</span>
+                      <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{offlineError}</span>
                     ) : null}
                   </div>
                 ) : null}

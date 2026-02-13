@@ -262,15 +262,15 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
   };
 
   return (
-    <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="mt-6 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-white/90 font-extrabold">IA (AssemblyAI)</div>
+        <div className="font-extrabold text-[color:var(--foreground)]">IA (AssemblyAI)</div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white/50">
+          <span className="text-xs text-[color:var(--foreground)]/60">
             {status === 'none' ? 'Non lancé' : status}
           </span>
           {status === 'queued' || status === 'processing' ? (
-            <span className="text-xs text-white/50">
+            <span className="text-xs text-[color:var(--foreground)]/60">
               {progress !== null ? `• ${progress}%` : '• ...'}
               {etaMs ? ` • ~${fmtEta(etaMs)}` : ''}
             </span>
@@ -297,14 +297,14 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
       </div>
 
       {err ? (
-        <div className="mt-2 text-sm text-red-300">
+        <div className="mt-2 text-sm text-rose-700 dark:text-rose-300">
           {err}
         </div>
       ) : null}
 
       {(status === 'queued' || status === 'processing') ? (
         <div className="mt-3">
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-2 overflow-hidden rounded-full bg-[color:var(--surface-strong)]">
             <div
               className="h-full bg-blue-500 transition-[width] duration-500"
               style={{ width: `${progress ?? 10}%` }}
@@ -314,23 +314,23 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
       ) : null}
 
       {!audioUrl && (
-        <div className="mt-2 text-xs text-white/50">
+        <div className="mt-2 text-xs text-[color:var(--foreground)]/60">
           Pas d'audio détecté → transcription désactivée.
         </div>
       )}
 
       {transcriptId ? (
-        <div className="mt-2 text-xs text-white/40">
+        <div className="mt-2 text-xs text-[color:var(--foreground)]/55">
           ID: {transcriptId}
         </div>
       ) : null}
 
       {/* Tabs */}
       <div className="mt-4 flex gap-2">
-        <button onClick={() => setTab('summary')} className={`h-9 px-3 rounded-xl text-sm font-extrabold border ${tab==='summary'?'bg-white/15 border-white/15 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Résumé</button>
-        <button onClick={() => setTab('chapters')} className={`h-9 px-3 rounded-xl text-sm font-extrabold border ${tab==='chapters'?'bg-white/15 border-white/15 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Chapitres</button>
-        <button onClick={() => setTab('text')} className={`h-9 px-3 rounded-xl text-sm font-extrabold border ${tab==='text'?'bg-white/15 border-white/15 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Transcription</button>
-        <button onClick={() => setTab('translate')} className={`h-9 px-3 rounded-xl text-sm font-extrabold border ${tab==='translate'?'bg-white/15 border-white/15 text-white':'bg-white/5 border-white/10 text-white/70'}`}>Traduire</button>
+        <button onClick={() => setTab('summary')} className={`h-9 rounded-xl border px-3 text-sm font-extrabold transition-colors ${tab==='summary'?'border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--foreground)]':'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/70 hover:text-[color:var(--foreground)]'}`}>Résumé</button>
+        <button onClick={() => setTab('chapters')} className={`h-9 rounded-xl border px-3 text-sm font-extrabold transition-colors ${tab==='chapters'?'border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--foreground)]':'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/70 hover:text-[color:var(--foreground)]'}`}>Chapitres</button>
+        <button onClick={() => setTab('text')} className={`h-9 rounded-xl border px-3 text-sm font-extrabold transition-colors ${tab==='text'?'border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--foreground)]':'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/70 hover:text-[color:var(--foreground)]'}`}>Transcription</button>
+        <button onClick={() => setTab('translate')} className={`h-9 rounded-xl border px-3 text-sm font-extrabold transition-colors ${tab==='translate'?'border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--foreground)]':'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/70 hover:text-[color:var(--foreground)]'}`}>Traduire</button>
       </div>
 
       <div className="mt-4">
@@ -355,7 +355,7 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
               </button>
             </div>
 
-            <div className="text-sm text-white/80 whitespace-pre-wrap leading-6">
+            <div className="whitespace-pre-wrap text-sm leading-6 text-[color:var(--foreground)]/82">
               {summary || (status === 'completed' ? (autoSummarize ? 'Résumé indisponible.' : 'Résumé désactivé dans les réglages.') : 'Lance la transcription pour obtenir le résumé.')}
             </div>
           </div>
@@ -389,10 +389,10 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
 
             <div className="space-y-3">
             {chapters?.length ? chapters.map((c, i) => (
-              <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <div className="text-white font-extrabold text-sm">{c.headline || c.gist || `Chapitre ${i+1}`}</div>
-                <div className="mt-1 text-white/60 text-xs">[{fmtTime(Math.round((c.start??0)/1000))} → {fmtTime(Math.round((c.end??0)/1000))}]</div>
-                <div className="mt-2 text-white/75 text-sm leading-6">{c.summary}</div>
+              <div key={i} className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3">
+                <div className="text-sm font-extrabold text-[color:var(--foreground)]">{c.headline || c.gist || `Chapitre ${i+1}`}</div>
+                <div className="mt-1 text-xs text-[color:var(--foreground)]/60">[{fmtTime(Math.round((c.start??0)/1000))} → {fmtTime(Math.round((c.end??0)/1000))}]</div>
+                <div className="mt-2 text-sm leading-6 text-[color:var(--foreground)]/76">{c.summary}</div>
                 {onSeekSeconds ? (
                   <button
                     type="button"
@@ -404,7 +404,7 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
                 ) : null}
               </div>
             )) : (
-              <div className="text-sm text-white/60">Aucun chapitre (pas encore activé côté API).</div>
+              <div className="text-sm text-[color:var(--foreground)]/62">Aucun chapitre (pas encore activé côté API).</div>
             )}
             </div>
           </div>
@@ -431,7 +431,7 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
             </div>
 
             {query && (
-              <div className="mb-3 text-xs text-white/60">
+              <div className="mb-3 text-xs text-[color:var(--foreground)]/60">
                 {searchResults.length} résultat{searchResults.length > 1 ? 's' : ''} (max 20)
               </div>
             )}
@@ -442,9 +442,9 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
                   const q = query.trim();
                   const parts = q ? r.snippet.split(new RegExp(`(${q})`, 'ig')) : [r.snippet];
                   return (
-                    <div key={`${r.index}-${i}`} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/80 leading-6">
+                    <div key={`${r.index}-${i}`} className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3 text-sm leading-6 text-[color:var(--foreground)]/82">
                       {parts.map((p, idx) => (
-                        <span key={idx} className={p.toLowerCase() === q.toLowerCase() ? 'bg-[color:var(--accent)]/30 text-white px-1 rounded' : ''}>
+                        <span key={idx} className={p.toLowerCase() === q.toLowerCase() ? 'rounded bg-[color:var(--accent)]/18 px-1 text-[color:var(--foreground)]' : ''}>
                           {p}
                         </span>
                       ))}
@@ -473,7 +473,7 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
               </button>
             </div>
 
-            <div className="text-sm text-white/80 whitespace-pre-wrap leading-6">
+            <div className="whitespace-pre-wrap text-sm leading-6 text-[color:var(--foreground)]/82">
               {text || (status === 'completed' ? 'Transcription vide.' : 'En attente…')}
             </div>
           </div>
@@ -529,10 +529,10 @@ export default function AaiPanel({ postKey, audioUrl, onSeekSeconds }: { postKey
             </div>
 
             {translateErr ? (
-              <div className="text-sm text-red-300 mb-2">{translateErr}</div>
+              <div className="mb-2 text-sm text-rose-700 dark:text-rose-300">{translateErr}</div>
             ) : null}
 
-            <div className="text-sm text-white/80 whitespace-pre-wrap leading-6">
+            <div className="whitespace-pre-wrap text-sm leading-6 text-[color:var(--foreground)]/82">
               {translatedText || (canTranslate ? 'Aucune traduction pour l’instant.' : 'Aucun texte à traduire.')}
             </div>
           </div>

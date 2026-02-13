@@ -9,6 +9,7 @@ export async function POST(req: Request) {
     console.error('Supabase server client is not initialized');
     return NextResponse.json({ error: 'Supabase server client is not configured' }, { status: 503 });
   }
+  const client = supabaseServer;
 
   try {
     const { groupId, userId, userName } = await req.json();
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
 
     // Créer l'appel
     console.log('Tentative de création de l\'appel pour le groupe:', groupId, 'par l\'utilisateur:', userId);
-    const { data: call, error: callError } = await supabaseServer
+    const { data: call, error: callError } = await client
       .from('group_calls')
       .insert({
         group_id: groupId,
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
 
     // Récupérer les membres du groupe
     console.log('[start-call] step=fetch-group-members');
-    const { data: groupMembers, error: membersError } = await supabaseServer
+    const { data: groupMembers, error: membersError } = await client
       .from('community_group_members')
       .select('device_id')
       .eq('group_id', groupId);
@@ -54,11 +55,11 @@ export async function POST(req: Request) {
     const otherMembers = groupMembers.filter(member => member.device_id !== userId);
     console.log('[start-call] step=create-invites');
     const invitePromises = otherMembers.map(member => 
-      supabaseServer.from('group_call_invites').upsert({
+      client.from('group_call_invites').upsert({
         call_id: call.id,
         group_id: groupId,
         device_id: member.device_id
-      }, { onConflict: ['call_id', 'device_id'] }) // Utilisation de upsert pour éviter les erreurs de doublon
+      }, { onConflict: 'call_id,device_id' }) // Utilisation de upsert pour éviter les erreurs de doublon
     );
 
     // Utiliser Promise.allSettled pour capturer les erreurs individuelles
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
 
     // Envoyer des notifications push aux membres hors ligne du groupe
     try {
-      await sendPushNotificationsToOfflineMembers(groupId, userId, call.id, call.room_id);
+      await sendPushNotificationsToOfflineMembers(client, groupId, userId, call.id, call.room_id);
     } catch (pushError) {
       console.error('Push notifications failed (ignored):', pushError);
       // Ne pas échouer l'appel si les notifications push échouent
@@ -102,6 +103,7 @@ export async function POST(req: Request) {
 }
 
 async function sendPushNotificationsToOfflineMembers(
+  client: NonNullable<typeof supabaseServer>,
   groupId: string, 
   initiatorId: string, 
   callId: string, 
@@ -111,7 +113,7 @@ async function sendPushNotificationsToOfflineMembers(
     console.log('[start-call] step=fetch-group-members-for-push');
     
     // Récupérer les membres du groupe
-    const { data: groupMembers, error: membersError } = await supabaseServer
+    const { data: groupMembers, error: membersError } = await client
       .from('community_group_members')
       .select('device_id')
       .eq('group_id', groupId);
@@ -137,7 +139,7 @@ async function sendPushNotificationsToOfflineMembers(
     // Récupérer la présence des membres du groupe
     const cutoffTime = new Date(Date.now() - 60_000).toISOString(); // 1 minute
     
-    const { data: presenceRows, error: presenceError } = await supabaseServer
+    const { data: presenceRows, error: presenceError } = await client
       .from('user_presence')
       .select('device_id, is_online, last_seen')
       .in('device_id', memberDeviceIds);
@@ -161,7 +163,7 @@ async function sendPushNotificationsToOfflineMembers(
     
     // Récupérer leurs abonnements push
     // Utiliser device_id pour la correspondance
-    const { data: subscriptions, error: subsError } = await supabaseServer
+    const { data: subscriptions, error: subsError } = await client
       .from('push_subscriptions')
       .select('subscription_json, device_id')
       .in('device_id', offlineDeviceIds);

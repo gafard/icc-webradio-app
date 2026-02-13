@@ -242,7 +242,7 @@ export default function CommunityStories() {
 
   if (status === 'error') {
     return (
-      <div className="glass-panel rounded-3xl p-4 text-sm text-red-300">
+      <div className="glass-panel rounded-3xl p-4 text-sm text-rose-700 dark:text-rose-300">
         Impossible de charger les stories.
       </div>
     );
@@ -251,17 +251,17 @@ export default function CommunityStories() {
   return (
     <>
       {/* Rail horizontal */}
-      <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/40 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl">
         {/* Glow effect */}
         <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl" />
 
         <div className="relative flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-amber-400" />
-            <div className="text-sm font-bold text-white tracking-tight uppercase">Stories</div>
+            <div className="text-sm font-bold text-[color:var(--foreground)] tracking-tight uppercase">Stories</div>
           </div>
           <button
-            className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-2 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground)]/65 hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)] transition-all active:scale-95"
             onClick={load}
             disabled={status === 'loading'}
           >
@@ -276,9 +276,9 @@ export default function CommunityStories() {
 
         <div className="relative flex gap-4 overflow-x-auto pb-2 custom-scrollbar no-scrollbar scroll-smooth">
           {!hasStories && status !== 'loading' ? (
-            <div className="flex flex-col items-center justify-center py-6 w-full opacity-40">
-              <Sparkles size={32} className="text-slate-700 mb-2" />
-              <div className="text-xs font-medium text-slate-500 italic">Aucune story disponible</div>
+            <div className="flex w-full flex-col items-center justify-center py-6 opacity-40">
+              <Sparkles size={32} className="mb-2 text-[color:var(--foreground)]/50" />
+              <div className="text-xs font-medium italic text-[color:var(--foreground)]/60">Aucune story disponible</div>
             </div>
           ) : null}
 
@@ -289,7 +289,7 @@ export default function CommunityStories() {
               className="shrink-0 group relative w-[92px] text-left transition-transform active:scale-95"
               title={`${s.author_name} • ${s.verse_reference}`}
             >
-              <div className="relative h-[140px] w-[92px] rounded-2xl overflow-hidden border border-white/10 bg-slate-800/50 shadow-lg group-hover:border-amber-500/40 transition-all group-hover:shadow-amber-500/10">
+              <div className="relative h-[140px] w-[92px] rounded-2xl overflow-hidden border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] shadow-lg transition-all group-hover:border-[color:var(--accent-border)] group-hover:shadow-amber-500/10">
                 {s.image_url ? (
                   <img
                     src={s.image_url}
@@ -297,8 +297,8 @@ export default function CommunityStories() {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-                    <Sparkles size={24} className="text-slate-600 opacity-30" />
+                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-[color:var(--surface)] to-[color:var(--surface-strong)]">
+                    <Sparkles size={24} className="text-[color:var(--foreground)]/30" />
                   </div>
                 )}
 

@@ -126,10 +126,10 @@ function CommunityPageInner() {
       prev.map((req) =>
         req.id === id
           ? {
-              ...req,
-              prayedForCount: req.prayedForCount + 1,
-              status: req.status === 'answered' ? 'answered' : 'prayed',
-            }
+            ...req,
+            prayedForCount: req.prayedForCount + 1,
+            status: req.status === 'answered' ? 'answered' : 'prayed',
+          }
           : req
       )
     );
@@ -176,11 +176,10 @@ function CommunityPageInner() {
         </div>
 
         <div
-          className={`grid grid-cols-1 gap-6 ${
-            isGroupsTab
+          className={`grid grid-cols-1 gap-6 ${isGroupsTab
               ? 'xl:grid-cols-[260px_minmax(0,1fr)]'
               : 'xl:grid-cols-[260px_minmax(0,1fr)_320px]'
-          }`}
+            }`}
         >
           <aside className="hidden xl:block space-y-4 xl:sticky xl:top-24 h-fit">
             <CommunityIdentityCard />
@@ -196,9 +195,8 @@ function CommunityPageInner() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`btn-base w-full justify-start text-sm px-3 py-3 ${
-                        active ? 'btn-primary' : 'btn-secondary'
-                      }`}
+                      className={`btn-base w-full justify-start text-sm px-3 py-3 ${active ? 'btn-primary' : 'btn-secondary'
+                        }`}
                     >
                       <Icon size={16} className="mr-2" />
                       {tab.label}
@@ -209,7 +207,7 @@ function CommunityPageInner() {
             </div>
 
             {activeTabMeta ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4">
                 <div className="text-xs font-semibold opacity-70">
                   {activeTabMeta.label}
                 </div>
@@ -231,13 +229,13 @@ function CommunityPageInner() {
                     {activeTabMeta?.description || t('community.subtitle')}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold">
+                <div className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2 text-xs font-semibold">
                   {t('identity.subtitle')}
                 </div>
               </div>
             </div>
 
-            <div className="xl:hidden sticky top-[72px] z-20 rounded-3xl border border-white/10 bg-[color:var(--surface-strong)]/95 p-3 backdrop-blur-md">
+            <div className="xl:hidden sticky top-[72px] z-20 rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-3 backdrop-blur-md">
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -247,9 +245,8 @@ function CommunityPageInner() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`btn-base shrink-0 px-3 py-2 text-xs ${
-                        active ? 'btn-primary' : 'btn-secondary'
-                      }`}
+                      className={`btn-base shrink-0 px-3 py-2 text-xs ${active ? 'btn-primary' : 'btn-secondary'
+                        }`}
                     >
                       <Icon size={14} className="mr-1" />
                       {tab.label}
@@ -276,6 +273,7 @@ function CommunityPageInner() {
                 <Suspense fallback={feedFallback}>
                   <CommunityFeed
                     showKind
+                    mode="deck"
                     emptyLabel={t('feed.emptyDefault')}
                     refreshToken={feedRefreshToken}
                   />
@@ -379,7 +377,7 @@ function CommunityPageInner() {
           </main>
 
           <aside className="hidden xl:block space-y-4 xl:sticky xl:top-24 h-fit" style={{ display: isGroupsTab ? 'none' : undefined }}>
-            <div className="rounded-3xl border border-white/10 bg-[color:var(--surface-strong)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+            <div className="rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 shadow-[var(--shadow-soft)]">
               <div className="text-xs uppercase tracking-[0.18em] opacity-60">Communaute</div>
               <div className="mt-2 text-lg font-extrabold">Fil social</div>
               <p className="mt-2 text-sm text-[color:var(--foreground)]/70 leading-6">
@@ -387,7 +385,7 @@ function CommunityPageInner() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-[color:var(--surface-strong)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+            <div className="rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 shadow-[var(--shadow-soft)]">
               <div className="text-sm font-semibold">Bonnes pratiques</div>
               <ul className="mt-3 space-y-2 text-sm text-[color:var(--foreground)]/75">
                 <li>Messages courts et clairs.</li>
@@ -396,7 +394,7 @@ function CommunityPageInner() {
               </ul>
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-[color:var(--surface-strong)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+            <div className="rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 shadow-[var(--shadow-soft)]">
               <div className="text-sm font-semibold">Section active</div>
               <div className="mt-2 text-sm text-[color:var(--foreground)]/70">
                 {activeTabMeta?.label}

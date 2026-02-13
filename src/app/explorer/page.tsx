@@ -45,8 +45,8 @@ export default async function ExplorerPage() {
     <AppShell>
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white mb-2">Explorer</h1>
-          <p className="text-white/70">Recherche + tri + période + favoris + radio</p>
+          <h1 className="text-3xl font-extrabold text-[color:var(--foreground)] mb-2">Explorer</h1>
+          <p className="text-[color:var(--foreground)]/70">Recherche + tri + période + favoris + radio</p>
         </div>
 
         <ExplorerClient videos={videos} />

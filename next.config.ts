@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  outputFileTracingIncludes: {
+    '/api/strong': ['./data/strong.sqlite'],
+    '/api/treasury': ['./data/treasury.sqlite'],
+    '/api/matthew-henry': ['./data/matthew_henry.sqlite'],
+    '/api/nave': ['./data/nave.sqlite'],
+    '/api/sqlite/health': ['./data/*.sqlite'],
+  },
   async redirects() {
     return [
       {

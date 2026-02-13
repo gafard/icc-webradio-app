@@ -1,9 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import Link from 'next/link';
-import { ui } from './ui';
-import type { Mode } from './themeMode';
 
 export type RailItem = {
   id: string;
@@ -15,36 +13,28 @@ export type RailItem = {
 };
 
 export default function RowRailOneToOne({
-  mode,
   title,
   items,
   seeAllHref,
 }: {
-  mode: Mode;
   title: string;
   items: RailItem[];
   seeAllHref?: string;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-  // État pour gérer la synchronisation entre serveur et client
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   if (!items?.length) return null;
 
-  // Utiliser le mode passé en props ou un mode par défaut avant le montage
-  const isNight = mounted ? mode === 'night' : false;
+  const edgeFadeLeftClass =
+    'pointer-events-none hidden lg:block absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[color:var(--background)] to-transparent z-10';
+  const edgeFadeRightClass =
+    'pointer-events-none hidden lg:block absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[color:var(--background)] to-transparent z-10';
+  const arrowClass =
+    'hidden lg:flex absolute top-1/2 -translate-y-1/2 z-20 h-11 w-11 items-center justify-center rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)] shadow-xl backdrop-blur-xl transition hover:bg-[color:var(--surface-strong)]';
+  const cardClass =
+    'group block rounded-2xl overflow-hidden border border-[color:var(--border-soft)] bg-[color:var(--surface)] backdrop-blur-xl shadow-[var(--shadow-soft)] transition card-anim hover:shadow-2xl';
 
-  const t = ui(isNight ? 'night' : 'day');
-
-  const scrollByAmount = useMemo(() => {
-    // scroll ~3 cards
-    return 900;
-  }, []);
+  const scrollByAmount = 900;
 
   function scrollLeft() {
     scrollerRef.current?.scrollBy({ left: -scrollByAmount, behavior: 'smooth' });
@@ -54,76 +44,19 @@ export default function RowRailOneToOne({
     scrollerRef.current?.scrollBy({ left: scrollByAmount, behavior: 'smooth' });
   }
 
-  // Ne pas afficher avant le montage pour éviter les incohérences d'hydratation
-  if (!mounted) {
-    return (
-      <section className="mt-10">
-        <div className="flex items-center justify-between mb-3 relative z-20">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-[#0B1220]">{title}</h2>
-            <p className="text-xs sm:text-sm text-[#0B1220]/60">Défilement horizontal</p>
-          </div>
-          {seeAllHref ? (
-            <Link
-              href={seeAllHref}
-              className="text-sm font-bold text-[#0B1220]/60 hover:opacity-90 relative z-20 pointer-events-auto"
-            >
-              Voir tout →
-            </Link>
-          ) : null}
-        </div>
-        <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth">
-          {items.map((it, idx) => (
-            <div key={`${it.id}-${idx}`} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
-              <Link
-                href={it.href}
-                className="group block rounded-2xl border overflow-hidden backdrop-blur-xl shadow-lg transition bg-white/55 border-white/70 hover:shadow-2xl card-anim"
-              >
-                <div className="relative aspect-video bg-black/10 overflow-hidden">
-                  <img
-                    src={it.thumbnail}
-                    alt={it.title}
-                    className="w-full h-full object-cover transition duration-300 group-hover:scale-[1.06]"
-                  />
-                  {it.badge ? (
-                    <div className="absolute top-3 left-3 text-[11px] font-extrabold px-3 py-1 rounded-full border bg-white/80 border-black/10 text-[#0B1220]">
-                      {it.badge}
-                    </div>
-                  ) : null}
-                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/55 to-transparent" />
-                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition">
-                    <div className="w-10 h-10 rounded-full bg-white/90 text-black flex items-center justify-center font-black shadow-xl">
-                      ▶
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="font-extrabold line-clamp-2 text-[#0B1220]">{it.title}</div>
-                  {it.subtitle ? (
-                    <div className="mt-2 text-xs line-clamp-1 text-[#0B1220]/60">{it.subtitle}</div>
-                  ) : null}
-                </div>
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="mt-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-20">
         <div>
-          <h2 className={`text-xl sm:text-2xl font-extrabold ${t.text}`}>{title}</h2>
-          <p className={`text-xs sm:text-sm ${t.sub}`}>Défilement horizontal</p>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[color:var(--foreground)]">{title}</h2>
+          <p className="text-xs sm:text-sm text-[color:var(--foreground)]/60">Défilement horizontal</p>
         </div>
 
         {seeAllHref ? (
           <Link
             href={seeAllHref}
-            className={`text-sm font-bold ${t.sub} hover:opacity-90 relative z-20 pointer-events-auto`}
+            className="relative z-20 pointer-events-auto text-sm font-bold text-[color:var(--foreground)]/60 hover:opacity-90"
           >
             Voir tout →
           </Link>
@@ -133,14 +66,14 @@ export default function RowRailOneToOne({
       {/* Rail wrapper */}
       <div className="relative">
         {/* Edge fades (Netflix feeling) */}
-        <div className="pointer-events-none hidden lg:block absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-[#070B14] to-transparent z-10" />
-        <div className="pointer-events-none hidden lg:block absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#070B14] to-transparent z-10" />
+        <div className={edgeFadeLeftClass} />
+        <div className={edgeFadeRightClass} />
 
         {/* Arrows (desktop only) */}
         <button
           type="button"
           onClick={scrollLeft}
-          className="hidden lg:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full border backdrop-blur-xl shadow-xl items-center justify-center font-black transition bg-white/8 border border-white/10 text-white/90 hover:bg-white/10"
+          className={`${arrowClass} left-3`}
           aria-label="Scroll left"
           title="Précédent"
         >
@@ -150,7 +83,7 @@ export default function RowRailOneToOne({
         <button
           type="button"
           onClick={scrollRight}
-          className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full border backdrop-blur-xl shadow-xl items-center justify-center font-black transition bg-white/8 border border-white/10 text-white/90 hover:bg-white/10"
+          className={`${arrowClass} right-3`}
           aria-label="Scroll right"
           title="Suivant"
         >
@@ -166,12 +99,9 @@ export default function RowRailOneToOne({
             <div key={`${it.id}-${idx}`} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[300px]">
               <Link
                 href={it.href}
-                className={`group block rounded-2xl border overflow-hidden backdrop-blur-xl shadow-lg transition
-                  ${t.card} ${t.ring} card-anim
-                  hover:shadow-2xl
-                `}
+                className={cardClass}
               >
-                <div className="relative aspect-video bg-black/10 overflow-hidden">
+                <div className="relative aspect-video overflow-hidden bg-[color:var(--surface-strong)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={it.thumbnail}
@@ -180,7 +110,7 @@ export default function RowRailOneToOne({
                   />
 
                   {it.badge ? (
-                    <div className={`absolute top-3 left-3 text-[11px] font-extrabold px-3 py-1 rounded-full border ${t.badge}`}>
+                    <div className="absolute top-3 left-3 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-1 text-[11px] font-extrabold text-[color:var(--foreground)]">
                       {it.badge}
                     </div>
                   ) : null}
@@ -196,9 +126,9 @@ export default function RowRailOneToOne({
                 </div>
 
                 <div className="p-4">
-                  <div className={`font-extrabold line-clamp-2 ${t.text}`}>{it.title}</div>
+                  <div className="line-clamp-2 font-extrabold text-[color:var(--foreground)]">{it.title}</div>
                   {it.subtitle ? (
-                    <div className={`mt-2 text-xs line-clamp-1 ${t.sub}`}>{it.subtitle}</div>
+                    <div className="mt-2 line-clamp-1 text-xs text-[color:var(--foreground)]/60">{it.subtitle}</div>
                   ) : null}
                 </div>
               </Link>

@@ -166,14 +166,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.style.setProperty('--text-scale', String(textScale));
     root.dataset.dataSaver = dataSaver ? '1' : '0';
-    const accentMap: Record<Accent, { a: string; b: string; border: string; soft: string }> = {
-      blue: { a: '#2563eb', b: '#0ea5e9', border: 'rgba(37, 99, 235, 0.55)', soft: 'rgba(37, 99, 235, 0.25)' },
-      emerald: { a: '#10b981', b: '#22c55e', border: 'rgba(16, 185, 129, 0.55)', soft: 'rgba(16, 185, 129, 0.22)' },
-      amber: { a: '#f59e0b', b: '#f97316', border: 'rgba(245, 158, 11, 0.55)', soft: 'rgba(245, 158, 11, 0.22)' },
+    const accentMap: Record<Accent, { a: string; b: string; rgb: string; border: string; soft: string }> = {
+      blue: { a: '#2563eb', b: '#0ea5e9', rgb: '37, 99, 235', border: 'rgba(37, 99, 235, 0.55)', soft: 'rgba(37, 99, 235, 0.25)' },
+      emerald: { a: '#10b981', b: '#22c55e', rgb: '16, 185, 129', border: 'rgba(16, 185, 129, 0.55)', soft: 'rgba(16, 185, 129, 0.22)' },
+      amber: { a: '#f59e0b', b: '#f97316', rgb: '245, 158, 11', border: 'rgba(245, 158, 11, 0.55)', soft: 'rgba(245, 158, 11, 0.22)' },
     };
     const colors = accentMap[accent];
     root.style.setProperty('--accent', colors.a);
     root.style.setProperty('--accent-2', colors.b);
+    root.style.setProperty('--accent-rgb', colors.rgb);
     root.style.setProperty('--accent-border', colors.border);
     root.style.setProperty('--accent-soft', colors.soft);
   }, [textScale, dataSaver, accent]);

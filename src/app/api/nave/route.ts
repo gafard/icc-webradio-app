@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
+import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,6 @@ type NaveTopic = {
 };
 
 const DEFAULT_LIMIT = 50;
-const SQLITE_BIN = process.env.SQLITE3_PATH || '/usr/bin/sqlite3';
 
 function resolveDbPath(): string | null {
   const homeDir = process.env.HOME ? path.join(process.env.HOME, 'Downloads', 'g', 'bible-strong-databases') : null;
@@ -57,6 +57,7 @@ function runQuery(sql: string, params: Record<string, string | number> = {}) {
   if (!dbPath) {
     throw new Error('NAVE_DB_PATH introuvable. Définis NAVE_DB_PATH vers nave.sqlite.');
   }
+  const sqlite = assertSqliteRuntime();
   const args: string[] = ['-json'];
   for (const [name, value] of Object.entries(params)) {
     args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
@@ -64,9 +65,9 @@ function runQuery(sql: string, params: Record<string, string | number> = {}) {
   args.push(dbPath);
   args.push(sql);
 
-  console.log('[DEBUG Nave] Executing:', SQLITE_BIN, args);
+  console.log('[DEBUG Nave] Executing:', sqlite.binaryPath, args);
   try {
-    const output = execFileSync(SQLITE_BIN, args, { encoding: 'utf8' }).trim();
+    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
     console.log('[DEBUG Nave] Output length:', output.length);
     if (!output) return [];
     return JSON.parse(output);

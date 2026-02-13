@@ -59,13 +59,13 @@ export default async function VideosPage() {
     <AppShell>
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white mb-2">Vidéos</h1>
-          <p className="text-white/70">Recherche + lecture via /watch</p>
+          <h1 className="text-3xl font-extrabold text-[color:var(--foreground)] mb-2">Vidéos</h1>
+          <p className="text-[color:var(--foreground)]/70">Recherche + lecture via /watch</p>
         </div>
 
         {videos.length === 0 ? (
-          <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 text-center text-white">
-            Aucune vidéo chargée. Vérifie l’ID de chaîne dans <code className="bg-white/20 px-2 py-1 rounded">.env.local</code>.
+          <div className="glass-panel rounded-3xl border border-[color:var(--border-soft)] p-8 text-center text-[color:var(--foreground)]">
+            Aucune vidéo chargée. Vérifie l’ID de chaîne dans <code className="rounded bg-[color:var(--surface)] px-2 py-1">.env.local</code>.
           </div>
         ) : (
           <VideosGrid videos={videos} />

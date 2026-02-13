@@ -29,7 +29,7 @@ export default function MaListePage() {
 
         {ids.length === 0 ? (
           <div className="glass-panel rounded-3xl p-8 text-center text-[color:var(--foreground)]">
-            Ta liste est vide. Va dans <b className="text-blue-300">Vidéos</b> et ajoute des favoris ⭐
+            Ta liste est vide. Va dans <b className="text-blue-700 dark:text-blue-300">Vidéos</b> et ajoute des favoris ⭐
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

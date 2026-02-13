@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## SQLite Runtime Notes
+
+- SQLite databases are embedded in `data/`:
+  - `data/strong.sqlite`
+  - `data/treasury.sqlite`
+  - `data/matthew_henry.sqlite`
+  - `data/nave.sqlite`
+- `next.config.ts` includes these files in server traces for API routes via `outputFileTracingIncludes`.
+- Runtime check endpoint:
+  - `GET /api/sqlite/health`
+  - Returns `200` when `sqlite3` CLI and all SQLite files are available at runtime.
+  - Returns `503` with diagnostics when something is missing.
+- Note:
+  - If `STRONG_DB_PATH`, `TREASURY_DB_PATH`, `MATTHEW_HENRY_DB_PATH`, `NAVE_DB_PATH` are set, APIs will use those explicit paths first.
+  - For fully embedded mode, unset these env vars and rely on `data/*.sqlite`.

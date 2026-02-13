@@ -64,17 +64,21 @@ export default function CommunityComposer({
 
   const normalizedMedia = useMemo(() => normalizeUrl(mediaUrl), [mediaUrl]);
   const normalizedLink = useMemo(() => normalizeUrl(linkUrl), [linkUrl]);
+  const authorDisplayName = useMemo(
+    () => identity?.displayName?.trim() || t('identity.guest'),
+    [identity?.displayName, t]
+  );
   const imagePreview = useMemo(() => {
     if (localImageDataUrl) return localImageDataUrl;
     return normalizedMedia && isLikelyImageUrl(normalizedMedia) ? normalizedMedia : '';
   }, [localImageDataUrl, normalizedMedia]);
 
   const canPost = useMemo(() => {
-    const nameOk = !!identity?.displayName?.trim();
+    const hasIdentity = !!identity?.deviceId;
     const hasText = content.trim().length >= 3;
     const hasExtras = !!localImageDataUrl || !!normalizedMedia || !!normalizedLink;
-    return nameOk && (hasText || hasExtras) && !busy;
-  }, [identity, content, localImageDataUrl, normalizedMedia, normalizedLink, busy]);
+    return hasIdentity && (hasText || hasExtras) && !busy;
+  }, [identity?.deviceId, content, localImageDataUrl, normalizedMedia, normalizedLink, busy]);
 
   const clearMedia = () => {
     setMediaUrl('');
@@ -124,7 +128,7 @@ export default function CommunityComposer({
 
       const finalMedia = localImageDataUrl || normalizedMedia || null;
       await createPost({
-        author_name: identity.displayName.trim(),
+        author_name: authorDisplayName,
         author_device_id: identity.deviceId,
         content: parts.join('\n\n').trim(),
         media_url: finalMedia,
@@ -152,7 +156,7 @@ export default function CommunityComposer({
   };
 
   const publishStory = async () => {
-    if (!identity?.displayName?.trim()) return;
+    if (!identity) return;
     setError(null);
     setBusy(true);
     try {
@@ -165,7 +169,7 @@ export default function CommunityComposer({
 
       const { dataUrl: png } = await renderVerseStoryPng(verse, { style: 'gradient' });
       await createStory({
-        author_name: identity.displayName.trim(),
+        author_name: authorDisplayName,
         author_device_id: identity.deviceId,
         verse_reference: `${verse.book} ${verse.chapter}:${verse.verse}`,
         verse_text: verse.text,
@@ -189,7 +193,7 @@ export default function CommunityComposer({
       .join('') || 'I';
 
   return (
-    <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/40 p-5 md:p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+    <div className="relative overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5 md:p-6 shadow-[var(--shadow-soft)] backdrop-blur-xl">
       {/* Ambient glow */}
       <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-[color:var(--accent)]/10 blur-3xl" />
 
@@ -197,7 +201,7 @@ export default function CommunityComposer({
         {/* Avatar with glow */}
         <div className="relative shrink-0 hidden sm:block">
           <div className="absolute inset-0 bg-[color:var(--accent)]/20 rounded-2xl blur-md" />
-          <div className="relative h-12 w-12 rounded-2xl border border-white/20 bg-gradient-to-br from-slate-700/80 to-slate-800/90 flex items-center justify-center text-sm font-bold text-white shadow-lg">
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-sm font-bold text-[color:var(--foreground)] shadow-lg">
             {initials}
           </div>
         </div>
@@ -205,22 +209,22 @@ export default function CommunityComposer({
         <div className="flex-1 min-w-0">
           {!identity?.displayName ? (
             <div className="mb-4">
-              <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-500 mb-2">{t('composer.noAccountPseudo')}</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--foreground)]/60">{t('composer.noAccountPseudo')}</div>
               <input
-                className="w-full h-11 rounded-xl bg-slate-950/50 border border-white/10 px-4 text-sm text-white placeholder:text-slate-600 outline-none focus:border-[color:var(--accent-border)]/50 transition-colors shadow-inner"
+                className="h-11 w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-sm text-[color:var(--foreground)] outline-none shadow-inner transition-colors placeholder:text-[color:var(--foreground)]/45 focus:border-[color:var(--accent-border)]/50"
                 placeholder={t('composer.namePlaceholder')}
                 onChange={(e) => updateName(e.target.value)}
               />
             </div>
           ) : (
-            <div className="text-xs text-slate-500 font-medium mb-2">
+            <div className="mb-2 text-xs font-medium text-[color:var(--foreground)]/60">
               {t('composer.postAs', { name: identity.displayName })}
             </div>
           )}
 
-          <div className="relative rounded-2xl border border-white/10 bg-slate-950/30 p-4 transition-all focus-within:border-white/20 focus-within:bg-slate-950/50">
+          <div className="relative rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 transition-all focus-within:border-[color:var(--border-strong)] focus-within:bg-[color:var(--surface)]">
             <textarea
-              className="w-full min-h-[104px] bg-transparent text-[15px] leading-relaxed text-slate-200 outline-none resize-none placeholder:text-slate-600"
+              className="min-h-[104px] w-full resize-none bg-transparent text-[15px] leading-relaxed text-[color:var(--foreground)]/88 outline-none placeholder:text-[color:var(--foreground)]/45"
               placeholder={placeholder || t('composer.defaultPlaceholder')}
               value={content}
               maxLength={1200}
@@ -229,13 +233,13 @@ export default function CommunityComposer({
 
             {showMedia ? (
               <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="rounded-2xl border border-white/5 bg-slate-900/80 p-4 space-y-4">
-                  <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950/50 w-fit">
+                <div className="space-y-4 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+                  <div className="flex w-fit items-center gap-2 rounded-xl bg-[color:var(--surface-strong)] p-1">
                     <button
                       type="button"
                       className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${mediaMode === 'upload'
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-300'
+                        ? 'bg-[color:var(--surface)] text-[color:var(--foreground)] shadow-sm'
+                        : 'text-[color:var(--foreground)]/55 hover:text-[color:var(--foreground)]/80'
                         }`}
                       onClick={() => setMediaMode('upload')}
                     >
@@ -244,8 +248,8 @@ export default function CommunityComposer({
                     <button
                       type="button"
                       className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${mediaMode === 'url'
-                        ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-300'
+                        ? 'bg-[color:var(--surface)] text-[color:var(--foreground)] shadow-sm'
+                        : 'text-[color:var(--foreground)]/55 hover:text-[color:var(--foreground)]/80'
                         }`}
                       onClick={() => setMediaMode('url')}
                     >
@@ -264,20 +268,20 @@ export default function CommunityComposer({
                       />
                       <button
                         type="button"
-                        className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-6 text-sm font-medium text-slate-400 hover:bg-white/[0.05] hover:border-white/20 transition-all"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] py-6 text-sm font-medium text-[color:var(--foreground)]/70 transition-all hover:bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <ImagePlus size={20} className="text-[color:var(--accent)]" />
                         {localImageName || "Sélectionner une image"}
                       </button>
-                      <div className="text-[10px] text-slate-600 text-center uppercase tracking-wider font-bold">
+                      <div className="text-center text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground)]/50">
                         PNG, JPG, WEBP • {MAX_LOCAL_IMAGE_MB} Mo max
                       </div>
                     </div>
                   ) : (
                     <div className="relative">
                       <input
-                        className="w-full h-11 rounded-xl bg-slate-950 border border-white/5 pl-4 pr-10 text-sm text-white placeholder:text-slate-700 outline-none"
+                        className="h-11 w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] pl-4 pr-10 text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--foreground)]/45"
                         placeholder="URL image (https://...)"
                         value={mediaUrl}
                         onChange={(e) => {
@@ -288,7 +292,7 @@ export default function CommunityComposer({
                       />
                       <button
                         type="button"
-                        className="absolute right-2 top-2 h-7 w-7 grid place-items-center rounded-lg bg-white/5 text-slate-400 hover:text-rose-400"
+                        className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--surface)] text-[color:var(--foreground)]/60 hover:text-rose-400"
                         onClick={clearMedia}
                       >
                         <X size={14} />
@@ -297,7 +301,7 @@ export default function CommunityComposer({
                   )}
                 </div>
                 {imagePreview ? (
-                  <div className="mt-4 relative group overflow-hidden rounded-2xl border border-white/10">
+                  <div className="group relative mt-4 overflow-hidden rounded-2xl border border-[color:var(--border-soft)]">
                     <img src={imagePreview} alt="Apercu media" className="h-48 w-full object-cover" />
                     <button
                       type="button"
@@ -315,16 +319,16 @@ export default function CommunityComposer({
               <div className="mt-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="relative flex-1">
                   <input
-                    className="w-full h-11 rounded-xl bg-slate-950 border border-white/10 pl-4 pr-10 text-sm text-white placeholder:text-slate-700 outline-none"
+                    className="h-11 w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] pl-4 pr-10 text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--foreground)]/45"
                     placeholder="Lien a partager (https://...)"
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                   />
-                  <Link2 size={16} className="absolute right-3 top-3 text-slate-600" />
+                  <Link2 size={16} className="absolute right-3 top-3 text-[color:var(--foreground)]/50" />
                 </div>
                 <button
                   type="button"
-                  className="h-11 w-11 grid place-items-center rounded-xl bg-white/5 text-slate-500 hover:text-rose-400 transition-colors"
+                  className="grid h-11 w-11 place-items-center rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/55 transition-colors hover:text-rose-400"
                   onClick={() => {
                     setLinkUrl('');
                     setShowLink(false);
@@ -339,16 +343,16 @@ export default function CommunityComposer({
               <div className="mt-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="relative flex-1">
                   <input
-                    className="w-full h-11 rounded-xl bg-slate-950 border border-white/10 pl-4 pr-10 text-sm text-white placeholder:text-slate-700 outline-none"
+                    className="h-11 w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] pl-4 pr-10 text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--foreground)]/45"
                     placeholder="Ville / quartier"
                     value={place}
                     onChange={(e) => setPlace(e.target.value)}
                   />
-                  <MapPin size={16} className="absolute right-3 top-3 text-slate-600" />
+                  <MapPin size={16} className="absolute right-3 top-3 text-[color:var(--foreground)]/50" />
                 </div>
                 <button
                   type="button"
-                  className="h-11 w-11 grid place-items-center rounded-xl bg-white/5 text-slate-500 hover:text-rose-400 transition-colors"
+                  className="grid h-11 w-11 place-items-center rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/55 transition-colors hover:text-rose-400"
                   onClick={() => {
                     setPlace('');
                     setShowPlace(false);
@@ -359,11 +363,11 @@ export default function CommunityComposer({
               </div>
             ) : null}
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border-soft)] pt-4">
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showMedia ? 'bg-white/15 text-white ring-1 ring-white/10' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showMedia ? 'bg-[color:var(--surface)] text-[color:var(--foreground)] ring-1 ring-[color:var(--border-soft)]' : 'bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/65 hover:bg-[color:var(--surface)]'
                     }`}
                   onClick={() => setShowMedia((prev) => !prev)}
                 >
@@ -372,7 +376,7 @@ export default function CommunityComposer({
                 </button>
                 <button
                   type="button"
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showLink ? 'bg-white/15 text-white ring-1 ring-white/10' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showLink ? 'bg-[color:var(--surface)] text-[color:var(--foreground)] ring-1 ring-[color:var(--border-soft)]' : 'bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/65 hover:bg-[color:var(--surface)]'
                     }`}
                   onClick={() => setShowLink((prev) => !prev)}
                 >
@@ -381,7 +385,7 @@ export default function CommunityComposer({
                 </button>
                 <button
                   type="button"
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showPlace ? 'bg-white/15 text-white ring-1 ring-white/10' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${showPlace ? 'bg-[color:var(--surface)] text-[color:var(--foreground)] ring-1 ring-[color:var(--border-soft)]' : 'bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/65 hover:bg-[color:var(--surface)]'
                     }`}
                   onClick={() => setShowPlace((prev) => !prev)}
                 >
@@ -390,13 +394,13 @@ export default function CommunityComposer({
                 </button>
               </div>
 
-              <div className="text-[10px] uppercase font-black tracking-widest text-slate-600">{content.length} / 1200</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[color:var(--foreground)]/55">{content.length} / 1200</div>
             </div>
 
             <div className="mt-5 flex flex-wrap justify-end gap-3">
               {allowStory ? (
                 <button
-                  className="flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+                  className="flex items-center gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-5 py-3 text-sm font-bold text-[color:var(--foreground)]/80 transition-all hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)]"
                   onClick={publishStory}
                   disabled={busy}
                 >
@@ -408,7 +412,7 @@ export default function CommunityComposer({
               <button
                 className={`flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold shadow-lg transition-all active:scale-95 disabled:opacity-30 ${canPost
                   ? 'bg-gradient-to-br from-[color:var(--accent)] to-[color:var(--accent-strong)] text-white shadow-[color:var(--accent)]/20'
-                  : 'bg-white/5 text-slate-600 cursor-not-allowed'
+                  : 'border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/45 cursor-not-allowed'
                   }`}
                 disabled={!canPost}
                 onClick={submit}
@@ -424,7 +428,7 @@ export default function CommunityComposer({
           </div>
 
           {error ? (
-            <div className="mt-4 flex items-center gap-2 text-sm text-rose-400 font-medium bg-rose-400/10 p-3 rounded-xl border border-rose-400/20">
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm font-medium text-rose-700 dark:text-rose-300">
               <X size={16} className="shrink-0" />
               <span>{error}</span>
             </div>

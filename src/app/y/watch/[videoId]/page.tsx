@@ -20,9 +20,9 @@ export default async function YWatchPage({
     return (
       <AppShell>
         <main className="px-4 py-12">
-          <div className="mx-auto max-w-3xl text-white text-center">
+          <div className="mx-auto max-w-3xl text-center text-[color:var(--foreground)]">
             <h2 className="text-2xl font-bold mb-4">Vidéo indisponible</h2>
-            <p className="text-gray-300">
+            <p className="text-[color:var(--foreground)]/70">
               Cette vidéo n'existe pas ou n'est plus accessible. Veuillez vérifier l'URL ou revenir en arrière.
             </p>
           </div>

@@ -17,7 +17,7 @@ export default function Rail({
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <h2 className="text-xl font-bold text-[color:var(--foreground)]">{title}</h2>
       </div>
 
       <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3">

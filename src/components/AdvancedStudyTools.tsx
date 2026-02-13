@@ -1,4 +1,4 @@
-import { useState, useEffect, type MouseEvent } from 'react';
+import { useState, useEffect, useCallback, type MouseEvent } from 'react';
 import { X, Search, Hash, Link as LinkIcon, Bookmark, MessageSquare, Tag, BookText, BookOpen } from 'lucide-react';
 import strongService from '../services/strong-service';
 import bibleStrongMapper from '../services/bible-strong-mapper';
@@ -259,7 +259,7 @@ const AdvancedStudyTools = ({
   };
 
   // Sauvegarder les modifications
-  const saveChanges = () => {
+  const saveChanges = useCallback(() => {
     const ref = `${bookId}_${chapter}_${verse}`;
     
     // Sauvegarder les tags
@@ -270,7 +270,25 @@ const AdvancedStudyTools = ({
     
     // Sauvegarder les notes
     localStorage.setItem(`bible_notes_${ref}`, verseNotes);
-  };
+  }, [bookId, chapter, links, verse, verseNotes, verseTags]);
+
+  const closeWithSave = useCallback(() => {
+    saveChanges();
+    onClose();
+  }, [onClose, saveChanges]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeWithSave();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, closeWithSave]);
 
   // Gestion des tags
   const predefinedTags = [
@@ -468,15 +486,20 @@ const AdvancedStudyTools = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center z-[15000] p-4">
-      <div className="bible-paper rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col text-[color:var(--foreground)]">
+    <div
+      className="fixed inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center z-[17000] p-4"
+      onClick={closeWithSave}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bible-paper rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col text-[color:var(--foreground)]"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
           <h2 className="text-xl font-bold">Outils d'étude avancés</h2>
           <button 
-            onClick={() => {
-              saveChanges();
-              onClose();
-            }}
+            onClick={closeWithSave}
             className="btn-icon h-9 w-9"
             aria-label="Fermer et sauvegarder"
           >
@@ -851,10 +874,7 @@ const AdvancedStudyTools = ({
 
         <div className="p-4 border-t border-black/10 dark:border-white/10 flex justify-end">
           <button
-            onClick={() => {
-              saveChanges();
-              onClose();
-            }}
+            onClick={closeWithSave}
             className="btn-base btn-primary text-sm"
           >
             Fermer et sauvegarder

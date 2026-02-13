@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +20,6 @@ type StrongEntry = {
 type StrongResult = { number: string; language: 'hebrew' | 'greek'; entry: StrongEntry };
 
 const DEFAULT_LIMIT = 50;
-const SQLITE_BIN = process.env.SQLITE3_PATH || '/usr/bin/sqlite3';
 
 function resolveDbPath(): string | null {
   const homeDir = process.env.HOME ? path.join(process.env.HOME, 'Downloads', 'g', 'bible-strong-databases') : null;
@@ -59,12 +59,13 @@ function runQuery(sql: string, params: Record<string, string | number> = {}) {
   if (!dbPath) {
     throw new Error('STRONG_DB_PATH introuvable. Définis STRONG_DB_PATH vers strong.sqlite.');
   }
+  const sqlite = assertSqliteRuntime();
   const args: string[] = ['-json', dbPath];
   for (const [name, value] of Object.entries(params)) {
     args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
   }
   args.push(sql);
-  const output = execFileSync(SQLITE_BIN, args, { encoding: 'utf8' }).trim();
+  const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
   if (!output) return [];
   return JSON.parse(output);
 }

@@ -49,17 +49,18 @@ export async function POST(req: Request) {
   }
 
   const payload = {
-    user_id: deviceId,
+    device_id: deviceId || null,
     endpoint,
     p256dh,
     auth,
+    locale: locale || null,
     subscription_json: body.subscription ?? null,
     updated_at: new Date().toISOString(),
   };
 
   const { error } = await supabaseServer
     .from('push_subscriptions')
-    .upsert(payload, { onConflict: 'user_id' }); // Utilisation de 'user_id' comme clé de conflit
+    .upsert(payload, { onConflict: 'endpoint' });
 
   if (error) {
     return NextResponse.json(

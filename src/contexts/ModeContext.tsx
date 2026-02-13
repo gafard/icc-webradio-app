@@ -34,7 +34,14 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
   // Appliquer la classe 'dark' sur l'élément html
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', mode === 'night');
+      const root = document.documentElement;
+      root.classList.toggle('dark', mode === 'night');
+      // Compat with legacy selectors still using `:root[data-theme="light"]`.
+      if (mode === 'day') {
+        root.setAttribute('data-theme', 'light');
+      } else {
+        root.removeAttribute('data-theme');
+      }
     }
   }, [mode]);
 

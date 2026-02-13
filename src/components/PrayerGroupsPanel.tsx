@@ -238,8 +238,8 @@ export default function PrayerGroupsPanel() {
                 onClick={() => setSelectedId(g.id)}
                 className={`w-full text-left rounded-xl border px-3 py-2 transition ${
                   selectedId === g.id
-                    ? 'bg-white/10 border-white/20 text-[color:var(--foreground)]'
-                    : 'bg-white/5 border-white/10 text-[color:var(--foreground)]/70 hover:bg-white/10'
+                    ? 'bg-[color:var(--surface)] border-[color:var(--border-strong)] text-[color:var(--foreground)]'
+                    : 'bg-[color:var(--surface-strong)] border-[color:var(--border-soft)] text-[color:var(--foreground)]/70 hover:bg-[color:var(--surface)]'
                 }`}
               >
                 <div className="font-semibold text-sm">{g.name}</div>
@@ -314,14 +314,14 @@ export default function PrayerGroupsPanel() {
                   </div>
                 ) : (
                   (posts[currentGroup.id] || []).map((p) => (
-                    <div key={p.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div key={p.id} className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-white/90 text-sm font-semibold">{p.author}</div>
-                        <div className="text-[11px] text-white/40">
+                        <div className="text-sm font-semibold text-[color:var(--foreground)]/90">{p.author}</div>
+                        <div className="text-[11px] text-[color:var(--foreground)]/55">
                           {new Date(p.createdAt).toLocaleString('fr-FR')}
                         </div>
                       </div>
-                      <div className="mt-2 text-white/75 text-sm leading-6">{p.content}</div>
+                      <div className="mt-2 text-sm leading-6 text-[color:var(--foreground)]/80">{p.content}</div>
                       <div className="mt-3 flex items-center gap-2">
                         <button
                           type="button"
@@ -330,7 +330,7 @@ export default function PrayerGroupsPanel() {
                         >
                           🙏 J’ai prié
                         </button>
-                        <span className="text-xs text-white/50">{p.prayed} prières</span>
+                        <span className="text-xs text-[color:var(--foreground)]/60">{p.prayed} prières</span>
                       </div>
                     </div>
                   ))

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { requestRadioPlay, subscribeRadioPlayback } from '../lib/radioPlayback';
 import { pauseRadio, playRadio } from './radioAudioEngine';
 
@@ -12,6 +13,7 @@ export default function MobileRadioPlayer({
 }: {
   streamUrl?: string;
 }) {
+  const pathname = usePathname();
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [coverIndex, setCoverIndex] = useState(0);
@@ -47,7 +49,12 @@ export default function MobileRadioPlayer({
     requestRadioPlay('mobile');
   };
 
-  if (!hasMounted) {
+  const hideOnRoute =
+    pathname?.startsWith('/bible') ||
+    pathname?.startsWith('/community') ||
+    pathname?.startsWith('/spiritual');
+
+  if (!hasMounted || hideOnRoute) {
     return null;
   }
 
@@ -55,7 +62,7 @@ export default function MobileRadioPlayer({
 
   return (
     <div
-      className="sm:hidden fixed left-0 right-0 z-[9999] px-4 pointer-events-none"
+      className="mobile-radio-player sm:hidden fixed left-0 right-0 z-[9999] px-4 pointer-events-none"
       style={{
         bottom: 'calc(72px + env(safe-area-inset-bottom) + 12px)',
       }}

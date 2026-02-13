@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { requestRadioPlay, subscribeRadioPlayback } from '../lib/radioPlayback';
 import { pauseRadio, playRadio } from './radioAudioEngine';
 
@@ -8,6 +9,7 @@ const LIVE_URL = 'https://streamer.iccagoe.net:8443/live';
 const COVER_FALLBACKS = ['/icons/header-logo-web.jpg', '/icons/logo-sidebar.jpg', '/hero-radio.jpg'];
 
 export default function DynamicRadioPlayer() {
+  const pathname = usePathname();
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [coverIndex, setCoverIndex] = useState(0);
@@ -46,13 +48,18 @@ export default function DynamicRadioPlayer() {
 
   const activeCover = COVER_FALLBACKS[Math.min(coverIndex, COVER_FALLBACKS.length - 1)];
 
-  if (!hasMounted) {
+  const hideOnRoute =
+    pathname?.startsWith('/bible') ||
+    pathname?.startsWith('/community') ||
+    pathname?.startsWith('/spiritual');
+
+  if (!hasMounted || hideOnRoute) {
     return null;
   }
 
   return (
     <div
-      className="hidden sm:block fixed left-0 right-0 z-[9999] px-4 pointer-events-none"
+      className="dynamic-radio-player hidden sm:block fixed left-0 right-0 z-[9999] px-4 pointer-events-none"
       style={{
         bottom: 'calc(72px + env(safe-area-inset-bottom) + 12px)',
       }}

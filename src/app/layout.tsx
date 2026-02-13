@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Manrope, Special_Elite, Libre_Baskerville } from 'next/font/google';
+import { Manrope, Merriweather, Special_Elite } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import DynamicRadioPlayer from '../components/DynamicRadioPlayer';
 import MobileRadioPlayer from '../components/MobileRadioPlayer';
@@ -7,6 +8,8 @@ import { ModeProvider } from '../contexts/ModeContext';
 import { SettingsProvider } from '../contexts/SettingsContext';
 import { I18nProvider } from '../contexts/I18nContext';
 import SettingsModal from '../components/SettingsModal';
+import GlobalCallManager from '../components/GlobalCallManager';
+import NotificationManager from '../components/NotificationManager';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -22,11 +25,24 @@ const specialElite = Special_Elite({
   display: 'swap',
 });
 
-const libreBaskerville = Libre_Baskerville({
+const merriweather = Merriweather({
   subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-serif',
+  weight: ['300', '400', '700'],
+  variable: '--font-merriweather',
   display: 'swap',
+});
+
+const tiktokSans = localFont({
+  src: [
+    {
+      path: './fonts/TikTokSans-Latin.woff2',
+      style: 'normal',
+      weight: '300 900',
+    },
+  ],
+  variable: '--font-tiktok-sans',
+  display: 'swap',
+  fallback: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
@@ -61,7 +77,7 @@ export default function RootLayout({
     <html
       lang="fr"
       suppressHydrationWarning={true}
-      className={`${manrope.variable} ${specialElite.variable} ${libreBaskerville.variable}`}
+      className={`${manrope.variable} ${specialElite.variable} ${merriweather.variable} ${tiktokSans.variable}`}
     >
       <body className="pb-[110px] font-sans antialiased" suppressHydrationWarning={true}>
         <I18nProvider>
@@ -69,6 +85,8 @@ export default function RootLayout({
             <SettingsProvider>
               {children}
               <SettingsModal />
+              <NotificationManager />
+              <GlobalCallManager />
               <DynamicRadioPlayer />
               <MobileRadioPlayer />
             </SettingsProvider>

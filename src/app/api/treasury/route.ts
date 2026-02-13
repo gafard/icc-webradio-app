@@ -3,10 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
+import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
 
 export const runtime = 'nodejs';
-
-const SQLITE_BIN = process.env.SQLITE3_PATH || '/usr/bin/sqlite3';
 
 function resolveDbPath(): string | null {
   const homeDir = process.env.HOME ? path.join(process.env.HOME, 'Downloads', 'g', 'bible-strong-databases') : null;
@@ -50,6 +49,7 @@ function runQuery(sql: string, params: Record<string, string | number> = {}) {
   if (!dbPath) {
     throw new Error('TREASURY_DB_PATH introuvable. Définis TREASURY_DB_PATH vers treasury.sqlite.');
   }
+  const sqlite = assertSqliteRuntime();
   const args: string[] = ['-json'];
   for (const [name, value] of Object.entries(params)) {
     args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
@@ -57,9 +57,9 @@ function runQuery(sql: string, params: Record<string, string | number> = {}) {
   args.push(dbPath);
   args.push(sql);
 
-  console.log('[DEBUG Treasury] Executing:', SQLITE_BIN, args);
+  console.log('[DEBUG Treasury] Executing:', sqlite.binaryPath, args);
   try {
-    const output = execFileSync(SQLITE_BIN, args, { encoding: 'utf8' }).trim();
+    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
     console.log('[DEBUG Treasury] Output length:', output.length);
     if (!output) return [];
     return JSON.parse(output);
@@ -101,16 +101,34 @@ export async function GET(req: Request) {
     }
 
     console.log('[DEBUG Treasury] Querying ID:', id);
-    const rows = runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
-      '@id': id,
-    });
-    const raw = rows[0]?.ref ?? '[]';
-    console.log('[DEBUG Treasury] Raw length:', raw.length);
+    // Support both known schemas:
+    // - VERSES(id, ref)
+    // - COMMENTAIRES(id, commentaires)
+    const rows =
+      runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
+        '@id': id,
+      }) ??
+      [];
+    const fallbackRows =
+      rows.length > 0
+        ? rows
+        : runQuery('SELECT commentaires AS ref FROM COMMENTAIRES WHERE id=@id LIMIT 1;', {
+            '@id': id,
+          }) ?? [];
+    const raw = fallbackRows[0]?.ref;
+
     let entries: string[] = [];
-    try {
-      entries = JSON.parse(raw);
-    } catch {
-      entries = [];
+    if (Array.isArray(raw)) {
+      entries = raw.map((value) => String(value)).filter(Boolean);
+    } else if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        entries = Array.isArray(parsed)
+          ? parsed.map((value) => String(value)).filter(Boolean)
+          : [];
+      } catch {
+        entries = [];
+      }
     }
 
     return NextResponse.json({ id, entries });

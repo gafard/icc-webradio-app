@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const query = supabaseServer.from('push_subscriptions').delete();
   const { error } = endpoint 
     ? await query.eq('endpoint', endpoint) 
-    : await query.eq('user_id', deviceId);
+    : await query.eq('device_id', deviceId);
     
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

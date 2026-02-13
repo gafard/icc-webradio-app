@@ -388,7 +388,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     return (
       <AppShell>
         <main className="px-4 py-12">
-          <div className="mx-auto max-w-3xl text-white">Post introuvable.</div>
+          <div className="mx-auto max-w-3xl text-[color:var(--foreground)]">Post introuvable.</div>
         </main>
       </AppShell>
     );

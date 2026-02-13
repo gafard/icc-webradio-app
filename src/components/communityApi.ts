@@ -4,6 +4,7 @@ import { renderVerseStoryPng } from '../lib/storyImage';
 export type CommunityPost = {
   id: string;
   created_at: string;
+  updated_at?: string | null;
   author_name: string;
   author_device_id: string;
   content: string;
@@ -275,6 +276,110 @@ function extractInlineGroup(content: string): { content: string; groupId: string
   };
 }
 
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  if (!dataUrl.startsWith('data:')) return null;
+  const commaIndex = dataUrl.indexOf(',');
+  if (commaIndex < 0) return null;
+
+  const metadata = dataUrl.slice(5, commaIndex);
+  const payload = dataUrl.slice(commaIndex + 1);
+  const mimeType = metadata.split(';')[0] || 'application/octet-stream';
+  const isBase64 = metadata.includes(';base64');
+
+  try {
+    if (isBase64) {
+      if (typeof atob !== 'function') return null;
+      const binary = atob(payload);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: mimeType });
+    }
+
+    const decoded = decodeURIComponent(payload);
+    return new Blob([decoded], { type: mimeType });
+  } catch {
+    return null;
+  }
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    if (!isBrowser()) {
+      reject(new Error('Conversion locale indisponible.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Impossible de lire ce fichier.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function inferFileExtension(file: File) {
+  const raw = (file.name || '').split('.').pop()?.toLowerCase() || '';
+  const fromName = raw.replace(/[^a-z0-9]/g, '').slice(0, 8);
+  if (fromName) return fromName;
+
+  const mime = (file.type || '').toLowerCase();
+  if (mime.includes('webm')) return 'webm';
+  if (mime.includes('mp4')) return 'mp4';
+  if (mime.includes('mpeg')) return 'mp3';
+  if (mime.includes('ogg')) return 'ogg';
+  if (mime.includes('wav')) return 'wav';
+  if (mime.includes('jpeg')) return 'jpg';
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('gif')) return 'gif';
+  return 'bin';
+}
+
+export async function uploadCommunityMedia(file: File, authorDeviceId: string) {
+  if (!file) throw new Error('Fichier media manquant.');
+
+  if (!supabase) {
+    return fileToDataUrl(file);
+  }
+
+  const safeDevice = (authorDeviceId || 'anon')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 64) || 'anon';
+  const ext = inferFileExtension(file);
+  const fileName = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const filePath = `community-chat/${safeDevice}/${fileName}`;
+
+  let lastError: any = null;
+  for (const bucket of ['community-media', 'stories']) {
+    const attempt = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+
+    if (attempt.error) {
+      lastError = attempt.error;
+      continue;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    if (data?.publicUrl) return data.publicUrl;
+  }
+
+  // Ultimate fallback to keep feature usable when storage is misconfigured.
+  if (isBrowser() && file.size <= 6 * 1024 * 1024) {
+    try {
+      return await fileToDataUrl(file);
+    } catch {
+      // Ignore and throw dedicated upload error below.
+    }
+  }
+
+  throw new Error(lastError?.message || 'Impossible de televerser le media.');
+}
+
 function normalizePost(row: any): CommunityPost {
   const withNoInlineMedia = extractInlineMedia(String(row?.content || ''));
   const withNoInlineGroup = extractInlineGroup(withNoInlineMedia.content);
@@ -282,6 +387,7 @@ function normalizePost(row: any): CommunityPost {
   return {
     id: String(row?.id ?? ''),
     created_at: String(row?.created_at ?? new Date().toISOString()),
+    updated_at: row?.updated_at ? String(row.updated_at) : null,
     author_name: String(row?.author_name ?? ''),
     author_device_id: String(row?.author_device_id ?? row?.guest_id ?? ''),
     media_url: row?.media_url ?? withNoInlineMedia.mediaUrl ?? null,
@@ -368,6 +474,7 @@ function localCreatePost(payload: {
   const post: CommunityPost = {
     id: makeId('post'),
     created_at: new Date().toISOString(),
+    updated_at: null,
     author_name: payload.author_name,
     author_device_id: payload.author_device_id,
     content: cleanContent,
@@ -381,6 +488,35 @@ function localCreatePost(payload: {
   const next = [post, ...loadLocalPosts()];
   saveLocalPosts(next);
   return post;
+}
+
+function localUpdatePost(
+  postId: string,
+  actorDeviceId: string,
+  payload: {
+    content?: string;
+    media_url?: string | null;
+    media_type?: string | null;
+  }
+) {
+  const posts = loadLocalPosts();
+  const target = posts.find((post) => post.id === postId);
+  if (!target || target.author_device_id !== actorDeviceId) {
+    throw new Error('Modification non autorisee.');
+  }
+
+  const next = posts.map((post) => {
+    if (post.id !== postId) return post;
+    return {
+      ...post,
+      content: payload.content ?? post.content,
+      media_url: payload.media_url ?? post.media_url ?? null,
+      media_type: payload.media_type ?? post.media_type ?? null,
+      updated_at: new Date().toISOString(),
+    };
+  });
+  saveLocalPosts(next);
+  return normalizePost(next.find((post) => post.id === postId));
 }
 
 function localDeletePost(postId: string, actorDeviceId: string): DeletePostResult {
@@ -740,6 +876,8 @@ async function triggerCommunityPostPush(post: CommunityPost, actorDeviceId: stri
     const body =
       text.length > 120 ? `${text.slice(0, 119)}…` : text || 'Nouveau message dans Communaute';
     const title = `${post.author_name || 'Quelqu un'} a publie`;
+    const postUrl = post.id ? `/community?post=${encodeURIComponent(post.id)}` : '/community';
+    const tag = post.id ? `post-${post.id}` : 'community-post';
     await fetch('/api/push/community-post', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -747,8 +885,8 @@ async function triggerCommunityPostPush(post: CommunityPost, actorDeviceId: stri
         actorDeviceId,
         title,
         body,
-        url: '/community',
-        tag: 'community-post',
+        url: postUrl,
+        tag,
       }),
     });
   } catch {
@@ -985,6 +1123,58 @@ export async function createPost(payload: {
   }
 }
 
+export async function updatePost(
+  postId: string,
+  actorDeviceId: string,
+  payload: {
+    content?: string;
+    media_url?: string | null;
+    media_type?: string | null;
+  }
+) {
+  if (!postId) throw new Error('Publication introuvable.');
+  if (!actorDeviceId) throw new Error('Auteur introuvable.');
+
+  const cleanContent = payload.content?.trim();
+  const updatePayload: Record<string, any> = {};
+  if (typeof cleanContent === 'string') updatePayload.content = cleanContent;
+  if (payload.media_url !== undefined) updatePayload.media_url = payload.media_url;
+  if (payload.media_type !== undefined) updatePayload.media_type = payload.media_type;
+
+  if (Object.keys(updatePayload).length === 0) {
+    throw new Error('Aucune modification detectee.');
+  }
+
+  if (!supabase) {
+    return localUpdatePost(postId, actorDeviceId, updatePayload);
+  }
+
+  try {
+    let attempt = await supabase
+      .from('community_posts')
+      .update(updatePayload)
+      .eq('id', postId)
+      .eq('author_device_id', actorDeviceId)
+      .select('*')
+      .single();
+
+    if (attempt.error && isMissingColumnError(attempt.error, 'author_device_id')) {
+      attempt = await supabase
+        .from('community_posts')
+        .update(updatePayload)
+        .eq('id', postId)
+        .eq('guest_id', actorDeviceId)
+        .select('*')
+        .single();
+    }
+
+    if (attempt.error) throw attempt.error;
+    return normalizePost(attempt.data);
+  } catch (error: any) {
+    throw new Error(error?.message || 'Erreur lors de la mise a jour du message.');
+  }
+}
+
 export async function toggleLike(postId: string, deviceId: string) {
   if (!supabase) return localToggleLike(postId, deviceId);
 
@@ -1207,8 +1397,12 @@ export async function createStory(payload: {
       const fileName = `story_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`;
       const filePath = `community-stories/${payload.author_device_id}/${fileName}`;
       try {
-        const response = await fetch(autoImageDataUrl);
-        const blob = await response.blob();
+        let blob = dataUrlToBlob(autoImageDataUrl);
+        if (!blob) {
+          const response = await fetch(autoImageDataUrl);
+          if (!response.ok) throw new Error(`Image fetch failed (${response.status})`);
+          blob = await response.blob();
+        }
 
         // Try current bucket first, then legacy "stories" bucket.
         let uploaded = false;
@@ -1251,6 +1445,13 @@ export async function createStory(payload: {
     if (error) throw error;
     return data as CommunityStory;
   } catch (error: any) {
+    if (isMissingTableError(error, 'community_stories')) {
+      return localCreateStory(payload);
+    }
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('failed to fetch') || message.includes('network')) {
+      return localCreateStory(payload);
+    }
     throw new Error(error?.message || 'Erreur lors de la creation de la story.');
   }
 }

@@ -4,6 +4,11 @@ import { supabaseServer } from '@/lib/supabaseServer';
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  if (!supabaseServer) {
+    return NextResponse.json({ error: 'Supabase server client is not configured' }, { status: 503 });
+  }
+  const client = supabaseServer;
+
   try {
     const { callId, userId, action } = await req.json(); // action: 'accept', 'decline', 'miss'
     
@@ -12,7 +17,7 @@ export async function POST(req: Request) {
     }
 
     // Mettre à jour l'état de l'invitation
-    const { error } = await supabaseServer
+    const { error } = await client
       .from('group_call_invites')
       .update({ 
         state: action,

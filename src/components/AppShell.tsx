@@ -1,22 +1,38 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { SidebarProvider } from '../contexts/SidebarContext';
 import SidebarNav from './SidebarNav';
 import BottomNav from './BottomNav';
-import { useMode } from '../contexts/ModeContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { sendNotification } from './notifications';
 import { decodeHtmlEntities } from '../lib/wp';
 import { fetchUserState, getLocalUserState, mergeRemoteUserState, upsertUserState } from './userStateSync';
 
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { mode } = useMode();
   const { notificationsEnabled, remindersEnabled, reminderTime, dataSaver, syncId } = useSettings();
-  const [mounted, setMounted] = useState(false);
 
+  // Dev safety: prevent stale PWA caches/service worker from causing hydration mismatches.
   useEffect(() => {
-    setMounted(true);
+    if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator)) return;
+
+    void (async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((reg) => reg.unregister()));
+      } catch {
+        // ignore
+      }
+
+      if (!('caches' in window)) return;
+      try {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((key) => window.caches.delete(key)));
+      } catch {
+        // ignore
+      }
+    })();
   }, []);
 
   // Notifications: nouveaux contenus (polling léger)
@@ -156,22 +172,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [syncId]);
 
-  // Définir les classes de base pour éviter les problèmes d'hydratation
-  const bg = mounted
-    ? (mode === 'night'
-      ? 'bg-[#070B14] text-white'
-      : 'bg-gradient-to-b from-[#F8FAFC] via-[#EEF6FF] to-white text-[#0B1220]')
-    : 'bg-gradient-to-b from-[#F8FAFC] via-[#EEF6FF] to-white text-[#0B1220]'; // Valeur par défaut pendant le rendu serveur
-
-  const glow = mounted
-    ? (mode === 'night'
-      ? 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_10%,rgba(59,130,246,0.18),transparent_55%)]'
-      : 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]')
-    : 'before:pointer-events-none before:content-[""] before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_60%_0%,rgba(37,99,235,0.10),transparent_55%)]'; // Valeur par défaut pendant le rendu serveur
-
   return (
     <SidebarProvider>
-      <div className={`min-h-screen relative ${bg} ${glow}`}>
+      <div className="app-atmosphere atmospheric-noise light-particles relative min-h-screen text-[color:var(--foreground)]">
         <div className="hidden lg:block">
           <SidebarNav />
         </div>

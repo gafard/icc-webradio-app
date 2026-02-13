@@ -31,7 +31,7 @@ export default function StoriesBar() {
       </div>
 
       {status === 'error' ? (
-        <div className="text-sm text-red-300">Impossible de charger les stories.</div>
+        <div className="text-sm text-rose-700 dark:text-rose-300">Impossible de charger les stories.</div>
       ) : null}
 
       <div className="flex gap-3 overflow-x-auto pb-2">
