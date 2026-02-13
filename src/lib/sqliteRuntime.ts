@@ -20,8 +20,8 @@ export function getSqliteRuntimeStatus(): SqliteRuntimeStatus {
   cachedStatus = {
     available: true,
     binaryPath: 'sql.js',
-    version: 'sql.js (asm)',
-    checkedCandidates: ['sql.js/dist/sql-asm.js'],
+    version: 'sql.js (wasm)',
+    checkedCandidates: ['sql.js/dist/sql-wasm.wasm'],
   };
   return cachedStatus;
 }

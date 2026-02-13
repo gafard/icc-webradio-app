@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import initSqlJs from 'sql.js/dist/sql-asm.js';
+import initSqlJs from 'sql.js';
 
 type SqlParamValue = string | number | null;
 type SqlParams = Record<string, SqlParamValue>;
@@ -19,7 +19,9 @@ const dbCache = new Map<string, SqlDatabase>();
 
 async function getSqlModule() {
   if (!sqlModulePromise) {
-    sqlModulePromise = initSqlJs();
+    sqlModulePromise = initSqlJs({
+      locateFile: (file: string) => path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
+    });
   }
   return sqlModulePromise as Promise<{ Database: new (data: Uint8Array) => SqlDatabase }>;
 }
@@ -66,4 +68,3 @@ export async function runSqliteJsonQuery(
     stmt.free();
   }
 }
-

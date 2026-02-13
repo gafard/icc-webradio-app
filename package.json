@@ -27,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sql.js": "^1.4.9",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.23",
     "eslint": "^9",
