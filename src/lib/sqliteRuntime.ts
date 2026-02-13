@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
-
 type SqliteRuntimeAvailable = {
   available: true;
   binaryPath: string;
@@ -16,69 +13,15 @@ type SqliteRuntimeUnavailable = {
 
 export type SqliteRuntimeStatus = SqliteRuntimeAvailable | SqliteRuntimeUnavailable;
 
-const DEFAULT_SQLITE_BIN_CANDIDATES = [
-  '/usr/bin/sqlite3',
-  '/usr/local/bin/sqlite3',
-  '/opt/homebrew/bin/sqlite3',
-  'sqlite3',
-];
-
 let cachedStatus: SqliteRuntimeStatus | null = null;
-
-function buildCandidateList() {
-  return Array.from(
-    new Set(
-      [process.env.SQLITE3_PATH, ...DEFAULT_SQLITE_BIN_CANDIDATES].filter(Boolean) as string[]
-    )
-  );
-}
-
-function readErrorMessage(error: unknown, fallback = 'Erreur inconnue') {
-  return error instanceof Error ? error.message : fallback;
-}
-
-function canTryCandidate(candidate: string) {
-  if (!candidate.includes('/')) return true;
-  try {
-    const stat = fs.statSync(candidate);
-    return stat.isFile();
-  } catch {
-    return false;
-  }
-}
 
 export function getSqliteRuntimeStatus(): SqliteRuntimeStatus {
   if (cachedStatus) return cachedStatus;
-
-  const checkedCandidates: string[] = [];
-  let lastError = 'sqlite3 CLI introuvable.';
-
-  for (const candidate of buildCandidateList()) {
-    checkedCandidates.push(candidate);
-    if (!canTryCandidate(candidate)) continue;
-
-    try {
-      const version = execFileSync(candidate, ['--version'], {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }).trim();
-
-      cachedStatus = {
-        available: true,
-        binaryPath: candidate,
-        version: version || 'version inconnue',
-        checkedCandidates,
-      };
-      return cachedStatus;
-    } catch (error) {
-      lastError = readErrorMessage(error, lastError);
-    }
-  }
-
   cachedStatus = {
-    available: false,
-    checkedCandidates,
-    error: lastError,
+    available: true,
+    binaryPath: 'sql.js',
+    version: 'sql.js (asm)',
+    checkedCandidates: ['sql.js/dist/sql-asm.js'],
   };
   return cachedStatus;
 }

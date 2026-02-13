@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
-import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
+import { runSqliteJsonQuery } from '@/lib/sqliteQuery';
 
 export const runtime = 'nodejs';
 
@@ -38,35 +37,12 @@ function resolveDbPath(): string | null {
   return null;
 }
 
-function formatParam(value: string | number): string {
-  if (typeof value === 'number') return String(value);
-  const safe = value.replace(/'/g, "''");
-  return `'${safe}'`;
-}
-
-function runQuery(sql: string, params: Record<string, string | number> = {}) {
+async function runQuery(sql: string, params: Record<string, string | number> = {}) {
   const dbPath = resolveDbPath();
   if (!dbPath) {
     throw new Error('TREASURY_DB_PATH introuvable. Définis TREASURY_DB_PATH vers treasury.sqlite.');
   }
-  const sqlite = assertSqliteRuntime();
-  const args: string[] = ['-json'];
-  for (const [name, value] of Object.entries(params)) {
-    args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
-  }
-  args.push(dbPath);
-  args.push(sql);
-
-  console.log('[DEBUG Treasury] Executing:', sqlite.binaryPath, args);
-  try {
-    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
-    console.log('[DEBUG Treasury] Output length:', output.length);
-    if (!output) return [];
-    return JSON.parse(output);
-  } catch (err) {
-    console.error('[DEBUG Treasury] Error:', err);
-    return [];
-  }
+  return runSqliteJsonQuery(dbPath, sql, params);
 }
 
 function resolveBookNumber(bookId?: string | null): number | null {
@@ -105,16 +81,16 @@ export async function GET(req: Request) {
     // - VERSES(id, ref)
     // - COMMENTAIRES(id, commentaires)
     const rows =
-      runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
+      (await runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
         '@id': id,
-      }) ??
+      })) ??
       [];
     const fallbackRows =
       rows.length > 0
         ? rows
-        : runQuery('SELECT commentaires AS ref FROM COMMENTAIRES WHERE id=@id LIMIT 1;', {
+        : (await runQuery('SELECT commentaires AS ref FROM COMMENTAIRES WHERE id=@id LIMIT 1;', {
             '@id': id,
-          }) ?? [];
+          })) ?? [];
     const raw = fallbackRows[0]?.ref;
 
     let entries: string[] = [];

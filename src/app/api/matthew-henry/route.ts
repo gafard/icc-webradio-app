@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
-import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
+import { runSqliteJsonQuery } from '@/lib/sqliteQuery';
 
 export const runtime = 'nodejs';
 
@@ -38,13 +37,7 @@ function resolveDbPath(): string | null {
   return null;
 }
 
-function formatParam(value: string | number): string {
-  if (typeof value === 'number') return String(value);
-  const safe = value.replace(/'/g, "''");
-  return `'${safe}'`;
-}
-
-function runQuery(
+async function runQuery(
   sql: string,
   params: Record<string, string | number> = {},
   dbPathOverride?: string | null
@@ -53,24 +46,7 @@ function runQuery(
   if (!dbPath) {
     throw new Error('MATTHEW_HENRY_DB_PATH introuvable. Définis MATTHEW_HENRY_DB_PATH vers matthew_henry.sqlite.');
   }
-  const sqlite = assertSqliteRuntime();
-  const args: string[] = ['-json'];
-  for (const [name, value] of Object.entries(params)) {
-    args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
-  }
-  args.push(dbPath);
-  args.push(sql);
-
-  console.log('[DEBUG MH] Executing sqlite3:', sqlite.binaryPath, args);
-  try {
-    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
-    console.log('[DEBUG MH] Output length:', output.length);
-    if (!output) return [];
-    return JSON.parse(output);
-  } catch (err) {
-    console.error('[DEBUG MH] Error executing sqlite3:', err);
-    return [];
-  }
+  return runSqliteJsonQuery(dbPath, sql, params);
 }
 
 function resolveBookNumber(bookId?: string | null): number | null {
@@ -105,7 +81,7 @@ export async function GET(req: Request) {
     }
 
     const dbPath = resolveDbPath();
-    const rows = runQuery(
+    const rows = await runQuery(
       'SELECT commentaires FROM COMMENTAIRES WHERE id=@id LIMIT 1;',
       { '@id': id },
       dbPath

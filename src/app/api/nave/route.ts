@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { BIBLE_BOOKS } from '@/lib/bibleCatalog';
-import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
+import { runSqliteJsonQuery } from '@/lib/sqliteQuery';
 
 export const runtime = 'nodejs';
 
@@ -46,35 +45,12 @@ function resolveDbPath(): string | null {
   return null;
 }
 
-function formatParam(value: string | number): string {
-  if (typeof value === 'number') return String(value);
-  const safe = value.replace(/'/g, "''");
-  return `'${safe}'`;
-}
-
-function runQuery(sql: string, params: Record<string, string | number> = {}) {
+async function runQuery(sql: string, params: Record<string, string | number> = {}) {
   const dbPath = resolveDbPath();
   if (!dbPath) {
     throw new Error('NAVE_DB_PATH introuvable. Définis NAVE_DB_PATH vers nave.sqlite.');
   }
-  const sqlite = assertSqliteRuntime();
-  const args: string[] = ['-json'];
-  for (const [name, value] of Object.entries(params)) {
-    args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
-  }
-  args.push(dbPath);
-  args.push(sql);
-
-  console.log('[DEBUG Nave] Executing:', sqlite.binaryPath, args);
-  try {
-    const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
-    console.log('[DEBUG Nave] Output length:', output.length);
-    if (!output) return [];
-    return JSON.parse(output);
-  } catch (err) {
-    console.error('[DEBUG Nave] Error:', err);
-    return [];
-  }
+  return runSqliteJsonQuery(dbPath, sql, params);
 }
 
 function resolveBookNumber(bookId?: string | null): number | null {
@@ -101,7 +77,7 @@ export async function GET(req: Request) {
         `SELECT name, name_lower, description FROM TOPICS ` +
         `WHERE name_lower LIKE @term OR name LIKE @term ` +
         `ORDER BY name_lower ASC LIMIT ${limit};`;
-      const rows = runQuery(sql, { '@term': like });
+      const rows = await runQuery(sql, { '@term': like });
       const topics: NaveTopic[] = rows.map((row: any) => ({
         name: row.name ?? '',
         name_lower: row.name_lower ?? '',
@@ -116,10 +92,11 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'Livre invalide.' }, { status: 400 });
       }
       const id = `${bookNumber}-${chapter}-${verse}`;
-      const verseRows = runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
+      const verseRows = await runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
         '@id': id,
       });
-      const refRaw = verseRows[0]?.ref ?? '[]';
+      const refRawValue = verseRows[0]?.ref;
+      const refRaw = typeof refRawValue === 'string' ? refRawValue : '[]';
       let topicIds: string[] = [];
       try {
         topicIds = JSON.parse(refRaw);
@@ -140,7 +117,7 @@ export async function GET(req: Request) {
       const topicsSql =
         `SELECT name, name_lower, description FROM TOPICS ` +
         `WHERE name_lower IN (${placeholders.join(',')}) ORDER BY name_lower ASC;`;
-      const rows = runQuery(topicsSql, params);
+      const rows = await runQuery(topicsSql, params);
       const topics: NaveTopic[] = rows.map((row: any) => ({
         name: row.name ?? '',
         name_lower: row.name_lower ?? '',

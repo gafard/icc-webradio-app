@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
-import { assertSqliteRuntime } from '@/lib/sqliteRuntime';
+import { runSqliteJsonQuery } from '@/lib/sqliteQuery';
 
 export const runtime = 'nodejs';
 
@@ -48,26 +47,12 @@ function resolveDbPath(): string | null {
   return null;
 }
 
-function formatParam(value: string | number): string {
-  if (typeof value === 'number') return String(value);
-  const safe = value.replace(/'/g, "''");
-  return `'${safe}'`;
-}
-
-function runQuery(sql: string, params: Record<string, string | number> = {}) {
+async function runQuery(sql: string, params: Record<string, string | number> = {}) {
   const dbPath = resolveDbPath();
   if (!dbPath) {
     throw new Error('STRONG_DB_PATH introuvable. Définis STRONG_DB_PATH vers strong.sqlite.');
   }
-  const sqlite = assertSqliteRuntime();
-  const args: string[] = ['-json', dbPath];
-  for (const [name, value] of Object.entries(params)) {
-    args.push('-cmd', `.parameter set ${name} ${formatParam(value)}`);
-  }
-  args.push(sql);
-  const output = execFileSync(sqlite.binaryPath, args, { encoding: 'utf8' }).trim();
-  if (!output) return [];
-  return JSON.parse(output);
+  return runSqliteJsonQuery(dbPath, sql, params);
 }
 
 function normalizeNumberInput(
@@ -141,7 +126,7 @@ export async function GET(req: Request) {
       const sql =
         `SELECT Code, Mot, Phonetique, ${column} as ${column}, Origine, Type, LSG, Definition ` +
         `FROM ${table} WHERE Code=@num LIMIT 1;`;
-      const rows = runQuery(sql, { '@num': Number(normalized.id) });
+      const rows = await runQuery(sql, { '@num': Number(normalized.id) });
       const row = rows[0];
       if (!row) {
         return NextResponse.json({
@@ -170,8 +155,8 @@ export async function GET(req: Request) {
         `OR Origine LIKE @term OR Type LIKE @term OR LSG LIKE @term OR Definition LIKE @term ` +
         `LIMIT ${limit};`;
 
-      const hebRows = runQuery(hebSql, { '@term': like });
-      const greRows = runQuery(greSql, { '@term': like });
+      const hebRows = await runQuery(hebSql, { '@term': like });
+      const greRows = await runQuery(greSql, { '@term': like });
 
       const results: StrongResult[] = [
         ...hebRows.map((row: any) => ({
