@@ -19,9 +19,9 @@ export function getSqliteRuntimeStatus(): SqliteRuntimeStatus {
   if (cachedStatus) return cachedStatus;
   cachedStatus = {
     available: true,
-    binaryPath: 'sql.js',
-    version: 'sql.js (wasm)',
-    checkedCandidates: ['sql.js/dist/sql-wasm.wasm'],
+    binaryPath: 'better-sqlite3',
+    version: 'better-sqlite3',
+    checkedCandidates: ['better-sqlite3'],
   };
   return cachedStatus;
 }

@@ -1,30 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import initSqlJs from 'sql.js';
+import Database from 'better-sqlite3';
 
 type SqlParamValue = string | number | null;
 type SqlParams = Record<string, SqlParamValue>;
 
-type SqlDatabase = {
-  prepare: (sql: string) => {
-    bind: (params: SqlParams) => void;
-    step: () => boolean;
-    getAsObject: () => Record<string, unknown>;
-    free: () => void;
-  };
-};
-
-let sqlModulePromise: Promise<unknown> | null = null;
-const dbCache = new Map<string, SqlDatabase>();
-
-async function getSqlModule() {
-  if (!sqlModulePromise) {
-    sqlModulePromise = initSqlJs({
-      locateFile: (file: string) => path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file),
-    });
-  }
-  return sqlModulePromise as Promise<{ Database: new (data: Uint8Array) => SqlDatabase }>;
-}
+const dbCache = new Map<string, Database.Database>();
 
 function normalizeDbPath(dbPath: string) {
   return path.resolve(dbPath);
@@ -47,24 +28,25 @@ export async function runSqliteJsonQuery(
   let db = getCachedDb(normalizedPath);
 
   if (!db) {
-    const SQL = await getSqlModule();
-    const buffer = fs.readFileSync(normalizedPath);
-    db = new SQL.Database(new Uint8Array(buffer));
+    if (!fs.existsSync(normalizedPath)) {
+      throw new Error(`SQLite file not found: ${normalizedPath}`);
+    }
+    db = new Database(normalizedPath, { readonly: true, fileMustExist: true });
     dbCache.set(normalizedPath, db);
   }
 
-  const stmt = db.prepare(sql);
-  try {
-    if (Object.keys(params).length) {
-      stmt.bind(params);
-    }
-
-    const rows: Record<string, unknown>[] = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject());
-    }
-    return rows;
-  } finally {
-    stmt.free();
+  const statement = db.prepare(sql);
+  if (!Object.keys(params).length) {
+    return statement.all() as Record<string, unknown>[];
   }
+
+  const normalizedParams: SqlParams = {};
+  for (const [key, value] of Object.entries(params)) {
+    normalizedParams[key] = value;
+    if (key.startsWith('@') || key.startsWith(':') || key.startsWith('$')) {
+      normalizedParams[key.slice(1)] = value;
+    }
+  }
+
+  return statement.all(normalizedParams) as Record<string, unknown>[];
 }
