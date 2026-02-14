@@ -125,6 +125,8 @@ type OverviewPayload = {
     pageViews7d: number;
     uniqueVisitors24h: number;
     uniqueVisitors7d: number;
+    topPaths: Array<{ path: string; views: number }>;
+    dailyViews: Array<{ day: string; views: number }>;
   };
   community: {
     postsTotal: number;
@@ -164,7 +166,10 @@ type LegacyAdminAction =
   | 'unhide_post'
   | 'delete_post'
   | 'delete_group'
-  | 'moderate_member';
+  | 'moderate_member'
+  | 'purge_posts'
+  | 'purge_groups'
+  | 'purge_all';
 
 function buildHeaders(adminKey: string): HeadersInit {
   const headers: HeadersInit = {
@@ -263,7 +268,11 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
       }
       setOverview({
         generatedAt: payload.generatedAt,
-        traffic: payload.traffic,
+        traffic: {
+          ...payload.traffic,
+          topPaths: payload.traffic.topPaths || [],
+          dailyViews: payload.traffic.dailyViews || [],
+        },
         community: payload.community,
         operations: payload.operations,
       });
@@ -522,6 +531,18 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
     });
   }, [contentKindFilter, contentSearch, contentVisibilityFilter, snapshot?.posts]);
 
+  const dailyViewsSeries = useMemo(() => {
+    return overview?.traffic.dailyViews ?? [];
+  }, [overview?.traffic.dailyViews]);
+
+  const maxDailyViews = useMemo(() => {
+    return dailyViewsSeries.reduce((max, item) => Math.max(max, item.views), 0);
+  }, [dailyViewsSeries]);
+
+  const topPaths = useMemo(() => {
+    return overview?.traffic.topPaths ?? [];
+  }, [overview?.traffic.topPaths]);
+
   const banner = useMemo(() => {
     if (notice) return <span className="text-sm text-emerald-500">{notice}</span>;
     if (error) return <span className="text-sm text-red-500">{error}</span>;
@@ -652,6 +673,53 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
             </section>
           ) : null}
 
+          <section className="grid gap-3 xl:grid-cols-3">
+            <article className="glass-panel rounded-2xl p-4 xl:col-span-2">
+              <div className="text-sm font-bold">Traffic Trend (7 jours)</div>
+              <div className="mt-3 grid grid-cols-7 items-end gap-2 h-32">
+                {dailyViewsSeries.map((item) => {
+                  const ratio = maxDailyViews > 0 ? item.views / maxDailyViews : 0;
+                  const height = Math.max(8, Math.round(ratio * 100));
+                  return (
+                    <div key={item.day} className="flex flex-col items-center gap-1">
+                      <div className="w-full rounded-md bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] h-[104px] flex items-end overflow-hidden">
+                        <span
+                          className="block w-full bg-[color:var(--accent)]/75 transition-all"
+                          style={{ height: `${height}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-[color:var(--foreground)]/60">
+                        {item.day.slice(5)}
+                      </div>
+                      <div className="text-[10px] font-semibold text-[color:var(--foreground)]/80">
+                        {item.views}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+
+            <article className="glass-panel rounded-2xl p-4">
+              <div className="text-sm font-bold">Top Pages (7 jours)</div>
+              <div className="mt-3 space-y-2 max-h-40 overflow-auto pr-1">
+                {topPaths.length ? (
+                  topPaths.map((item) => (
+                    <div
+                      key={item.path}
+                      className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-2"
+                    >
+                      <div className="truncate text-xs font-semibold">{item.path}</div>
+                      <div className="text-[11px] text-[color:var(--foreground)]/65">{item.views} vues</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-[color:var(--foreground)]/65">Aucune donnée trafic.</div>
+                )}
+              </div>
+            </article>
+          </section>
+
           <section className="grid gap-3 lg:grid-cols-2">
             <article className="glass-panel rounded-2xl p-4">
               <div className="text-sm font-bold">Community Snapshot</div>
@@ -694,6 +762,60 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
                   <div className="text-[11px] text-[color:var(--foreground)]/60">Unassigned</div>
                   <div className="text-xl font-bold">{overview?.operations.unassignedOpenCases ?? 0}</div>
                 </div>
+              </div>
+            </article>
+
+            <article className="glass-panel rounded-2xl p-4">
+              <div className="text-sm font-bold">Quick Actions</div>
+              <div className="mt-2 space-y-2">
+                <button
+                  type="button"
+                  disabled={runningAction || !canModerate}
+                  onClick={() => {
+                    if (!window.confirm('Purger tous les posts, commentaires et stories ?')) return;
+                    void runLegacyAction('purge_posts', {});
+                  }}
+                  className="btn-base btn-secondary w-full justify-start px-3 py-2 text-xs"
+                >
+                  Purge posts
+                </button>
+                <button
+                  type="button"
+                  disabled={runningAction || !canModerate}
+                  onClick={() => {
+                    if (!window.confirm('Purger tous les groupes et membres ?')) return;
+                    void runLegacyAction('purge_groups', {});
+                  }}
+                  className="btn-base btn-secondary w-full justify-start px-3 py-2 text-xs"
+                >
+                  Purge groups
+                </button>
+                <button
+                  type="button"
+                  disabled={runningAction || !canModerate}
+                  onClick={() => {
+                    if (!window.confirm('Purge complète communauté + groupes. Confirmer ?')) return;
+                    void runLegacyAction('purge_all', {});
+                  }}
+                  className="btn-base w-full justify-start px-3 py-2 text-xs border-red-500/50 bg-red-500/10 text-red-400"
+                >
+                  Purge all
+                </button>
+              </div>
+
+              <div className="mt-4 text-sm font-bold">Dernières actions</div>
+              <div className="mt-2 space-y-2 max-h-44 overflow-auto pr-1">
+                {(snapshot?.audit ?? []).slice(0, 8).map((item) => (
+                  <article key={item.id} className="rounded-xl border border-[color:var(--border-soft)] p-2.5">
+                    <div className="text-xs font-semibold">{item.action}</div>
+                    <div className="text-[11px] text-[color:var(--foreground)]/65">
+                      {item.target_type}:{item.target_id.slice(0, 12)} • {formatDate(item.created_at)}
+                    </div>
+                  </article>
+                ))}
+                {!snapshot?.audit.length ? (
+                  <div className="text-xs text-[color:var(--foreground)]/65">Aucune action récente.</div>
+                ) : null}
               </div>
             </article>
           </section>

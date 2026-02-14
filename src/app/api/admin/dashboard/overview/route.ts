@@ -44,6 +44,7 @@ async function computeTraffic(client: any) {
   ]);
 
   let trafficRows: Array<{
+    path?: string | null;
     device_id?: string | null;
     session_id?: string | null;
     created_at?: string | null;
@@ -52,7 +53,7 @@ async function computeTraffic(client: any) {
 
   let rowsResult = await client
     .from('app_page_views')
-    .select('device_id,session_id,created_at')
+    .select('path,device_id,session_id,created_at')
     .gte('created_at', weekIso)
     .order('created_at', { ascending: false })
     .limit(20000);
@@ -60,7 +61,7 @@ async function computeTraffic(client: any) {
   if (rowsResult.error && isMissingColumnError(rowsResult.error, 'created_at')) {
     rowsResult = await client
       .from('app_page_views')
-      .select('device_id,session_id')
+      .select('path,device_id,session_id')
       .limit(20000);
   }
 
@@ -72,6 +73,7 @@ async function computeTraffic(client: any) {
     }
   } else {
     trafficRows = (rowsResult.data ?? []) as Array<{
+      path?: string | null;
       device_id?: string | null;
       session_id?: string | null;
       created_at?: string | null;
@@ -84,17 +86,40 @@ async function computeTraffic(client: any) {
 
   const unique24h = new Set<string>();
   const unique7d = new Set<string>();
+  const topPathsCounter = new Map<string, number>();
+  const dayBuckets = new Map<string, number>();
+
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = new Date(nowTs - i * 24 * 60 * 60 * 1000);
+    const key = day.toISOString().slice(0, 10);
+    dayBuckets.set(key, 0);
+  }
 
   for (const row of trafficRows) {
     const identity = String(row.device_id || row.session_id || '').trim();
-    if (!identity) continue;
+    const path = String(row.path || '').trim();
 
     const createdTs = row.created_at ? Date.parse(String(row.created_at)) : nowTs;
     if (!Number.isFinite(createdTs)) continue;
 
-    if (createdTs >= weekCutoffTs) unique7d.add(identity);
-    if (createdTs >= dayCutoffTs) unique24h.add(identity);
+    if (createdTs >= weekCutoffTs) {
+      if (identity) unique7d.add(identity);
+      if (path) topPathsCounter.set(path, (topPathsCounter.get(path) || 0) + 1);
+
+      const bucketKey = new Date(createdTs).toISOString().slice(0, 10);
+      if (dayBuckets.has(bucketKey)) {
+        dayBuckets.set(bucketKey, (dayBuckets.get(bucketKey) || 0) + 1);
+      }
+    }
+    if (createdTs >= dayCutoffTs && identity) unique24h.add(identity);
   }
+
+  const topPaths = Array.from(topPathsCounter.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([path, views]) => ({ path, views }));
+
+  const dailyViews = Array.from(dayBuckets.entries()).map(([day, views]) => ({ day, views }));
 
   return {
     trafficAvailable,
@@ -102,6 +127,8 @@ async function computeTraffic(client: any) {
     pageViews7d: views7d,
     uniqueVisitors24h: unique24h.size,
     uniqueVisitors7d: unique7d.size,
+    topPaths,
+    dailyViews,
   };
 }
 
