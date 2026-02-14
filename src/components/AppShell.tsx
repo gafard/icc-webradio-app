@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { SidebarProvider } from '../contexts/SidebarContext';
 import SidebarNav from './SidebarNav';
 import BottomNav from './BottomNav';
@@ -10,6 +11,7 @@ import { decodeHtmlEntities } from '../lib/wp';
 import { fetchUserState, getLocalUserState, mergeRemoteUserState, upsertUserState } from './userStateSync';
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { notificationsEnabled, remindersEnabled, reminderTime, dataSaver, syncId } = useSettings();
 
   // Dev safety: prevent stale PWA caches/service worker from causing hydration mismatches.
@@ -179,6 +181,37 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [syncId]);
 
+  // Lightweight page-view tracking for admin analytics dashboard.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = String(pathname || '/').trim() || '/';
+    if (!path.startsWith('/')) return;
+    if (path.startsWith('/api')) return;
+
+    const lastTrackedPath = sessionStorage.getItem('icc_analytics_last_path') || '';
+    if (lastTrackedPath === path) return;
+    sessionStorage.setItem('icc_analytics_last_path', path);
+
+    const deviceId = getOrCreateAnalyticsId(localStorage, 'icc_analytics_device_v1');
+    const sessionId = getOrCreateAnalyticsId(sessionStorage, 'icc_analytics_session_v1');
+    const prevPath = sessionStorage.getItem('icc_analytics_prev_path') || '';
+    const referrer = prevPath || document.referrer || '';
+    sessionStorage.setItem('icc_analytics_prev_path', path);
+
+    void fetch('/api/analytics/page-view', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        path,
+        referrer,
+        locale: navigator.language || '',
+        deviceId,
+        sessionId,
+      }),
+    }).catch(() => {});
+  }, [pathname]);
+
   return (
     <SidebarProvider>
       <div className="app-atmosphere atmospheric-noise light-particles relative min-h-screen text-[color:var(--foreground)]">
@@ -212,4 +245,19 @@ function getNextReminderDelay(time: string) {
   next.setHours(Number.isFinite(h) ? h : 19, Number.isFinite(m) ? m : 0, 0, 0);
   if (next <= now) next.setDate(next.getDate() + 1);
   return next.getTime() - now.getTime();
+}
+
+function makeAnalyticsId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `a_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
+function getOrCreateAnalyticsId(storage: Storage, key: string) {
+  const current = (storage.getItem(key) || '').trim();
+  if (current) return current;
+  const next = makeAnalyticsId();
+  storage.setItem(key, next);
+  return next;
 }
