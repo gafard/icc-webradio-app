@@ -44,7 +44,7 @@ function MobileToolbarBtn({ active, label, icon, onClick }: ToolbarBtnProps) {
       className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-[11px] font-extrabold leading-none transition ${
         active
           ? 'border-[color:var(--accent-border)]/60 bg-[color:var(--accent-soft)]/45 text-[color:var(--foreground)]'
-          : 'border-white/15 bg-white/10 text-[color:var(--foreground)]/82 hover:bg-white/15'
+          : 'border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/92 hover:bg-[color:var(--surface-strong)] dark:border-white/15 dark:bg-white/10 dark:text-white/85 dark:hover:bg-white/15'
       }`}
       title={label}
     >
@@ -73,7 +73,7 @@ function AudioVerseTimeline({
   const currentTime = (first?.start ?? 0) + totalSpan * Math.max(0, Math.min(1, playerProgress));
 
   return (
-    <div className="mt-1 mx-auto w-full max-w-[780px] rounded-lg border border-white/12 bg-white/8 px-1 py-1">
+    <div className="mt-1 mx-auto w-full max-w-[780px] rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)]/80 px-1 py-1 dark:border-white/12 dark:bg-white/8">
       <div className="w-full overflow-x-auto pb-0.5">
         <div
           className="mx-auto flex min-w-full items-center gap-[3px]"
@@ -94,7 +94,7 @@ function AudioVerseTimeline({
                     ? 'border-orange-300/80 bg-orange-300 shadow-[0_0_0_2px_rgba(251,146,60,0.26)]'
                     : isDone
                       ? 'border-[color:var(--accent-border)]/65 bg-[color:var(--accent)]/85'
-                      : 'border-white/20 bg-white/18 hover:bg-white/30'
+                      : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] hover:bg-[color:var(--surface)] dark:border-white/20 dark:bg-white/18 dark:hover:bg-white/30'
                 }`}
                 style={{
                   flexGrow: Math.max(0.4, ratio * 100),
@@ -199,7 +199,7 @@ export default function BibleToolbar({
                   className={`shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-bold transition ${
                     highlightColor === option.id
                       ? 'border border-[color:var(--accent-border)]/60 bg-[color:var(--accent-soft)]/45 text-[color:var(--foreground)]'
-                      : 'border border-white/15 bg-white/10 text-[color:var(--foreground)]/80 hover:bg-white/15'
+                      : 'border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/90 hover:bg-[color:var(--surface-strong)] dark:border-white/15 dark:bg-white/10 dark:text-white/82 dark:hover:bg-white/15'
                   }`}
                   onClick={() => setHighlightColor(option.id)}
                 >
@@ -210,7 +210,7 @@ export default function BibleToolbar({
             <button
               type="button"
               onClick={onCopy}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl border border-white/20 bg-white/10 px-2.5 text-[11px] font-bold"
+              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-2.5 text-[11px] font-bold text-[color:var(--foreground)] dark:border-white/20 dark:bg-white/10 dark:text-white"
             >
               <Clipboard size={14} />
               Copier

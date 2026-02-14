@@ -45,6 +45,20 @@ async function runQuery(sql: string, params: Record<string, string | number> = {
   return runSqliteJsonQuery(dbPath, sql, params);
 }
 
+async function detectTreasuryTable() {
+  const rows = await runQuery(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('VERSES', 'COMMENTAIRES');"
+  );
+  const tables = new Set(
+    rows
+      .map((row) => String((row as { name?: unknown }).name ?? ''))
+      .filter(Boolean)
+  );
+  if (tables.has('VERSES')) return 'VERSES' as const;
+  if (tables.has('COMMENTAIRES')) return 'COMMENTAIRES' as const;
+  return null;
+}
+
 function resolveBookNumber(bookId?: string | null): number | null {
   if (!bookId) return null;
   const index = BIBLE_BOOKS.findIndex((b) => b.id === bookId);
@@ -76,22 +90,20 @@ export async function GET(req: Request) {
       );
     }
 
-    console.log('[DEBUG Treasury] Querying ID:', id);
-    // Support both known schemas:
-    // - VERSES(id, ref)
-    // - COMMENTAIRES(id, commentaires)
+    const sourceTable = await detectTreasuryTable();
+    if (!sourceTable) {
+      throw new Error('Schéma Treasury inconnu: table VERSES ou COMMENTAIRES introuvable.');
+    }
+
     const rows =
-      (await runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
-        '@id': id,
-      })) ??
-      [];
-    const fallbackRows =
-      rows.length > 0
-        ? rows
-        : (await runQuery('SELECT commentaires AS ref FROM COMMENTAIRES WHERE id=@id LIMIT 1;', {
+      sourceTable === 'VERSES'
+        ? await runQuery('SELECT ref FROM VERSES WHERE id=@id LIMIT 1;', {
             '@id': id,
-          })) ?? [];
-    const raw = fallbackRows[0]?.ref;
+          })
+        : await runQuery('SELECT commentaires AS ref FROM COMMENTAIRES WHERE id=@id LIMIT 1;', {
+            '@id': id,
+          });
+    const raw = rows[0]?.ref;
 
     let entries: string[] = [];
     if (Array.isArray(raw)) {

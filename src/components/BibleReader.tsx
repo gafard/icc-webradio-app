@@ -164,7 +164,7 @@ function ReaderModesMenu({
     `w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-bold transition ${
       enabled
         ? 'border-orange-300/70 bg-orange-100/85 text-orange-800 dark:border-orange-300/45 dark:bg-orange-400/20 dark:text-orange-100'
-        : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/80 hover:bg-[color:var(--surface)]'
+        : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/92 hover:bg-[color:var(--surface)]'
     }`;
 
   return (
@@ -208,7 +208,7 @@ function ReaderModesMenu({
               >
                 -
               </button>
-              <span className="min-w-[68px] text-center text-[10px] font-bold text-[color:var(--foreground)]/75">
+              <span className="min-w-[68px] text-center text-[10px] font-bold text-[color:var(--foreground)]/88">
                 Niv {clampedMemoryMaskLevel}
               </span>
               <button
@@ -2522,7 +2522,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
             </div>
             {!embedded ? (
               <div className="bible-paper rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
-                <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/60">
+                <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/80">
                   Lecture mobile
                 </div>
                 <div className="mt-1 text-lg font-extrabold">
@@ -2869,7 +2869,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                               {playerDuration > 0 ? (
                                 <span>{formatAudioClock(playerPosition)} / {formatAudioClock(playerDuration)}</span>
                               ) : (
-                                <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--foreground)]/65">
+                                <span
+                                  className={`text-[10px] uppercase tracking-[0.08em] ${
+                                    immersiveMode ? 'text-white/75' : 'text-[color:var(--foreground)]/70'
+                                  }`}
+                                >
                                   {translation?.label ?? 'Lecture'}
                                 </span>
                               )}
