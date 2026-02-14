@@ -17,6 +17,7 @@ type Video = {
   title: string;
   published: string;
   thumbnail: string;
+  views?: number;
 };
 
 type WPTerm = { id: number; name: string; slug: string };
@@ -64,6 +65,77 @@ async function getLatestVideos(count = 20): Promise<Video[]> {
   });
 }
 
+async function getMostViewedVideos(count = 20): Promise<Video[]> {
+  const channelId = process.env.NEXT_PUBLIC_YT_CHANNEL_ID;
+  const apiKey = process.env.NEXT_PUBLIC_YT_API_KEY || process.env.YT_API_KEY;
+  if (!channelId || !apiKey) return [];
+
+  const searchUrl =
+    `https://www.googleapis.com/youtube/v3/search` +
+    `?key=${encodeURIComponent(apiKey)}` +
+    `&channelId=${encodeURIComponent(channelId)}` +
+    `&part=snippet` +
+    `&type=video` +
+    `&maxResults=${Math.min(Math.max(count, 1), 50)}` +
+    `&order=viewCount`;
+
+  try {
+    const searchRes = await fetch(searchUrl, { next: { revalidate: 1800 } });
+    if (!searchRes.ok) return [];
+    const searchData = await searchRes.json();
+    const rawItems = Array.isArray(searchData?.items) ? searchData.items : [];
+    if (!rawItems.length) return [];
+
+    const ids = rawItems
+      .map((item: any) => String(item?.id?.videoId ?? ''))
+      .filter(Boolean);
+    if (!ids.length) return [];
+
+    const statsUrl =
+      `https://www.googleapis.com/youtube/v3/videos` +
+      `?key=${encodeURIComponent(apiKey)}` +
+      `&part=statistics` +
+      `&id=${encodeURIComponent(ids.join(','))}`;
+
+    const statsRes = await fetch(statsUrl, { next: { revalidate: 1800 } });
+    const statsData = statsRes.ok ? await statsRes.json() : null;
+    const statsMap = new Map<string, number>(
+      (Array.isArray(statsData?.items) ? statsData.items : []).map((item: any) => [
+        String(item?.id ?? ''),
+        Number(item?.statistics?.viewCount ?? 0),
+      ])
+    );
+
+    const mappedItems: Array<Video | null> = rawItems.map((item: any) => {
+      const videoId = String(item?.id?.videoId ?? '');
+      if (!videoId) return null;
+
+      const snippet = item?.snippet ?? {};
+      const thumbnail =
+        snippet?.thumbnails?.maxres?.url ||
+        snippet?.thumbnails?.high?.url ||
+        snippet?.thumbnails?.medium?.url ||
+        snippet?.thumbnails?.default?.url ||
+        `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+      return {
+        id: videoId,
+        title: String(snippet?.title ?? ''),
+        published: String(snippet?.publishedAt ?? ''),
+        thumbnail,
+        views: statsMap.get(videoId) ?? undefined,
+      } as Video;
+    });
+
+    return mappedItems
+      .filter((item: Video | null): item is Video => !!item)
+      .sort((a: Video, b: Video) => (b.views ?? 0) - (a.views ?? 0))
+      .slice(0, count);
+  } catch {
+    return [];
+  }
+}
+
 async function getTagsBySearch(search: string) {
   return (await wpFetch<WPTerm[]>(
     `/wp-json/wp/v2/tags?per_page=100&search=${encodeURIComponent(search)}`
@@ -98,7 +170,8 @@ export default async function Home() {
     wpCultes,
     wpEns,
     serieCategories,
-    ytVideos,
+    ytRecentVideos,
+    ytMostViewedVideos,
     themeTags,
     themeCategories,
     growthTags,
@@ -112,6 +185,7 @@ export default async function Home() {
       getWpPosts(`categories=${CATEGORY_IDS.enseignements}`, 12, 'desc'),
       getSeriesCategories(Object.values(CATEGORY_IDS)),
       getLatestVideos(20),
+      getMostViewedVideos(20),
       Promise.all(themeWanted.map((name) => getTagsBySearch(name))),
       Promise.all(themeWanted.map((name) => getCategoriesByName(name))),
       Promise.all([getTagsBySearch('École de croissance'), getTagsBySearch('Ecole de croissance')]),
@@ -138,10 +212,11 @@ export default async function Home() {
 
   // ---- items mapping
   const wpLatestItems = wpLatest.map(mapWpToMediaItem);
-  const ytItems = ytVideos.map(mapYtToMediaItem);
+  const ytRecentItems = ytRecentVideos.map(mapYtToMediaItem);
+  const ytMostViewedItems = (ytMostViewedVideos.length ? ytMostViewedVideos : ytRecentVideos).map(mapYtToMediaItem);
 
   // 2) NOUVEAUTÉS CETTE SEMAINE (MIX)
-  const nouveautesSemaine: MediaItem[] = uniqById([...wpLatestItems, ...ytItems])
+  const nouveautesSemaine: MediaItem[] = uniqById([...wpLatestItems, ...ytRecentItems])
     .filter(x => isInLast7Days(x.dateISO))
     .sort((a, b) => new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime())
     .slice(0, 18);
@@ -340,7 +415,7 @@ export default async function Home() {
   const filteredSerieItems = filterUniqueItems(serieItems);
 
   // Filtrer les vidéos YouTube
-  const filteredYtItems = filterUniqueItems(ytItems.slice(0, 12));
+  const filteredYtMostViewedItems = filterUniqueItems(ytMostViewedItems.slice(0, 12));
 
   const sections: HomeSectionData[] = [
     { key: 'new-week', title: 'Nouveautés cette semaine', items: filteredNouveautesSemaine },
@@ -365,15 +440,15 @@ export default async function Home() {
       : []),
 
     // YouTube séparé, placé sous les séries
-    { key: 'yt', title: 'Vidéos récentes (YouTube)', items: filteredYtItems },
+    { key: 'yt', title: 'Vidéos les plus vues (YouTube)', items: filteredYtMostViewedItems },
   ].filter(s => s.items.length > 0);
 
   // Récupérer la dernière vidéo YouTube pour le hero
-  const latestVideo = ytVideos.length > 0 ? {
-    id: ytVideos[0].id,
-    title: ytVideos[0].title,
-    published: ytVideos[0].published,
-    thumbnail: ytVideos[0].thumbnail,
+  const latestVideo = ytRecentVideos.length > 0 ? {
+    id: ytRecentVideos[0].id,
+    title: ytRecentVideos[0].title,
+    published: ytRecentVideos[0].published,
+    thumbnail: ytRecentVideos[0].thumbnail,
   } : null;
 
   return (
