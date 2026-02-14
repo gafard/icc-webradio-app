@@ -11,6 +11,22 @@ function isLikelyImageUrl(value: string) {
     return /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value);
 }
 
+function isLikelyVideoUrl(value: string) {
+    if (value.startsWith('data:video/')) return true;
+    return /\.(mp4|webm|ogg|mov|m4v|m3u8)(\?.*)?$/i.test(value);
+}
+
+function resolveMediaKind(mediaUrl?: string | null, mediaType?: string | null): 'image' | 'video' | 'other' | null {
+    const url = (mediaUrl || '').trim();
+    if (!url) return null;
+    const type = (mediaType || '').toLowerCase();
+    if (type.startsWith('image')) return 'image';
+    if (type.startsWith('video')) return 'video';
+    if (isLikelyImageUrl(url)) return 'image';
+    if (isLikelyVideoUrl(url)) return 'video';
+    return 'other';
+}
+
 function formatDate(value: string) {
     const d = new Date(value);
     return d.toLocaleString(undefined, {
@@ -51,7 +67,7 @@ export default function CommunityPostCardFull({
     onLike: () => void;
     onOpenComments: () => void;
 }) {
-    const isImage = !!post.media_url && isLikelyImageUrl(post.media_url);
+    const mediaKind = resolveMediaKind(post.media_url, post.media_type);
 
     // Dynamic gradient based on content/author hash or just nice defaults
     // For now using the requested style
@@ -75,12 +91,23 @@ export default function CommunityPostCardFull({
                 <div className="absolute inset-x-0 top-0 bottom-32 sm:bottom-0">
                     {/* On mobile, media goes to bottom minus text area. On desktop similar. 
               Actually to make it "TikTok style", media usually takes full height. */}
-                    {isImage ? (
+                    {mediaKind === 'image' ? (
                         <img
                             src={post.media_url}
                             alt="Post content"
                             className="h-full w-full object-cover opacity-90"
                             draggable={false}
+                        />
+                    ) : mediaKind === 'video' ? (
+                        <video
+                            src={post.media_url}
+                            className="h-full w-full object-cover opacity-95"
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            controls={false}
+                            preload="metadata"
                         />
                     ) : (
                         // Link / Non-image media placeholder

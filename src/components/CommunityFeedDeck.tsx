@@ -5,6 +5,12 @@ import { AnimatePresence, motion, PanInfo } from 'framer-motion';
 import type { CommunityPost } from './communityApi';
 import CommunityPostCardFull from './CommunityPostCardFull';
 
+function isLikelyImageUrl(value: string) {
+    if (!value) return false;
+    if (value.startsWith('data:image/')) return true;
+    return /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value);
+}
+
 export default function CommunityFeedDeck({
     posts,
     onLike,
@@ -61,6 +67,7 @@ export default function CommunityFeedDeck({
     useEffect(() => {
         const urls = [nextMedia, prevMedia].filter(Boolean) as string[];
         urls.forEach((u) => {
+            if (!isLikelyImageUrl(u)) return;
             const img = new Image();
             img.src = u;
         });

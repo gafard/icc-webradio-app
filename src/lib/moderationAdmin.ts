@@ -47,6 +47,9 @@ export type QueueItem = {
     createdAt: string | null;
     visibility: string | null;
     moderationStatus: string | null;
+    mediaUrl?: string | null;
+    mediaType?: 'image' | 'video' | null;
+    thumbUrl?: string | null;
   };
 };
 
@@ -131,6 +134,27 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(normalized) ? normalized : fallback;
 }
 
+function isVideoUrl(value: string | null): boolean {
+  const normalized = (value || '').trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized.startsWith('data:video/')) return true;
+  return /\.(mp4|webm|mov|m4v|ogg|ogv)(?:$|\?)/.test(normalized);
+}
+
+function normalizePreviewMediaType(
+  mediaType: string | null,
+  mediaUrl: string | null
+): QueueItem['preview']['mediaType'] {
+  const normalizedType = (mediaType || '').trim().toLowerCase();
+  if (normalizedType) {
+    if (normalizedType.startsWith('video')) return 'video';
+    if (normalizedType.startsWith('image')) return 'image';
+  }
+  if (isVideoUrl(mediaUrl)) return 'video';
+  if (mediaUrl) return 'image';
+  return null;
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   if (!items.length) return [];
   const safeSize = Math.max(1, size);
@@ -186,14 +210,40 @@ async function mapTargetPreviews(client: DbClient, rows: CaseRow[]) {
   );
 
   for (const ids of chunk(postIds, 150)) {
-    const { data, error } = await client
-      .from('community_posts')
-      .select(
-        'id, author_name, author_device_id, content, created_at, visibility, moderation_status, reported_count'
-      )
-      .in('id', ids);
+    const requiredColumns = [
+      'id',
+      'author_name',
+      'author_device_id',
+      'content',
+      'created_at',
+      'visibility',
+      'moderation_status',
+      'reported_count',
+    ];
+    const optionalColumns = ['media_url', 'media_type', 'thumb_url'];
+    const activeOptional = [...optionalColumns];
+
+    let queryResult: any = null;
+    for (let attempt = 0; attempt <= optionalColumns.length; attempt += 1) {
+      const selectColumns = [...requiredColumns, ...activeOptional].join(', ');
+      queryResult = await client.from('community_posts').select(selectColumns).in('id', ids);
+      if (!queryResult.error) break;
+
+      let removed = false;
+      for (const column of [...activeOptional]) {
+        if (!isMissingColumnError(queryResult.error, column)) continue;
+        activeOptional.splice(activeOptional.indexOf(column), 1);
+        removed = true;
+      }
+      if (!removed) break;
+    }
+
+    const { data, error } = queryResult ?? {};
     if (error && !isMissingTableError(error, 'community_posts')) throw error;
     for (const row of data ?? []) {
+      const mediaUrl = toStringOrNull(row.media_url);
+      const thumbUrl = toStringOrNull(row.thumb_url);
+      const mediaType = normalizePreviewMediaType(toStringOrNull(row.media_type), mediaUrl);
       previews.set(`post:${String(row.id)}`, {
         title: row.author_name ? String(row.author_name) : 'Post',
         subtitle: `Post ${String(row.id).slice(0, 8)}`,
@@ -203,6 +253,9 @@ async function mapTargetPreviews(client: DbClient, rows: CaseRow[]) {
         createdAt: toStringOrNull(row.created_at),
         visibility: toStringOrNull(row.visibility),
         moderationStatus: toStringOrNull(row.moderation_status),
+        mediaUrl,
+        mediaType,
+        thumbUrl,
       });
     }
   }
@@ -270,6 +323,9 @@ function buildQueueItem(row: CaseRow, preview?: QueueItem['preview']): QueueItem
       createdAt: null,
       visibility: null,
       moderationStatus: null,
+      mediaUrl: null,
+      mediaType: null,
+      thumbUrl: null,
     },
   };
 }

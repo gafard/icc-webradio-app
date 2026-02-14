@@ -31,6 +31,9 @@ export type QueueItem = {
     createdAt: string | null;
     visibility: string | null;
     moderationStatus: string | null;
+    mediaUrl?: string | null;
+    mediaType?: 'image' | 'video' | null;
+    thumbUrl?: string | null;
   };
 };
 

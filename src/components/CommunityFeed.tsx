@@ -56,6 +56,25 @@ function isLikelyImageUrl(value: string) {
   return /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value);
 }
 
+function isLikelyVideoUrl(value: string) {
+  if (value.startsWith('data:video/')) return true;
+  return /\.(mp4|webm|ogg|mov|m4v|m3u8)(\?.*)?$/i.test(value);
+}
+
+function resolveMediaKind(
+  mediaUrl?: string | null,
+  mediaType?: string | null
+): 'image' | 'video' | 'other' | null {
+  const url = (mediaUrl || '').trim();
+  if (!url) return null;
+  const type = (mediaType || '').toLowerCase();
+  if (type.startsWith('image')) return 'image';
+  if (type.startsWith('video')) return 'video';
+  if (isLikelyImageUrl(url)) return 'image';
+  if (isLikelyVideoUrl(url)) return 'video';
+  return 'other';
+}
+
 function initials(name: string) {
   return (name || 'U')
     .split(' ')
@@ -518,7 +537,7 @@ export default function CommunityFeed({
   const activeDeleteBusy = activePost ? !!deletingPost[activePost.id] : false;
   const activeCanDelete =
     !!activePost && !!modalActor.deviceId && modalActor.deviceId === activePost.author_device_id;
-  const activeIsImage = !!activePost?.media_url && isLikelyImageUrl(activePost.media_url);
+  const activeMediaKind = resolveMediaKind(activePost?.media_url, activePost?.media_type);
 
   if (status === 'error') {
     return <div className="text-sm text-rose-700 dark:text-rose-300">{t('feed.loadError')}</div>;
@@ -669,12 +688,20 @@ export default function CommunityFeed({
 
               {activePost.media_url ? (
                 <div className="mt-6 overflow-hidden rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]">
-                  {activeIsImage ? (
+                  {activeMediaKind === 'image' ? (
                     <img
                       src={activePost.media_url}
                       alt="Media"
                       className="w-full object-contain max-h-[70vh]"
                       loading="lazy"
+                    />
+                  ) : activeMediaKind === 'video' ? (
+                    <video
+                      src={activePost.media_url}
+                      className="w-full max-h-[70vh] bg-black"
+                      controls
+                      playsInline
+                      preload="metadata"
                     />
                   ) : (
                     <a

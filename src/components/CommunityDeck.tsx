@@ -10,6 +10,7 @@ type CommunityPost = {
   author_device_id?: string | null;
   content: string;
   media_url?: string | null;
+  media_type?: string | null;
   created_at: string;
   likes_count?: number | null;
   comments_count?: number | null;
@@ -19,6 +20,25 @@ type CommunityPost = {
 function isLikelyImageUrl(value: string) {
   if (value.startsWith('data:image/')) return true;
   return /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value);
+}
+
+function isLikelyVideoUrl(value: string) {
+  if (value.startsWith('data:video/')) return true;
+  return /\.(mp4|webm|ogg|mov|m4v|m3u8)(\?.*)?$/i.test(value);
+}
+
+function resolveMediaKind(
+  mediaUrl?: string | null,
+  mediaType?: string | null
+): 'image' | 'video' | 'other' | null {
+  const url = (mediaUrl || '').trim();
+  if (!url) return null;
+  const type = (mediaType || '').toLowerCase();
+  if (type.startsWith('image')) return 'image';
+  if (type.startsWith('video')) return 'video';
+  if (isLikelyImageUrl(url)) return 'image';
+  if (isLikelyVideoUrl(url)) return 'video';
+  return 'other';
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -140,7 +160,7 @@ export default function CommunityDeck({
   }, [goTo, index]);
 
   if (!current) return null;
-  const currentHasImage = !!current.media_url && isLikelyImageUrl(current.media_url);
+  const currentMediaKind = resolveMediaKind(current.media_url, current.media_type);
 
   return (
     <div className="relative">
@@ -172,7 +192,7 @@ export default function CommunityDeck({
             style={{ touchAction: 'pan-y' }}
           >
             {current.media_url ? (
-              currentHasImage ? (
+              currentMediaKind === 'image' ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -186,6 +206,23 @@ export default function CommunityDeck({
                   <div className="absolute inset-0 bg-black/10" />
                   <div className="absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_50%,transparent_72%)] bg-black/35" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
+                </>
+              ) : currentMediaKind === 'video' ? (
+                <>
+                  <video
+                    src={current.media_url}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    preload="metadata"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    controls={false}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                  <div className="absolute inset-0 bg-black/12" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/20" />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
                 </>
               ) : (

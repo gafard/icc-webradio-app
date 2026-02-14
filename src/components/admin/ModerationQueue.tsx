@@ -51,15 +51,24 @@ export default function ModerationQueue({
   onSortChange,
   onSelect,
 }: Props) {
+  const getRiskTone = (score: number) => {
+    if (score >= 40) return 'text-red-300 border-red-400/40 bg-red-500/15';
+    if (score >= 20) return 'text-amber-200 border-amber-400/35 bg-amber-500/15';
+    return 'text-emerald-200 border-emerald-400/35 bg-emerald-500/15';
+  };
+
   return (
-    <section className="glass-panel rounded-3xl p-4 sm:p-5 space-y-3">
+    <section className="rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 sm:p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">Moderation Queue</h2>
+        <div>
+          <h2 className="text-base font-extrabold tracking-tight">Queue</h2>
+          <div className="text-[11px] text-[color:var(--foreground)]/60">{items.length} cases</div>
+        </div>
         <div className="flex gap-2">
           <select
             value={statusFilter}
             onChange={(event) => onStatusFilterChange(event.target.value)}
-            className="input-field h-9 text-xs"
+            className="input-field h-8 text-[11px]"
           >
             <option value="open">Open</option>
             <option value="reviewing">Reviewing</option>
@@ -70,16 +79,16 @@ export default function ModerationQueue({
           <select
             value={sort}
             onChange={(event) => onSortChange(event.target.value as ModerationQueueSort)}
-            className="input-field h-9 text-xs"
+            className="input-field h-8 text-[11px]"
           >
-            <option value="risk">Sort: risk</option>
-            <option value="recent">Sort: recent</option>
+            <option value="risk">Risk</option>
+            <option value="recent">Recent</option>
           </select>
         </div>
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-4 text-sm flex items-center gap-2">
+        <div className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-3 text-sm flex items-center gap-2">
           <Loader2 size={15} className="animate-spin" />
           Chargement...
         </div>
@@ -106,26 +115,36 @@ export default function ModerationQueue({
               key={item.id}
               type="button"
               onClick={() => onSelect(item.id)}
-              className={`w-full rounded-2xl border p-3 text-left transition ${
+              className={`w-full rounded-2xl border p-2.5 text-left transition ${
                 active
-                  ? 'border-[color:var(--accent)] bg-[color:var(--accent)]/10'
-                  : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] hover:border-[color:var(--accent)]/40'
+                  ? 'border-[color:var(--accent)] bg-[color:var(--accent)]/10 shadow-[0_10px_22px_rgba(0,0,0,0.12)]'
+                  : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] hover:border-[color:var(--accent)]/35'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold truncate">{item.preview.title}</div>
-                <div className="text-[11px] font-semibold text-[color:var(--foreground)]/70">
+                <div className="min-w-0 text-sm font-semibold truncate">{item.preview.title}</div>
+                <div className="text-[10px] font-semibold text-[color:var(--foreground)]/70">
                   {formatStatus(item.status)}
                 </div>
               </div>
-              <div className="mt-1 text-[11px] text-[color:var(--foreground)]/65">
-                {item.targetType}:{item.targetId.slice(0, 8)} • reports {item.reportsCount} • risk{' '}
-                {item.riskScore}
+
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${getRiskTone(item.riskScore)}`}>
+                  Risk {item.riskScore}
+                </span>
+                <span className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-1.5 py-0.5 text-[10px] text-[color:var(--foreground)]/70">
+                  Reports {item.reportsCount}
+                </span>
+                <span className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-1.5 py-0.5 text-[10px] text-[color:var(--foreground)]/70">
+                  {item.targetType}
+                </span>
               </div>
-              <div className="mt-2 text-xs text-[color:var(--foreground)]/85 line-clamp-2 whitespace-pre-wrap">
+
+              <div className="mt-2 text-xs text-[color:var(--foreground)]/82 line-clamp-1 whitespace-pre-wrap">
                 {item.preview.content || 'Aucun texte'}
               </div>
-              <div className="mt-2 text-[11px] text-[color:var(--foreground)]/60">
+
+              <div className="mt-1.5 text-[10px] text-[color:var(--foreground)]/60">
                 {formatDate(item.lastReportedAt)}
               </div>
             </button>

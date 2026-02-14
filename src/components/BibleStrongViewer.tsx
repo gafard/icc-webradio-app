@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search, Volume2, BookOpen } from 'lucide-react';
-import StrongService from '../services/strong-service';
-import { StrongEntry } from '../services/strong-service';
+import StrongService, { type StrongEntry, type StrongOccurrence } from '../services/strong-service';
 
 type StrongRef = { number: string; language: 'hebrew' | 'greek' };
 
@@ -48,41 +47,66 @@ const BibleStrongViewer = ({
   const [searchResults, setSearchResults] = useState<{ number: string; entry: StrongEntry; language: 'hebrew' | 'greek' }[]>([]);
   const [activeTab, setActiveTab] = useState<'details' | 'search'>('details');
   const [loading, setLoading] = useState(false);
+  const [occurrencesLoading, setOccurrencesLoading] = useState(false);
+  const [occurrences, setOccurrences] = useState<StrongOccurrence[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Charger l'entrée Strong spécifiée
   useEffect(() => {
+    let cancelled = false;
+
     if (strongNumber && isOpen) {
       const normalized = normalizeStrongNumber(strongNumber);
       if (!normalized) {
         setError(`Format Strong invalide: ${strongNumber}`);
         setCurrentEntry(null);
         setResolvedStrong(null);
+        setOccurrences([]);
+        setLoading(false);
+        setOccurrencesLoading(false);
         return;
       }
       setResolvedStrong(normalized);
       setLoading(true);
+      setOccurrencesLoading(true);
       setError(null);
-      
-      StrongService.getEntry(normalized.number, normalized.language)
-        .then(entry => {
+      setOccurrences([]);
+
+      Promise.all([
+        StrongService.getEntry(normalized.number, normalized.language),
+        StrongService.getOccurrences(normalized.number, normalized.language, 12),
+      ])
+        .then(([entry, related]) => {
+          if (cancelled) return;
           if (entry) {
             setCurrentEntry(entry);
             setActiveTab('details');
           } else {
+            setCurrentEntry(null);
             setError(`Aucune entrée trouvée pour le numéro Strong ${normalized.number}`);
           }
+          setOccurrences(related);
         })
         .catch((err: unknown) => {
+          if (cancelled) return;
           setError(`Erreur lors du chargement de l'entrée Strong: ${errorMessage(err)}`);
           console.error(err);
         })
         .finally(() => {
+          if (cancelled) return;
           setLoading(false);
+          setOccurrencesLoading(false);
         });
     } else if (!strongNumber) {
       setResolvedStrong(null);
+      setCurrentEntry(null);
+      setOccurrences([]);
+      setLoading(false);
+      setOccurrencesLoading(false);
     }
+    return () => {
+      cancelled = true;
+    };
   }, [strongNumber, isOpen]);
 
   // Fonction de recherche
@@ -225,6 +249,32 @@ const BibleStrongViewer = ({
                   {currentEntry.lsg}
                 </div>
               </div>
+
+              <div>
+                <h4 className="font-bold text-[color:var(--foreground)] mb-2">Autres passages</h4>
+                {occurrencesLoading ? (
+                  <div className="glass-panel rounded-xl p-4 text-sm text-[color:var(--foreground)]/65">
+                    Recherche des passages en cours...
+                  </div>
+                ) : occurrences.length > 0 ? (
+                  <div className="glass-panel rounded-xl p-3">
+                    <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                      {occurrences.map((item) => (
+                        <div key={`${item.reference}-${item.strong}`} className="rounded-lg border border-black/10 dark:border-white/10 p-2.5">
+                          <div className="text-xs font-bold accent-text">{item.reference}</div>
+                          <div className="mt-1 text-xs text-[color:var(--foreground)]/75 line-clamp-3">
+                            {item.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="glass-panel rounded-xl p-4 text-sm text-[color:var(--foreground)]/65">
+                    Aucun autre passage trouvé pour ce mot Strong.
+                  </div>
+                )}
+              </div>
             </div>
           ) : !loading && !error && activeTab === 'details' ? (
             <div className="text-center py-8 text-[color:var(--foreground)]/60">
@@ -264,6 +314,11 @@ const BibleStrongViewer = ({
                         setResolvedStrong({ number: result.number, language: result.language });
                         setActiveTab('details');
                         setSearchTerm('');
+                        setOccurrences([]);
+                        setOccurrencesLoading(true);
+                        StrongService.getOccurrences(result.number, result.language, 12)
+                          .then((items) => setOccurrences(items))
+                          .finally(() => setOccurrencesLoading(false));
                       }}
                     >
                       <div className="flex justify-between items-start">

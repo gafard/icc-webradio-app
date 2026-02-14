@@ -21,6 +21,15 @@ export interface StrongDatabase {
   greek: Record<string, StrongEntry>;
 }
 
+export interface StrongOccurrence {
+  book: string;
+  chapter: number;
+  verse: number;
+  reference: string;
+  text: string;
+  strong: string;
+}
+
 function decodeEntities(text: string): string {
   return text
     .replace(/&nbsp;/gi, ' ')
@@ -84,6 +93,7 @@ class StrongService {
   private loadingPromise: Promise<StrongDatabase> | null = null;
   private useLocalFallback = false;
   private apiFailed = false;
+  private occurrenceCache = new Map<string, StrongOccurrence[]>();
 
   public static getInstance(): StrongService {
     if (!StrongService.instance) {
@@ -188,6 +198,43 @@ class StrongService {
     const data = await this.loadData();
     const entries = data[language];
     return sanitizeStrongEntry(entries[number] || null);
+  }
+
+  async getOccurrences(
+    number: string,
+    language: 'hebrew' | 'greek',
+    limit = 12
+  ): Promise<StrongOccurrence[]> {
+    const normalizedLimit = Math.max(1, Math.min(Math.floor(limit), 40));
+    const parsedNumber = Number(number);
+    if (!Number.isFinite(parsedNumber) || parsedNumber <= 0) return [];
+    const normalizedNumber = String(Math.trunc(parsedNumber));
+    const cacheKey = `${language}:${normalizedNumber}:${normalizedLimit}`;
+    const cached = this.occurrenceCache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const res = await fetch(
+        `/api/strong?number=${encodeURIComponent(normalizedNumber)}&lang=${language}&withRefs=1&refsLimit=${normalizedLimit}`
+      );
+      if (!res.ok) {
+        throw new Error(`API Strong error: ${res.status}`);
+      }
+      const data = await res.json();
+      const occurrences = Array.isArray(data?.occurrences)
+        ? (data.occurrences as StrongOccurrence[]).map((item) => ({
+            ...item,
+            book: stripStrongHtml(item.book),
+            reference: stripStrongHtml(item.reference),
+            text: stripStrongHtml(item.text),
+            strong: stripStrongHtml(item.strong),
+          }))
+        : [];
+      this.occurrenceCache.set(cacheKey, occurrences);
+      return occurrences;
+    } catch {
+      return [];
+    }
   }
 
   async searchEntries(term: string): Promise<{ number: string; entry: StrongEntry; language: 'hebrew' | 'greek' }[]> {

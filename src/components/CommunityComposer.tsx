@@ -1,7 +1,7 @@
-import { type ChangeEvent, useMemo, useRef, useState } from 'react';
-import { ImagePlus, Link2, Loader2, MapPin, SendHorizontal, Sparkles, X } from 'lucide-react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, ImagePlus, Link2, Loader2, MapPin, SendHorizontal, Sparkles, X } from 'lucide-react';
 import { useCommunityIdentity } from '../lib/useCommunityIdentity';
-import { createPost, createStory, type CommunityKind } from './communityApi';
+import { createPost, createStory, type CommunityKind, uploadCommunityMedia } from './communityApi';
 import { renderVerseStoryPng } from '../lib/storyImage';
 import { getRandomLocalVerse } from '../lib/localBible';
 import { useI18n } from '../contexts/I18nContext';
@@ -18,16 +18,19 @@ function isLikelyImageUrl(value: string) {
   return /\.(png|jpe?g|webp|gif|avif|svg)(\?.*)?$/i.test(value);
 }
 
-const MAX_LOCAL_IMAGE_MB = 4;
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Impossible de lire cette image.'));
-    reader.readAsDataURL(file);
-  });
+function isLikelyVideoUrl(value: string) {
+  if (value.startsWith('data:video/')) return true;
+  return /\.(mp4|webm|ogg|mov|m4v|m3u8)(\?.*)?$/i.test(value);
 }
+
+function inferMediaTypeFromUrl(value: string): 'image' | 'video' | null {
+  if (!value) return null;
+  if (isLikelyImageUrl(value)) return 'image';
+  if (isLikelyVideoUrl(value)) return 'video';
+  return null;
+}
+
+const MAX_LOCAL_MEDIA_MB = 80;
 
 export default function CommunityComposer({
   onPosted,
@@ -50,8 +53,8 @@ export default function CommunityComposer({
   const { identity, updateName } = useCommunityIdentity();
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
-  const [localImageDataUrl, setLocalImageDataUrl] = useState('');
-  const [localImageName, setLocalImageName] = useState('');
+  const [localMediaFile, setLocalMediaFile] = useState<File | null>(null);
+  const [localMediaPreviewUrl, setLocalMediaPreviewUrl] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [place, setPlace] = useState('');
   const [mediaMode, setMediaMode] = useState<'upload' | 'url'>('upload');
@@ -61,6 +64,7 @@ export default function CommunityComposer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recordInputRef = useRef<HTMLInputElement | null>(null);
 
   const normalizedMedia = useMemo(() => normalizeUrl(mediaUrl), [mediaUrl]);
   const normalizedLink = useMemo(() => normalizeUrl(linkUrl), [linkUrl]);
@@ -68,48 +72,60 @@ export default function CommunityComposer({
     () => identity?.displayName?.trim() || t('identity.guest'),
     [identity?.displayName, t]
   );
-  const imagePreview = useMemo(() => {
-    if (localImageDataUrl) return localImageDataUrl;
-    return normalizedMedia && isLikelyImageUrl(normalizedMedia) ? normalizedMedia : '';
-  }, [localImageDataUrl, normalizedMedia]);
+  const mediaPreviewKind = useMemo<'image' | 'video' | null>(() => {
+    if (localMediaFile?.type.startsWith('image/')) return 'image';
+    if (localMediaFile?.type.startsWith('video/')) return 'video';
+    return inferMediaTypeFromUrl(normalizedMedia);
+  }, [localMediaFile?.type, normalizedMedia]);
+
+  const mediaPreviewUrl = useMemo(() => {
+    if (localMediaPreviewUrl) return localMediaPreviewUrl;
+    if (!normalizedMedia) return '';
+    return mediaPreviewKind ? normalizedMedia : '';
+  }, [localMediaPreviewUrl, normalizedMedia, mediaPreviewKind]);
 
   const canPost = useMemo(() => {
     const hasIdentity = !!identity?.deviceId;
     const hasText = content.trim().length >= 3;
-    const hasExtras = !!localImageDataUrl || !!normalizedMedia || !!normalizedLink;
+    const hasExtras = !!localMediaFile || !!normalizedMedia || !!normalizedLink;
     return hasIdentity && (hasText || hasExtras) && !busy;
-  }, [identity?.deviceId, content, localImageDataUrl, normalizedMedia, normalizedLink, busy]);
+  }, [identity?.deviceId, content, localMediaFile, normalizedMedia, normalizedLink, busy]);
 
   const clearMedia = () => {
     setMediaUrl('');
-    setLocalImageDataUrl('');
-    setLocalImageName('');
+    if (localMediaPreviewUrl) URL.revokeObjectURL(localMediaPreviewUrl);
+    setLocalMediaPreviewUrl('');
+    setLocalMediaFile(null);
     setShowMedia(false);
   };
 
-  const onLocalImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    return () => {
+      if (localMediaPreviewUrl) URL.revokeObjectURL(localMediaPreviewUrl);
+    };
+  }, [localMediaPreviewUrl]);
+
+  const onLocalMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setError(null);
-    if (!file.type.startsWith('image/')) {
-      setError('Veuillez choisir un fichier image (png, jpg, webp, etc.).');
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      setError('Veuillez choisir une image ou une vidéo.');
       return;
     }
-    if (file.size > MAX_LOCAL_IMAGE_MB * 1024 * 1024) {
-      setError(`Image trop lourde (${MAX_LOCAL_IMAGE_MB} Mo max).`);
+    if (file.size > MAX_LOCAL_MEDIA_MB * 1024 * 1024) {
+      setError(`Fichier trop lourd (${MAX_LOCAL_MEDIA_MB} Mo max).`);
       return;
     }
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setLocalImageDataUrl(dataUrl);
-      setLocalImageName(file.name);
-      setMediaUrl('');
-      setMediaMode('upload');
-    } catch (e: any) {
-      setError(e?.message ?? 'Impossible de charger cette image.');
-    } finally {
-      event.target.value = '';
-    }
+
+    if (localMediaPreviewUrl) URL.revokeObjectURL(localMediaPreviewUrl);
+    setLocalMediaFile(file);
+    setLocalMediaPreviewUrl(URL.createObjectURL(file));
+    setMediaUrl('');
+    setMediaMode('upload');
+    event.target.value = '';
   };
 
   const submit = async () => {
@@ -126,21 +142,30 @@ export default function CommunityComposer({
       if (normalizedLink) parts.push(`Lien: ${normalizedLink}`);
       if (place.trim()) parts.push(`Lieu: ${place.trim()}`);
 
-      const finalMedia = localImageDataUrl || normalizedMedia || null;
+      let finalMedia: string | null = normalizedMedia || null;
+      let mediaType: string | null = inferMediaTypeFromUrl(normalizedMedia);
+
+      if (mediaMode === 'upload' && localMediaFile) {
+        finalMedia = await uploadCommunityMedia(localMediaFile, identity.deviceId);
+        if (localMediaFile.type.startsWith('image/')) mediaType = 'image';
+        else if (localMediaFile.type.startsWith('video/')) mediaType = 'video';
+      }
+
       await createPost({
         author_name: authorDisplayName,
         author_device_id: identity.deviceId,
         content: parts.join('\n\n').trim(),
         media_url: finalMedia,
-        media_type: finalMedia ? 'image' : null,
+        media_type: finalMedia ? mediaType : null,
         kind,
         group_id: groupId || null,
       });
 
       setContent('');
       setMediaUrl('');
-      setLocalImageDataUrl('');
-      setLocalImageName('');
+      if (localMediaPreviewUrl) URL.revokeObjectURL(localMediaPreviewUrl);
+      setLocalMediaPreviewUrl('');
+      setLocalMediaFile(null);
       setLinkUrl('');
       setPlace('');
       setMediaMode('upload');
@@ -262,32 +287,51 @@ export default function CommunityComposer({
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         className="hidden"
-                        onChange={onLocalImageChange}
+                        onChange={onLocalMediaChange}
                       />
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] py-6 text-sm font-medium text-[color:var(--foreground)]/70 transition-all hover:bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImagePlus size={20} className="text-[color:var(--accent)]" />
-                        {localImageName || "Sélectionner une image"}
-                      </button>
+                      <input
+                        ref={recordInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={onLocalMediaChange}
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] py-4 text-sm font-medium text-[color:var(--foreground)]/70 transition-all hover:bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <ImagePlus size={20} className="text-[color:var(--accent)]" />
+                          {localMediaFile?.name || 'Image / vidéo'}
+                        </button>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] py-4 text-sm font-medium text-[color:var(--foreground)]/70 transition-all hover:bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]"
+                          onClick={() => recordInputRef.current?.click()}
+                        >
+                          <Camera size={20} className="text-[color:var(--accent)]" />
+                          Enregistrer
+                        </button>
+                      </div>
                       <div className="text-center text-[10px] font-bold uppercase tracking-wider text-[color:var(--foreground)]/50">
-                        PNG, JPG, WEBP • {MAX_LOCAL_IMAGE_MB} Mo max
+                        PNG, JPG, WEBP, MP4, WEBM • {MAX_LOCAL_MEDIA_MB} Mo max
                       </div>
                     </div>
                   ) : (
                     <div className="relative">
                       <input
                         className="h-11 w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] pl-4 pr-10 text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--foreground)]/45"
-                        placeholder="URL image (https://...)"
+                        placeholder="URL image / vidéo (https://...)"
                         value={mediaUrl}
                         onChange={(e) => {
                           setMediaUrl(e.target.value);
-                          setLocalImageDataUrl('');
-                          setLocalImageName('');
+                          if (localMediaPreviewUrl) URL.revokeObjectURL(localMediaPreviewUrl);
+                          setLocalMediaPreviewUrl('');
+                          setLocalMediaFile(null);
                         }}
                       />
                       <button
@@ -300,9 +344,19 @@ export default function CommunityComposer({
                     </div>
                   )}
                 </div>
-                {imagePreview ? (
+                {mediaPreviewUrl ? (
                   <div className="group relative mt-4 overflow-hidden rounded-2xl border border-[color:var(--border-soft)]">
-                    <img src={imagePreview} alt="Apercu media" className="h-48 w-full object-cover" />
+                    {mediaPreviewKind === 'video' ? (
+                      <video
+                        src={mediaPreviewUrl}
+                        className="h-52 w-full object-cover"
+                        controls
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img src={mediaPreviewUrl} alt="Apercu media" className="h-48 w-full object-cover" />
+                    )}
                     <button
                       type="button"
                       className="absolute top-2 right-2 h-8 w-8 grid place-items-center rounded-xl bg-black/60 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
@@ -372,7 +426,7 @@ export default function CommunityComposer({
                   onClick={() => setShowMedia((prev) => !prev)}
                 >
                   <ImagePlus size={15} className={showMedia ? 'text-[color:var(--accent)]' : ''} />
-                  <span>Image</span>
+                  <span>Média</span>
                 </button>
                 <button
                   type="button"

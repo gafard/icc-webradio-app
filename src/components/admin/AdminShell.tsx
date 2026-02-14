@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, RefreshCw, Shield } from 'lucide-react';
-import ModerationQueue from './ModerationQueue';
-import CaseDrawer from './CaseDrawer';
+import ModerationDeck from './ModerationDeck';
 import type {
   CaseDetail,
   ModerationActionType,
@@ -509,6 +508,20 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
 
   const canModerate = role !== 'viewer';
 
+  const goPrevCase = useCallback(() => {
+    if (!queue.length) return;
+    const index = Math.max(0, queue.findIndex((item) => item.id === selectedCaseId));
+    const previous = queue[index - 1] ?? queue[queue.length - 1] ?? null;
+    setSelectedCaseId(previous?.id ?? null);
+  }, [queue, selectedCaseId]);
+
+  const goNextCase = useCallback(() => {
+    if (!queue.length) return;
+    const index = Math.max(0, queue.findIndex((item) => item.id === selectedCaseId));
+    const next = queue[index + 1] ?? queue[0] ?? null;
+    setSelectedCaseId(next?.id ?? null);
+  }, [queue, selectedCaseId]);
+
   const contentKinds = useMemo(() => {
     const kinds = new Set<string>();
     for (const post of snapshot?.posts ?? []) {
@@ -636,33 +649,55 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
 
       {activeTab === 'overview' ? (
         <div className="space-y-4">
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article className="glass-panel rounded-2xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Visits 24h</div>
-              <div className="mt-1 text-2xl font-extrabold">{overview?.traffic.pageViews24h ?? 0}</div>
-              <div className="mt-1 text-xs text-[color:var(--foreground)]/70">
-                Unique: {overview?.traffic.uniqueVisitors24h ?? 0}
+          <section className="grid gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <article className="relative overflow-hidden rounded-3xl border border-[color:var(--border-soft)] bg-black p-5 text-white shadow-[var(--shadow-strong)]">
+              <div className="pointer-events-none absolute -left-24 -top-20 h-64 w-64 rounded-full bg-cyan-500/30 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 right-0 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
+              <div className="relative">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-white/65">Operations Pulse</div>
+                <div className="mt-2 text-4xl font-black tracking-tight">{overview?.operations.openCases ?? 0}</div>
+                <div className="text-sm text-white/75">open moderation cases</div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">High risk</div>
+                    <div className="text-xl font-extrabold text-red-200">{overview?.operations.highRiskOpenCases ?? 0}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">Unassigned</div>
+                    <div className="text-xl font-extrabold">{overview?.operations.unassignedOpenCases ?? 0}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-[0.14em] text-white/60">Active calls</div>
+                    <div className="text-xl font-extrabold">{overview?.operations.activeCalls ?? 0}</div>
+                  </div>
+                </div>
               </div>
             </article>
+
             <article className="glass-panel rounded-2xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Visits 7d</div>
-              <div className="mt-1 text-2xl font-extrabold">{overview?.traffic.pageViews7d ?? 0}</div>
+              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Traffic 24h</div>
+              <div className="mt-1 text-3xl font-extrabold">{overview?.traffic.pageViews24h ?? 0}</div>
               <div className="mt-1 text-xs text-[color:var(--foreground)]/70">
-                Unique: {overview?.traffic.uniqueVisitors7d ?? 0}
+                Unique visitors: {overview?.traffic.uniqueVisitors24h ?? 0}
+              </div>
+              <div className="mt-3 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2 text-xs text-[color:var(--foreground)]/75">
+                7d total: {overview?.traffic.pageViews7d ?? 0}
               </div>
             </article>
+
             <article className="glass-panel rounded-2xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Community</div>
-              <div className="mt-1 text-2xl font-extrabold">{overview?.community.postsTotal ?? 0} posts</div>
+              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Community 24h</div>
+              <div className="mt-1 text-3xl font-extrabold">+{overview?.community.posts24h ?? 0}</div>
               <div className="mt-1 text-xs text-[color:var(--foreground)]/70">
-                +{overview?.community.posts24h ?? 0} / 24h • groups {overview?.community.groupsTotal ?? 0}
+                posts in last 24 hours
               </div>
-            </article>
-            <article className="glass-panel rounded-2xl p-4">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/60">Operations</div>
-              <div className="mt-1 text-2xl font-extrabold">{overview?.operations.openCases ?? 0} open cases</div>
-              <div className="mt-1 text-xs text-[color:var(--foreground)]/70">
-                Active calls: {overview?.operations.activeCalls ?? 0}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-2">
+                  Groups: {overview?.community.groupsTotal ?? 0}
+                </div>
+                <div className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-2.5 py-2">
+                  Reports: {overview?.community.openReports ?? 0}
+                </div>
               </div>
             </article>
           </section>
@@ -823,36 +858,35 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
       ) : null}
 
       {activeTab === 'moderation' ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(320px,40%)_1fr]">
-          <ModerationQueue
-            items={queue}
-            loading={loadingQueue}
-            error={error || null}
-            selectedCaseId={selectedCaseId}
-            statusFilter={statusFilter}
-            sort={sort}
-            onStatusFilterChange={setStatusFilter}
-            onSortChange={setSort}
-            onSelect={setSelectedCaseId}
-          />
-          <CaseDrawer
-            detail={detail}
-            loading={loadingCase}
-            runningAction={runningAction || !canModerate}
-            onRunAction={(action, payload) => {
-              if (!canModerate) return;
-              void runAction(action, payload);
-            }}
-            onAssignToMe={() => {
-              if (!canModerate) return;
-              void runAssign('self');
-            }}
-            onUnassign={() => {
-              if (!canModerate) return;
-              void runAssign('clear');
-            }}
-          />
-        </div>
+        <ModerationDeck
+          items={queue}
+          loadingQueue={loadingQueue}
+          selectedCaseId={selectedCaseId}
+          onSelect={setSelectedCaseId}
+          detail={detail}
+          loadingCase={loadingCase}
+          runningAction={runningAction || !canModerate}
+          canModerate={canModerate}
+          statusFilter={statusFilter}
+          sort={sort}
+          onStatusFilterChange={setStatusFilter}
+          onSortChange={setSort}
+          onRunAction={(action, payload) => {
+            if (!canModerate) return;
+            void runAction(action, payload);
+          }}
+          onAssignToMe={() => {
+            if (!canModerate) return;
+            void runAssign('self');
+          }}
+          onUnassign={() => {
+            if (!canModerate) return;
+            void runAssign('clear');
+          }}
+          onNext={goNextCase}
+          onPrev={goPrevCase}
+          error={error || null}
+        />
       ) : null}
 
       {activeTab === 'content' ? (

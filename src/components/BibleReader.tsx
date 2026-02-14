@@ -2314,7 +2314,9 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
 
   const handleLongPressAction = async (action: 'strong' | 'refs' | 'note' | 'compare') => {
     if (!longPressTarget) return;
-    const { verse, ref } = longPressTarget;
+    const target = longPressTarget;
+    setLongPressTarget(null);
+    const { verse, ref } = target;
     setSelectedVerse(verse);
     switch (action) {
       case 'strong': {
@@ -2337,7 +2339,6 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
       default:
         break;
     }
-    setLongPressTarget(null);
   };
 
   const openAdvancedStudyTools = () => {
