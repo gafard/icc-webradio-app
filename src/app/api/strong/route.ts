@@ -330,7 +330,14 @@ async function getStrongOccurrences(
   for (const row of rows) {
     const text = String(row.Texte ?? '');
     if (!tokenRegex.test(text)) continue;
-    const bookNumber = Number(row.Livre);
+    const rawBookNumber = Number(row.Livre);
+    const inferredBookNumber =
+      language === 'greek'
+        ? (rawBookNumber >= 1 && rawBookNumber <= 27 ? rawBookNumber + 39 : rawBookNumber)
+        : (rawBookNumber >= 40 && rawBookNumber <= 78 ? rawBookNumber - 39 : rawBookNumber);
+    const bookNumber = Number.isFinite(inferredBookNumber) && inferredBookNumber > 0
+      ? inferredBookNumber
+      : rawBookNumber;
     const chapter = Number(row.Chapitre);
     const verse = Number(row.Verset);
     const book = BOOK_NAMES[bookNumber - 1] ?? `Livre ${bookNumber}`;

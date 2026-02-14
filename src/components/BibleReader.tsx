@@ -2098,17 +2098,23 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
   const inferStrongTokensFromVerseText = async (verse: VerseRow): Promise<StrongToken[]> => {
     const candidates = extractStrongCandidateWords(verse.text);
     if (!candidates.length) return [];
+    const bookIndex = BIBLE_BOOKS.findIndex((item) => item.id === book.id);
+    const expectedLanguage: 'hebrew' | 'greek' = bookIndex >= 39 ? 'greek' : 'hebrew';
 
     const matches = await Promise.all(
       candidates.map(async (candidate) => {
         const results = await searchStrongByWord(candidate.norm);
         if (!results.length) return null;
+        const byWordMatch = results.filter((item) => {
+          const wordInLsg = normalize(item.entry.lsg || '').includes(candidate.norm);
+          const wordInMot = normalize(item.entry.mot || '').includes(candidate.norm);
+          return wordInLsg || wordInMot;
+        });
         const selected =
-          results.find((item) => {
-            const wordInLsg = normalize(item.entry.lsg || '').includes(candidate.norm);
-            const wordInMot = normalize(item.entry.mot || '').includes(candidate.norm);
-            return wordInLsg || wordInMot;
-          }) || results[0];
+          byWordMatch.find((item) => item.language === expectedLanguage) ||
+          byWordMatch[0] ||
+          results.find((item) => item.language === expectedLanguage) ||
+          results[0];
         return { candidate, selected };
       })
     );
