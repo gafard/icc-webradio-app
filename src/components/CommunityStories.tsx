@@ -6,7 +6,7 @@ import { fetchStories, type CommunityStory } from './communityApi';
 import { supabase } from '../lib/supabase';
 import { useI18n } from '../contexts/I18nContext';
 
-const DURATION_MS = 6500; // durée d’une story
+const DURATION_MS = 30000; // 30 secondes par story
 
 export default function CommunityStories() {
   const { t } = useI18n();
@@ -20,7 +20,10 @@ export default function CommunityStories() {
   // progress
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
+  const elapsedRef = useRef<number>(0);
+  const pausedRef = useRef(false);
   const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const throttleTimer = useRef<number | null>(null);
 
@@ -105,12 +108,20 @@ export default function CommunityStories() {
 
   const resetTimer = () => {
     startRef.current = performance.now();
+    elapsedRef.current = 0;
+    pausedRef.current = false;
     setProgress(0);
+    setIsPaused(false);
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     const tick = () => {
-      const elapsed = performance.now() - startRef.current;
+      if (pausedRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const elapsed = elapsedRef.current + (performance.now() - startRef.current);
       const p = Math.min(1, elapsed / DURATION_MS);
       setProgress(p);
 
@@ -135,9 +146,26 @@ export default function CommunityStories() {
   const closeViewer = () => {
     setOpen(false);
     setProgress(0);
+    setIsPaused(false);
+    pausedRef.current = false;
+    elapsedRef.current = 0;
     setShareFeedback(null);
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+  };
+
+  const pauseTimer = () => {
+    if (pausedRef.current) return;
+    elapsedRef.current += performance.now() - startRef.current;
+    pausedRef.current = true;
+    setIsPaused(true);
+  };
+
+  const resumeTimer = () => {
+    if (!pausedRef.current) return;
+    startRef.current = performance.now();
+    pausedRef.current = false;
+    setIsPaused(false);
   };
 
   const setTempFeedback = (msg: string) => {
@@ -220,6 +248,7 @@ export default function CommunityStories() {
     const t = e.touches[0];
     touchStartX.current = t.clientX;
     touchStartY.current = t.clientY;
+    pauseTimer();
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -238,6 +267,28 @@ export default function CommunityStories() {
       if (dx < 0) next();
       else prev();
     }
+
+    resumeTimer();
+  };
+
+  const onTouchCancel = () => {
+    touchStartX.current = null;
+    touchStartY.current = null;
+    resumeTimer();
+  };
+
+  const shouldIgnorePressTarget = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return !!target.closest('button, a, input, textarea, select, [role="button"]');
+  };
+
+  const onPressStart = (event: React.PointerEvent) => {
+    if (shouldIgnorePressTarget(event.target)) return;
+    pauseTimer();
+  };
+
+  const onPressEnd = () => {
+    resumeTimer();
   };
 
   if (status === 'error') {
@@ -346,6 +397,11 @@ export default function CommunityStories() {
                   );
                 })}
               </div>
+              {isPaused ? (
+                <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/85">
+                  Pause
+                </span>
+              ) : null}
 
               <button
                 type="button"
@@ -379,6 +435,11 @@ export default function CommunityStories() {
             className="absolute inset-0 flex items-center justify-center"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
+            onTouchCancel={onTouchCancel}
+            onPointerDown={onPressStart}
+            onPointerUp={onPressEnd}
+            onPointerCancel={onPressEnd}
+            onPointerLeave={onPressEnd}
           >
             <div
               className="relative w-full h-full md:max-w-[480px] md:max-h-[85vh] md:rounded-[40px] overflow-hidden shadow-[0_32px_96px_rgba(0,0,0,0.8)] border-white/5 md:border"

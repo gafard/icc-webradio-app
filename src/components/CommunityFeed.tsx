@@ -233,17 +233,38 @@ export default function CommunityFeed({
       .channel('community_posts_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_posts' }, () => {
         if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
-        throttleTimer.current = window.setTimeout(load, 2500);
+        throttleTimer.current = window.setTimeout(load, 900);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'community_comments' }, () => {
         if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
-        throttleTimer.current = window.setTimeout(load, 2500);
+        throttleTimer.current = window.setTimeout(load, 900);
       })
       .subscribe();
 
     return () => {
       if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
       supabase?.removeChannel(channel);
+    };
+  }, [load]);
+
+  useEffect(() => {
+    const refreshNow = () => {
+      void load();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshNow();
+    };
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      refreshNow();
+    }, 12000);
+
+    window.addEventListener('focus', refreshNow);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(poll);
+      window.removeEventListener('focus', refreshNow);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [load]);
 

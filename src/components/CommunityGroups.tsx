@@ -970,44 +970,53 @@ export default function CommunityGroups({ initialGroupId }: { initialGroupId?: s
 
   useEffect(() => {
     let timer: number | null = null;
+    let pollTimer: number | null = null;
+
+    const refreshNow = () => {
+      void loadGroups();
+      if (selectedGroupId) {
+        void loadGroupMembers(selectedGroupId);
+      }
+    };
 
     const scheduleGroupsRefresh = () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        void loadGroups();
-        if (selectedGroupId) {
-          void loadGroupMembers(selectedGroupId);
-        }
+        refreshNow();
       }, 450);
     };
 
-    if (!supabase) {
-      const poll = window.setInterval(() => {
-        void loadGroups();
-        if (selectedGroupId) {
-          void loadGroupMembers(selectedGroupId);
-        }
-      }, 30000);
-      return () => {
-        if (timer) window.clearTimeout(timer);
-        window.clearInterval(poll);
-      };
-    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshNow();
+    };
+    window.addEventListener('focus', refreshNow);
+    document.addEventListener('visibilitychange', onVisibility);
+    pollTimer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      refreshNow();
+    }, 12000);
 
     const realtimeClient = supabase;
     const channel = realtimeClient
-      .channel('community_groups_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_groups' }, () => {
-        scheduleGroupsRefresh();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_group_members' }, () => {
-        scheduleGroupsRefresh();
-      })
-      .subscribe();
+      ? realtimeClient
+          .channel('community_groups_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'community_groups' }, () => {
+            scheduleGroupsRefresh();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'community_group_members' }, () => {
+            scheduleGroupsRefresh();
+          })
+          .subscribe()
+      : null;
 
     return () => {
       if (timer) window.clearTimeout(timer);
-      realtimeClient.removeChannel(channel);
+      if (pollTimer) window.clearInterval(pollTimer);
+      window.removeEventListener('focus', refreshNow);
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (realtimeClient && channel) {
+        realtimeClient.removeChannel(channel);
+      }
     };
   }, [loadGroups, loadGroupMembers, selectedGroupId]);
 
