@@ -3,7 +3,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
   Link2,
@@ -124,104 +123,6 @@ type ReaderModesMenuProps = {
   className?: string;
   align?: 'left' | 'right';
 };
-
-type TranslationSelectProps = {
-  value: string | undefined;
-  onChange: (value: string) => void;
-  className?: string;
-};
-
-function TranslationSelect({ value, onChange, className }: TranslationSelectProps) {
-  const [open, setOpen] = useState(false);
-  const selectRef = useRef<HTMLDivElement | null>(null);
-  const selected =
-    LOCAL_BIBLE_TRANSLATIONS.find((item) => item.id === value) ??
-    LOCAL_BIBLE_TRANSLATIONS[0];
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!selectRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('keydown', onEscape);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('keydown', onEscape);
-    };
-  }, [open]);
-
-  return (
-    <div ref={selectRef} className="relative z-[13020] min-w-0">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        className={`${className ?? 'select-field text-sm'} relative flex w-full items-center justify-between gap-2 pr-8 text-left`}
-      >
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          {hasSelahAudio(selected.id) ? (
-            <Volume2 size={13} className="shrink-0 text-[color:var(--accent)]" />
-          ) : null}
-          <span className="truncate">{selected.label}</span>
-        </span>
-        <ChevronRight
-          size={14}
-          className={`absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground)]/55 transition-transform ${
-            open ? 'rotate-90' : ''
-          }`}
-        />
-      </button>
-
-      {open ? (
-        <div
-          className="absolute left-0 top-[calc(100%+6px)] z-[13030] w-full min-w-[220px] rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl"
-          role="listbox"
-        >
-          <div className="max-h-72 overflow-auto">
-            {LOCAL_BIBLE_TRANSLATIONS.map((item) => {
-              const active = item.id === selected.id;
-              const hasAudio = hasSelahAudio(item.id);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition ${
-                    active
-                      ? 'bg-[color:var(--accent-soft)] text-[color:var(--foreground)]'
-                      : 'hover:bg-[color:var(--surface)]'
-                  }`}
-                  onClick={() => {
-                    onChange(item.id);
-                    setOpen(false);
-                  }}
-                  role="option"
-                  aria-selected={active}
-                >
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    {hasAudio ? (
-                      <Volume2 size={13} className="shrink-0 text-[color:var(--accent)]" />
-                    ) : (
-                      <span className="inline-block w-[13px]" />
-                    )}
-                    <span className="truncate">{item.label}</span>
-                  </span>
-                  {active ? <Check size={13} className="shrink-0 text-[color:var(--accent)]" /> : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function ReaderModesMenu({
   immersiveEnabled,
@@ -2617,7 +2518,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               <span />
             </div>
             {!embedded ? (
-              <div className="bible-paper relative z-[13000] !overflow-visible rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
+              <div className="bible-paper rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
                 <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/80">
                   Lecture mobile
                 </div>
@@ -2625,11 +2526,25 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   {book.name} {chapter}
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <TranslationSelect
-                    value={translation?.id}
-                    onChange={setTranslationId}
-                    className="select-field text-sm"
-                  />
+                  <div className="relative">
+                    {hasSelahAudio(translation?.id ?? '') ? (
+                      <Volume2
+                        size={14}
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--accent)]"
+                      />
+                    ) : null}
+                    <select
+                      value={translation?.id}
+                      onChange={(e) => setTranslationId(e.target.value)}
+                      className={`select-field text-sm ${hasSelahAudio(translation?.id ?? '') ? '!pl-9' : ''}`}
+                    >
+                      {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <select
                     value={book.id}
                     onChange={(e) => {
@@ -2682,7 +2597,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               </div>
             ) : (
               <div
-                className="bible-paper relative z-[13000] !overflow-visible mb-2 rounded-2xl p-2 lg:hidden"
+                className="bible-paper mb-2 rounded-2xl p-2 lg:hidden"
                 data-no-embedded-fullscreen="true"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -2691,11 +2606,25 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <TranslationSelect
-                    value={translation?.id}
-                    onChange={setTranslationId}
-                    className="select-field min-w-0 text-xs"
-                  />
+                  <div className="relative min-w-0">
+                    {hasSelahAudio(translation?.id ?? '') ? (
+                      <Volume2
+                        size={13}
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--accent)]"
+                      />
+                    ) : null}
+                    <select
+                      value={translation?.id}
+                      onChange={(e) => setTranslationId(e.target.value)}
+                      className={`select-field min-w-0 text-xs ${hasSelahAudio(translation?.id ?? '') ? '!pl-8' : ''}`}
+                    >
+                      {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <select
                     value={book.id}
                     onChange={(e) => {
@@ -2748,7 +2677,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               </div>
             )}
 
-            <div className="relative z-[13000] hidden lg:flex items-center justify-between gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 px-2.5 py-2">
+            <div className="hidden lg:flex items-center justify-between gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 px-2.5 py-2">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--foreground)]/55">
                   Lecture
@@ -2758,11 +2687,27 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 </span>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-1.5">
-                <TranslationSelect
-                  value={translation?.id}
-                  onChange={setTranslationId}
-                  className="select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none"
-                />
+                <div className="relative">
+                  {hasSelahAudio(translation?.id ?? '') ? (
+                    <Volume2
+                      size={13}
+                      className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[color:var(--accent)]"
+                    />
+                  ) : null}
+                  <select
+                    value={translation?.id}
+                    onChange={(e) => setTranslationId(e.target.value)}
+                    className={`select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none ${
+                      hasSelahAudio(translation?.id ?? '') ? '!pl-7' : ''
+                    }`}
+                  >
+                    {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <select
                   value={book.id}
                   onChange={(e) => {
