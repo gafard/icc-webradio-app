@@ -5,6 +5,16 @@ import { fetchModerationStats, isMissingColumnError, isMissingTableError } from 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const TRAFFIC_FALLBACK = {
+  trafficAvailable: false,
+  pageViews24h: 0,
+  pageViews7d: 0,
+  uniqueVisitors24h: 0,
+  uniqueVisitors7d: 0,
+  topPaths: [] as Array<{ path: string; views: number }>,
+  dailyViews: [] as Array<{ day: string; views: number }>,
+};
+
 function isoHoursAgo(hours: number) {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
@@ -167,6 +177,11 @@ export async function GET(request: Request) {
     const client = auth.client;
     const dayIso = isoHoursAgo(24);
 
+    const trafficPromise = computeTraffic(client).catch((error: any) => {
+      console.error('[admin-overview] traffic fallback:', error?.message || error);
+      return TRAFFIC_FALLBACK;
+    });
+
     const [
       traffic,
       moderationStats,
@@ -179,7 +194,7 @@ export async function GET(request: Request) {
       pushSubscribers,
       activeCalls,
     ] = await Promise.all([
-      computeTraffic(client),
+      trafficPromise,
       fetchModerationStats(client),
       countRows(client, 'community_posts'),
       countRows(client, 'community_posts', (query) => query.gte('created_at', dayIso)),

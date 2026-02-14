@@ -42,6 +42,10 @@ const LOCAL_BIBLE_TRANSLATIONS = [
   { id: 'KJF', label: 'KJF', sourceLabel: 'Fichier local' },
 ];
 
+function formatTranslationOptionLabel(translationId: string, label: string) {
+  return hasSelahAudio(translationId) ? `🔊 ${label}` : label;
+}
+
 type VerseRow = {
   number: number;
   text: string;
@@ -2430,10 +2434,6 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
     element.scrollTop = 0;
   }, [chapterSceneKey]);
 
-  const readerIsFullscreen = embedded
-    ? (embeddedFullscreen || fullScreen)
-    : fullScreen;
-
   return (
     <section
       ref={rootSectionRef}
@@ -2536,7 +2536,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   >
                     {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.label}
+                        {formatTranslationOptionLabel(item.id, item.label)}
                       </option>
                     ))}
                   </select>
@@ -2574,15 +2574,6 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   <button type="button" onClick={nextChapter} className="btn-icon h-9 w-9">
                     <ChevronRight size={16} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void toggleReaderFullscreen();
-                    }}
-                    className="btn-base btn-secondary ml-auto text-xs px-3 py-2"
-                  >
-                    {readerIsFullscreen ? 'Quitter' : 'Plein ecran'}
-                  </button>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <ReaderModesMenu
@@ -2608,15 +2599,6 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   <div className="text-sm font-bold text-[color:var(--foreground)]">
                     {book.name} {chapter}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void toggleReaderFullscreen();
-                    }}
-                    className="btn-base btn-secondary text-[11px] px-2 py-1.5"
-                  >
-                    {readerIsFullscreen ? 'Quitter' : 'Plein ecran'}
-                  </button>
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <select
@@ -2626,7 +2608,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   >
                     {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.label}
+                        {formatTranslationOptionLabel(item.id, item.label)}
                       </option>
                     ))}
                   </select>
@@ -2699,7 +2681,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 >
                   {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.label}
+                      {formatTranslationOptionLabel(item.id, item.label)}
                     </option>
                   ))}
                 </select>
@@ -2735,27 +2717,6 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 <button type="button" onClick={nextChapter} className="btn-icon h-9 w-9">
                   <ChevronRight size={18} />
                 </button>
-                {readerIsFullscreen ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void toggleReaderFullscreen();
-                    }}
-                    className="btn-base btn-secondary whitespace-nowrap text-xs px-2.5 py-1.5"
-                  >
-                    Quitter
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void toggleReaderFullscreen();
-                    }}
-                    className="btn-base btn-secondary whitespace-nowrap text-xs px-2.5 py-1.5"
-                  >
-                    Plein ecran
-                  </button>
-                )}
                 <ReaderModesMenu
                   immersiveEnabled={immersiveEnabled}
                   ambientEnabled={ambientEnabled}
@@ -3259,10 +3220,12 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
         highlightColor={highlightColor}
         onClose={() => setStudyBarOpen(false)}
         onStrong={() => {
+          setStudyBarOpen(false);
           void openStrongViewerForVerse(selectedVerse);
         }}
         onRefs={() => {
           if (!selectedVerse) return;
+          setStudyBarOpen(false);
           setRadarVerse(selectedVerse);
           setRadarWord('');
           setRadarOpen(false);
@@ -3273,24 +3236,29 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
           if (!selectedVerse) return;
           toggleHighlight(selectedVerse, highlightColor);
           showToast('Surlignage mis à jour ✅');
+          setStudyBarOpen(false);
         }}
         onNote={() => {
           if (!studyNoteKey) return;
           setNoteOpenFor(studyNoteKey);
+          setStudyBarOpen(false);
         }}
         onCompare={() => {
+          setStudyBarOpen(false);
           void openCompareForVerse(selectedVerse);
         }}
         onCopy={() => {
           if (!selectedVerse) return;
           navigator.clipboard?.writeText(`${studyRefLabel}\n${selectedVerse.text}`);
           showToast('Verset copié ✅');
+          setStudyBarOpen(false);
         }}
         strongTokens={selectedVerseStrongTokens}
         strongLoading={selectedVerseStrongLoading}
         onStrongToken={(strong) => {
           setCurrentStrongNumber(strong);
           setShowStrongViewer(true);
+          setStudyBarOpen(false);
         }}
       />
       <BibleStudyRadar

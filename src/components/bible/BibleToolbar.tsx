@@ -160,7 +160,7 @@ export default function BibleToolbar({
     <div className="block">
       <div className="bible-toolbar w-full rounded-2xl p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
         <div className="overflow-x-auto pb-0.5">
-          <div className="mx-auto flex w-full flex-wrap items-center justify-center gap-1.5">
+          <div className="mx-auto flex min-w-max flex-nowrap items-center gap-1.5">
             <MobileToolbarBtn
               active={tool === 'read'}
               label="Lecture"

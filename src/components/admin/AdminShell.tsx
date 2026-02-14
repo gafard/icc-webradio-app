@@ -702,7 +702,7 @@ export default function AdminShell({ initialSessionRole = null }: Props) {
             </article>
           </section>
 
-          {!overview?.traffic.trafficAvailable ? (
+          {overview && !overview.traffic.trafficAvailable ? (
             <section className="glass-panel rounded-2xl p-4 text-sm text-amber-200">
               Tracking visites inactif. Applique `icc-ai/admin_analytics_v1.sql` dans Supabase.
             </section>
