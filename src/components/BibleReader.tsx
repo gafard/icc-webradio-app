@@ -567,24 +567,6 @@ function verseKey(translationId: string, bookId: string, chapter: number, verse:
   return `${translationId}:${bookId}:${chapter}:${verse}`;
 }
 
-function parseTreasuryRef(value: string): TreasuryRef | null {
-  const text = String(value ?? '').trim();
-  const match = text.match(/(\d+)-(\d+)-(\d+)/);
-  if (!match) return null;
-  const bookNumber = Number(match[1]);
-  const chapter = Number(match[2]);
-  const verse = Number(match[3]);
-  const book = BIBLE_BOOKS[bookNumber - 1];
-  if (!book || chapter <= 0 || verse <= 0) return null;
-  return {
-    id: `${bookNumber}-${chapter}-${verse}`,
-    label: `${book.name} ${chapter}:${verse}`,
-    bookId: book.id,
-    chapter,
-    verse,
-  };
-}
-
 function extractStrongCandidateWords(text: string) {
   const rawWords = text.match(/[A-Za-zÀ-ÖØ-öø-ÿ']+/g) ?? [];
   const seen = new Set<string>();
@@ -608,10 +590,24 @@ function extractTreasuryRefs(entries: string[]): TreasuryRef[] {
   const refs: TreasuryRef[] = [];
   const seen = new Set<string>();
   for (const entry of entries) {
-    const parsed = parseTreasuryRef(entry);
-    if (parsed && !seen.has(parsed.id)) {
-      seen.add(parsed.id);
-      refs.push(parsed);
+    const text = String(entry ?? '');
+    const matches = text.matchAll(/\b(\d{1,2})-(\d{1,3})-(\d{1,3})\b/g);
+    for (const match of matches) {
+      const bookNumber = Number(match[1]);
+      const chapter = Number(match[2]);
+      const verse = Number(match[3]);
+      const book = BIBLE_BOOKS[bookNumber - 1];
+      if (!book || chapter <= 0 || verse <= 0) continue;
+      const id = `${bookNumber}-${chapter}-${verse}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      refs.push({
+        id,
+        label: `${book.name} ${chapter}:${verse}`,
+        bookId: book.id,
+        chapter,
+        verse,
+      });
     }
   }
   return refs;
@@ -1114,6 +1110,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
   const chapterScenePosRef = useRef<number | null>(null);
   const scrollIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const embeddedTapRef = useRef<{ timestamp: number; x: number; y: number } | null>(null);
+  const treasuryRequestRef = useRef(0);
   const referencePreviewRequestRef = useRef(0);
   const lastAudioCueVerseRef = useRef<number | null>(null);
   const effectiveAudioCuesRef = useRef<VttCue[]>([]);
@@ -1436,40 +1433,42 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
     };
   }, [book.id, chapter]);
 
+  const loadTreasuryRefs = useCallback(
+    async (targetBookId: string, targetChapter: number, targetVerse: number) => {
+      const requestId = treasuryRequestRef.current + 1;
+      treasuryRequestRef.current = requestId;
+      setTreasuryStatus('loading');
+      setTreasuryRefs([]);
+
+      try {
+        const response = await fetch(
+          `/api/treasury?bookId=${encodeURIComponent(targetBookId)}&chapter=${targetChapter}&verse=${targetVerse}`
+        );
+        if (!response.ok) {
+          throw new Error('missing');
+        }
+        const data = await response.json();
+        if (treasuryRequestRef.current !== requestId) return;
+        const entries = Array.isArray(data?.entries) ? data.entries : [];
+        setTreasuryRefs(extractTreasuryRefs(entries));
+        setTreasuryStatus('idle');
+      } catch {
+        if (treasuryRequestRef.current !== requestId) return;
+        setTreasuryStatus('error');
+        setTreasuryRefs([]);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (!selectedVerse) {
       setTreasuryRefs([]);
       setTreasuryStatus('idle');
       return;
     }
-
-    let active = true;
-    setTreasuryStatus('loading');
-    setTreasuryRefs([]);
-
-    fetch(
-      `/api/treasury?bookId=${encodeURIComponent(book.id)}&chapter=${chapter}&verse=${selectedVerse.number}`
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error('missing');
-        return res.json();
-      })
-      .then((data) => {
-        if (!active) return;
-        const entries = Array.isArray(data?.entries) ? data.entries : [];
-        setTreasuryRefs(extractTreasuryRefs(entries));
-        setTreasuryStatus('idle');
-      })
-      .catch(() => {
-        if (!active) return;
-        setTreasuryStatus('error');
-        setTreasuryRefs([]);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedVerse?.number, book.id, chapter]);
+    void loadTreasuryRefs(book.id, chapter, selectedVerse.number);
+  }, [selectedVerse?.number, book.id, chapter, loadTreasuryRefs]);
 
   const visibleVerses = useMemo(() => {
     // In embedded call mode, always render full chapter text even if a previous
@@ -1518,6 +1517,19 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
     ? verseKey(translation?.id ?? 'fr', book.id, chapter, selectedVerse.number)
     : null;
   const studyHasNote = studyNoteKey ? Boolean((verseNotes[studyNoteKey] ?? '').trim()) : false;
+  const openRefsForVerse = useCallback(
+    (verse: VerseRow | null) => {
+      if (!verse) return;
+      setSelectedVerse(verse);
+      setRadarVerse(verse);
+      setRadarWord('');
+      setRadarOpen(false);
+      setRadarPreferredBubble(null);
+      setRadarRefsSheetOpen(true);
+      void loadTreasuryRefs(book.id, chapter, verse.number);
+    },
+    [book.id, chapter, loadTreasuryRefs]
+  );
   const radarRefLabel = radarVerse ? `${book.name} ${chapter}:${radarVerse.number}` : '';
   const radarNoteKey = radarVerse
     ? verseKey(translation?.id ?? 'fr', book.id, chapter, radarVerse.number)
@@ -1572,9 +1584,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
       subtitle: radarRefsSubtitle,
       disabled: !radarVerse,
       onClick: () => {
-        setRadarRefsSheetOpen(true);
-        setRadarOpen(false);
-        setRadarPreferredBubble(null);
+        openRefsForVerse(radarVerse);
       },
     },
     {
@@ -2402,10 +2412,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
         break;
       }
       case 'refs':
-        setRadarVerse(verse);
-        setRadarWord('');
-        setRadarOpen(false);
-        setRadarRefsSheetOpen(true);
+        openRefsForVerse(verse);
         break;
       case 'note':
         setNoteOpenFor(verseKey(translation?.id ?? 'fr', book.id, chapter, verse.number));
@@ -3328,13 +3335,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
           void openStrongViewerForVerse(selectedVerse);
         }}
         onRefs={() => {
-          if (!selectedVerse) return;
           setStudyBarOpen(false);
-          setRadarVerse(selectedVerse);
-          setRadarWord('');
-          setRadarOpen(false);
-          setRadarPreferredBubble(null);
-          setRadarRefsSheetOpen(true);
+          openRefsForVerse(selectedVerse);
         }}
         onHighlight={() => {
           if (!selectedVerse) return;
@@ -3411,7 +3413,23 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 </div>
               ) : null}
 
-              {treasuryStatus !== 'loading' && treasuryRefs.length === 0 ? (
+              {treasuryStatus === 'error' ? (
+                <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
+                  <p>Impossible de charger les références pour le moment.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!radarVerse) return;
+                      void loadTreasuryRefs(book.id, chapter, radarVerse.number);
+                    }}
+                    className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+                  >
+                    Réessayer
+                  </button>
+                </div>
+              ) : null}
+
+              {treasuryStatus === 'idle' && treasuryRefs.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
                   Aucune référence disponible pour ce verset.
                 </div>
