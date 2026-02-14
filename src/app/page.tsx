@@ -67,7 +67,7 @@ async function getLatestVideos(count = 20): Promise<Video[]> {
 
 async function getMostViewedVideos(count = 20): Promise<Video[]> {
   const channelId = process.env.NEXT_PUBLIC_YT_CHANNEL_ID;
-  const apiKey = process.env.NEXT_PUBLIC_YT_API_KEY || process.env.YT_API_KEY;
+  const apiKey = process.env.YT_API_KEY || process.env.NEXT_PUBLIC_YT_API_KEY;
   if (!channelId || !apiKey) return [];
 
   const searchUrl =

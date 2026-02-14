@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 
-const API_KEY = process.env.NEXT_PUBLIC_YT_API_KEY || process.env.YT_API_KEY || '';
+const API_KEY = process.env.YT_API_KEY || process.env.NEXT_PUBLIC_YT_API_KEY || '';
 const HAS_KEY = !!API_KEY;
 
 export type YTVideo = {
