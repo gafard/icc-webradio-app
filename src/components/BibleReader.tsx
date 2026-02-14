@@ -157,7 +157,7 @@ function TranslationSelect({ value, onChange, className }: TranslationSelectProp
   }, [open]);
 
   return (
-    <div ref={selectRef} className="relative min-w-0">
+    <div ref={selectRef} className="relative z-[13020] min-w-0">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -181,7 +181,7 @@ function TranslationSelect({ value, onChange, className }: TranslationSelectProp
 
       {open ? (
         <div
-          className="absolute left-0 top-[calc(100%+6px)] z-[12030] w-full min-w-[220px] rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl"
+          className="absolute left-0 top-[calc(100%+6px)] z-[13030] w-full min-w-[220px] rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl"
           role="listbox"
         >
           <div className="max-h-72 overflow-auto">
@@ -2617,7 +2617,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               <span />
             </div>
             {!embedded ? (
-              <div className="bible-paper rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
+              <div className="bible-paper relative z-[13000] !overflow-visible rounded-2xl p-3 mb-4 lg:hidden" data-no-embedded-fullscreen="true">
                 <div className="text-xs uppercase tracking-[0.16em] text-[color:var(--foreground)]/80">
                   Lecture mobile
                 </div>
@@ -2682,7 +2682,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               </div>
             ) : (
               <div
-                className="bible-paper mb-2 rounded-2xl p-2 lg:hidden"
+                className="bible-paper relative z-[13000] !overflow-visible mb-2 rounded-2xl p-2 lg:hidden"
                 data-no-embedded-fullscreen="true"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -2748,7 +2748,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
               </div>
             )}
 
-            <div className="hidden lg:flex items-center justify-between gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 px-2.5 py-2">
+            <div className="relative z-[13000] hidden lg:flex items-center justify-between gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 px-2.5 py-2">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--foreground)]/55">
                   Lecture
