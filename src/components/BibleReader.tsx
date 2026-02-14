@@ -3,11 +3,13 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Link2,
   Search,
   Sparkles,
+  Volume2,
   X,
 } from 'lucide-react';
 import { BIBLE_BOOKS, type BibleBook } from '../lib/bibleCatalog';
@@ -41,10 +43,6 @@ const LOCAL_BIBLE_TRANSLATIONS = [
   { id: 'OECUMENIQUE', label: 'Œcuménique', sourceLabel: 'Fichier local' },
   { id: 'KJF', label: 'KJF', sourceLabel: 'Fichier local' },
 ];
-
-function formatTranslationOptionLabel(translationId: string, label: string) {
-  return hasSelahAudio(translationId) ? `🔊 ${label}` : label;
-}
 
 type VerseRow = {
   number: number;
@@ -126,6 +124,104 @@ type ReaderModesMenuProps = {
   className?: string;
   align?: 'left' | 'right';
 };
+
+type TranslationSelectProps = {
+  value: string | undefined;
+  onChange: (value: string) => void;
+  className?: string;
+};
+
+function TranslationSelect({ value, onChange, className }: TranslationSelectProps) {
+  const [open, setOpen] = useState(false);
+  const selectRef = useRef<HTMLDivElement | null>(null);
+  const selected =
+    LOCAL_BIBLE_TRANSLATIONS.find((item) => item.id === value) ??
+    LOCAL_BIBLE_TRANSLATIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!selectRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onEscape);
+    };
+  }, [open]);
+
+  return (
+    <div ref={selectRef} className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={`${className ?? 'select-field text-sm'} relative flex w-full items-center justify-between gap-2 pr-8 text-left`}
+      >
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          {hasSelahAudio(selected.id) ? (
+            <Volume2 size={13} className="shrink-0 text-[color:var(--accent)]" />
+          ) : null}
+          <span className="truncate">{selected.label}</span>
+        </span>
+        <ChevronRight
+          size={14}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground)]/55 transition-transform ${
+            open ? 'rotate-90' : ''
+          }`}
+        />
+      </button>
+
+      {open ? (
+        <div
+          className="absolute left-0 top-[calc(100%+6px)] z-[12030] w-full min-w-[220px] rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl"
+          role="listbox"
+        >
+          <div className="max-h-72 overflow-auto">
+            {LOCAL_BIBLE_TRANSLATIONS.map((item) => {
+              const active = item.id === selected.id;
+              const hasAudio = hasSelahAudio(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-xs transition ${
+                    active
+                      ? 'bg-[color:var(--accent-soft)] text-[color:var(--foreground)]'
+                      : 'hover:bg-[color:var(--surface)]'
+                  }`}
+                  onClick={() => {
+                    onChange(item.id);
+                    setOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={active}
+                >
+                  <span className="inline-flex min-w-0 items-center gap-1.5">
+                    {hasAudio ? (
+                      <Volume2 size={13} className="shrink-0 text-[color:var(--accent)]" />
+                    ) : (
+                      <span className="inline-block w-[13px]" />
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  {active ? <Check size={13} className="shrink-0 text-[color:var(--accent)]" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ReaderModesMenu({
   immersiveEnabled,
@@ -2529,17 +2625,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   {book.name} {chapter}
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <select
+                  <TranslationSelect
                     value={translation?.id}
-                    onChange={(e) => setTranslationId(e.target.value)}
+                    onChange={setTranslationId}
                     className="select-field text-sm"
-                  >
-                    {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {formatTranslationOptionLabel(item.id, item.label)}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <select
                     value={book.id}
                     onChange={(e) => {
@@ -2601,17 +2691,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <select
+                  <TranslationSelect
                     value={translation?.id}
-                    onChange={(e) => setTranslationId(e.target.value)}
+                    onChange={setTranslationId}
                     className="select-field min-w-0 text-xs"
-                  >
-                    {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {formatTranslationOptionLabel(item.id, item.label)}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   <select
                     value={book.id}
                     onChange={(e) => {
@@ -2674,17 +2758,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 </span>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-1.5">
-                <select
+                <TranslationSelect
                   value={translation?.id}
-                  onChange={(e) => setTranslationId(e.target.value)}
+                  onChange={setTranslationId}
                   className="select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none"
-                >
-                  {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {formatTranslationOptionLabel(item.id, item.label)}
-                    </option>
-                  ))}
-                </select>
+                />
                 <select
                   value={book.id}
                   onChange={(e) => {
