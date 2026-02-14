@@ -71,6 +71,14 @@ type TreasuryRef = {
   verse: number;
 };
 
+type ReferencePreviewState = {
+  open: boolean;
+  ref: TreasuryRef | null;
+  rows: VerseRow[];
+  status: 'idle' | 'loading' | 'error';
+  error: string | null;
+};
+
 type StrongSearchResult = {
   number: string;
   entry: StrongEntry;
@@ -1063,6 +1071,13 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
   // Changement : Utiliser noteOpenFor pour gérer la note ouverte par verset
   const [noteOpenFor, setNoteOpenFor] = useState<string | null>(null);
   const [pendingFocusRef, setPendingFocusRef] = useState<TreasuryRef | null>(null);
+  const [referencePreview, setReferencePreview] = useState<ReferencePreviewState>({
+    open: false,
+    ref: null,
+    rows: [],
+    status: 'idle',
+    error: null,
+  });
 
   // États pour les fonctionnalités avancées
   const [showStrongViewer, setShowStrongViewer] = useState(false);
@@ -1099,6 +1114,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
   const chapterScenePosRef = useRef<number | null>(null);
   const scrollIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const embeddedTapRef = useRef<{ timestamp: number; x: number; y: number } | null>(null);
+  const referencePreviewRequestRef = useRef(0);
   const lastAudioCueVerseRef = useRef<number | null>(null);
   const effectiveAudioCuesRef = useRef<VttCue[]>([]);
   const approximateAudioSyncRef = useRef<{ verse: number | null; progress: number }>({
@@ -1507,6 +1523,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
     ? verseKey(translation?.id ?? 'fr', book.id, chapter, radarVerse.number)
     : null;
   const radarHasNote = radarNoteKey ? Boolean((verseNotes[radarNoteKey] ?? '').trim()) : false;
+  const referencePreviewBook = useMemo(() => {
+    const previewRef = referencePreview.ref;
+    if (!previewRef) return null;
+    return BIBLE_BOOKS.find((item) => item.id === previewRef.bookId) ?? null;
+  }, [referencePreview.ref]);
   const radarRefsCount =
     radarVerse && selectedVerse?.number === radarVerse.number
       ? treasuryRefs.length
@@ -1632,6 +1653,62 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
     }
     setSelectedVerse(null);
   };
+
+  const openReferencePreview = useCallback(
+    async (ref: TreasuryRef) => {
+      setReferencePreview({
+        open: true,
+        ref,
+        rows: [],
+        status: 'loading',
+        error: null,
+      });
+
+      const requestId = referencePreviewRequestRef.current + 1;
+      referencePreviewRequestRef.current = requestId;
+
+      try {
+        const targetBook = BIBLE_BOOKS.find((item) => item.id === ref.bookId);
+        if (!targetBook) {
+          throw new Error('Livre introuvable');
+        }
+
+        const raw = await loadChapterData(translation?.id ?? 'LSG', ref.bookId, ref.chapter);
+        const chapterRows = readFromJson(raw, targetBook, ref.chapter) as VerseRow[];
+
+        if (!chapterRows.length) {
+          throw new Error('Passage indisponible');
+        }
+
+        const verseIndex = chapterRows.findIndex((row) => row.number === ref.verse);
+        const centerIndex = verseIndex >= 0 ? verseIndex : 0;
+        const start = Math.max(0, centerIndex - 1);
+        const end = Math.min(chapterRows.length, centerIndex + 2);
+        const previewRows = chapterRows.slice(start, end);
+
+        if (referencePreviewRequestRef.current !== requestId) return;
+
+        setReferencePreview({
+          open: true,
+          ref,
+          rows: previewRows,
+          status: 'idle',
+          error: null,
+        });
+      } catch (err) {
+        if (referencePreviewRequestRef.current !== requestId) return;
+        const message = err instanceof Error ? err.message : 'Impossible de charger le passage';
+        setReferencePreview({
+          open: true,
+          ref,
+          rows: [],
+          status: 'error',
+          error: message,
+        });
+      }
+    },
+    [translation?.id]
+  );
 
   useEffect(() => {
     if (!pendingFocusRef) return;
@@ -2838,7 +2915,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                       ref={verseScrollRef}
                       className={`verse-paper custom-scrollbar overflow-y-auto overscroll-y-contain touch-pan-y ${
                         embedded
-                          ? 'h-full min-h-[260px] max-h-full p-4 md:p-5'
+                          ? `h-full min-h-[260px] max-h-full p-4 md:p-5 ${studyBarOpen ? 'pb-[42vh] md:pb-[40vh]' : ''}`
                           : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${
                               studyBarOpen ? 'pb-[48vh]' : 'pb-32'
                             } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
@@ -3182,7 +3259,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
             })()}
           </main>
 
-          {noteOpenFor && !embedded && (
+          {noteOpenFor && (
             <div className="fixed inset-0 z-[15000] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
               <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] p-6 text-[color:var(--foreground)] shadow-[var(--shadow-soft)]">
                 <div className="flex justify-between items-center mb-4">
@@ -3239,7 +3316,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
 
       <audio ref={audioRef} preload="none" />
       <BibleStudyBar
-        open={Boolean(!embedded && selectedVerse && studyBarOpen)}
+        open={Boolean(selectedVerse && studyBarOpen)}
         refLabel={studyRefLabel}
         verseText={studyVerseText}
         hasNote={studyHasNote}
@@ -3347,8 +3424,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                       key={`radar-ref-${ref.id}`}
                       type="button"
                       onClick={() => {
-                        navigateToVerse(ref);
                         setRadarRefsSheetOpen(false);
+                        void openReferencePreview(ref);
                       }}
                       className="flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/10 px-3 py-2 text-left transition hover:bg-white/15"
                     >
@@ -3360,6 +3437,144 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   ))}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {referencePreview.open ? (
+        <div
+          className="fixed inset-0 z-[16200] bg-black/35 backdrop-blur-[6px]"
+          onMouseDown={() =>
+            setReferencePreview({
+              open: false,
+              ref: null,
+              rows: [],
+              status: 'idle',
+              error: null,
+            })
+          }
+          onTouchStart={() =>
+            setReferencePreview({
+              open: false,
+              ref: null,
+              rows: [],
+              status: 'idle',
+              error: null,
+            })
+          }
+        >
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-4">
+            <div
+              className="pointer-events-auto w-full max-w-2xl rounded-t-[26px] rounded-b-[20px] border border-white/15 bg-black/72 p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.45)] sm:p-5"
+              onMouseDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">Référence</div>
+                  <div className="text-base font-extrabold">Passage</div>
+                  <div className="text-xs text-white/72">
+                    {referencePreview.ref?.label ??
+                      (referencePreviewBook
+                        ? `${referencePreviewBook.name} ${referencePreview.ref?.chapter}:${referencePreview.ref?.verse}`
+                        : '')}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReferencePreview({
+                      open: false,
+                      ref: null,
+                      rows: [],
+                      status: 'idle',
+                      error: null,
+                    })
+                  }
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-white/10 text-white/80"
+                  aria-label="Fermer le passage"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {referencePreview.status === 'loading' ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
+                  Chargement du passage...
+                </div>
+              ) : null}
+
+              {referencePreview.status === 'error' ? (
+                <div className="rounded-2xl border border-rose-300/25 bg-rose-500/10 px-3 py-3 text-sm text-rose-100">
+                  {referencePreview.error ?? 'Impossible de charger ce passage.'}
+                </div>
+              ) : null}
+
+              {referencePreview.status !== 'loading' && referencePreview.status !== 'error' ? (
+                <div className="max-h-[48vh] space-y-2 overflow-y-auto pr-1">
+                  {referencePreview.rows.map((row) => {
+                    const active = row.number === referencePreview.ref?.verse;
+                    return (
+                      <div
+                        key={`preview-ref-verse-${row.number}`}
+                        className={`rounded-xl border px-3 py-2 ${
+                          active
+                            ? 'border-orange-300/45 bg-orange-400/16'
+                            : 'border-white/12 bg-white/6'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/65">
+                          Verset {row.number}
+                        </div>
+                        <div className="mt-1 text-sm leading-relaxed text-white/92">
+                          {row.text}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {referencePreview.rows.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/75">
+                      Aucun texte disponible pour cette référence.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReferencePreview({
+                      open: false,
+                      ref: null,
+                      rows: [],
+                      status: 'idle',
+                      error: null,
+                    })
+                  }
+                  className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white/85 transition hover:bg-white/15"
+                >
+                  Fermer
+                </button>
+                <button
+                  type="button"
+                  disabled={!referencePreview.ref}
+                  onClick={() => {
+                    if (!referencePreview.ref) return;
+                    navigateToVerse(referencePreview.ref);
+                    setReferencePreview({
+                      open: false,
+                      ref: null,
+                      rows: [],
+                      status: 'idle',
+                      error: null,
+                    });
+                  }}
+                  className="rounded-xl border border-orange-300/45 bg-orange-400/25 px-3 py-2 text-xs font-bold text-orange-50 transition hover:bg-orange-400/35 disabled:opacity-50"
+                >
+                  Ouvrir le passage
+                </button>
+              </div>
             </div>
           </div>
         </div>

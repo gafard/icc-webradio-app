@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AdminAuthError, requireAdmin } from '@/lib/adminAuth';
 import { fetchModerationStats, isMissingColumnError, isMissingTableError } from '@/lib/moderationAdmin';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,28 @@ const TRAFFIC_FALLBACK = {
   topPaths: [] as Array<{ path: string; views: number }>,
   dailyViews: [] as Array<{ day: string; views: number }>,
 };
+
+const MODERATION_FALLBACK = {
+  totalCases: 0,
+  openCases: 0,
+  reviewingCases: 0,
+  actionedCases: 0,
+  dismissedCases: 0,
+  highRiskOpenCases: 0,
+  unassignedOpenCases: 0,
+};
+
+function isPermissionDeniedError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error.code || '').toUpperCase();
+  const message = String(error.message || '').toLowerCase();
+  return (
+    code === '42501' ||
+    code === 'PGRST301' ||
+    message.includes('permission denied') ||
+    message.includes('row-level security')
+  );
+}
 
 function isoHoursAgo(hours: number) {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
@@ -29,12 +52,14 @@ async function countRows(
   const { count, error } = await query;
   if (error) {
     if (isMissingTableError(error, table)) return 0;
+    if (isPermissionDeniedError(error)) return 0;
     if (isMissingColumnError(error, 'id')) {
       let fallback = client.from(table).select('*', { count: 'exact', head: true });
       if (decorate) fallback = decorate(fallback);
       const retry = await fallback;
       if (retry.error) {
         if (isMissingTableError(retry.error, table)) return 0;
+        if (isPermissionDeniedError(retry.error)) return 0;
         throw retry.error;
       }
       return Number(retry.count || 0);
@@ -77,6 +102,8 @@ async function computeTraffic(client: any) {
 
   if (rowsResult.error) {
     if (isMissingTableError(rowsResult.error, 'app_page_views')) {
+      trafficAvailable = false;
+    } else if (isPermissionDeniedError(rowsResult.error)) {
       trafficAvailable = false;
     } else {
       throw rowsResult.error;
@@ -159,6 +186,7 @@ async function computeActiveCalls(client: any) {
 
   if (result.error) {
     if (isMissingTableError(result.error, 'community_group_call_presence')) return 0;
+    if (isPermissionDeniedError(result.error)) return 0;
     throw result.error;
   }
 
@@ -174,7 +202,7 @@ async function computeActiveCalls(client: any) {
 export async function GET(request: Request) {
   try {
     const auth = await requireAdmin(request);
-    const client = auth.client;
+    const client = supabaseServer ?? auth.client;
     const dayIso = isoHoursAgo(24);
 
     const trafficPromise = computeTraffic(client).catch((error: any) => {
@@ -195,7 +223,10 @@ export async function GET(request: Request) {
       activeCalls,
     ] = await Promise.all([
       trafficPromise,
-      fetchModerationStats(client),
+      fetchModerationStats(client).catch((error: any) => {
+        console.error('[admin-overview] moderation fallback:', error?.message || error);
+        return MODERATION_FALLBACK;
+      }),
       countRows(client, 'community_posts'),
       countRows(client, 'community_posts', (query) => query.gte('created_at', dayIso)),
       countRows(client, 'community_groups'),
