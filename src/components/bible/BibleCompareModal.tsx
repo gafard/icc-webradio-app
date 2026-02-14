@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 type CompareRow = {
@@ -29,11 +30,28 @@ export default function BibleCompareModal({
   compareRows,
   onClose,
 }: BibleCompareModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen || verseNumber === null) return null;
 
   return (
-    <div className="fixed inset-0 z-[14500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bible-paper w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-[14500] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onMouseDown={onClose}
+      onTouchStart={onClose}
+    >
+      <div
+        className="bible-paper w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col"
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-4 border-b border-black/10 dark:border-white/10">
           <div>
             <div className="text-xs uppercase tracking-[0.28em] text-[color:var(--foreground)]/60">

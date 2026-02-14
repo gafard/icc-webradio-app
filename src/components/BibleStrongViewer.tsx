@@ -138,6 +138,15 @@ const BibleStrongViewer = ({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const tabButtonClass = (tab: 'details' | 'search') =>
@@ -148,8 +157,16 @@ const BibleStrongViewer = ({
     }`;
 
   return (
-    <div className="fixed inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center z-[15000] p-4">
-      <div className="bible-paper rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col text-[color:var(--foreground)]">
+    <div
+      className="fixed inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center z-[15000] p-4"
+      onMouseDown={onClose}
+      onTouchStart={onClose}
+    >
+      <div
+        className="bible-paper rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col text-[color:var(--foreground)]"
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-4 border-b border-black/10 dark:border-white/10">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <BookOpen className="accent-text" size={24} />

@@ -2936,9 +2936,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                       }}
                       onScroll={(event) => {
                         revealUI();
-                        if (radarOpen || radarRefsSheetOpen) {
+                        if (radarOpen) {
                           setRadarOpen(false);
-                          setRadarRefsSheetOpen(false);
                           setRadarPreferredBubble(null);
                         }
                         const element = event.currentTarget;
@@ -3382,14 +3381,14 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
       {radarRefsSheetOpen ? (
         <div
           className="fixed inset-0 z-[16100] bg-black/30 backdrop-blur-[4px]"
-          onMouseDown={() => setRadarRefsSheetOpen(false)}
-          onTouchStart={() => setRadarRefsSheetOpen(false)}
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setRadarRefsSheetOpen(false);
+          }}
         >
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-4">
             <div
               className="pointer-events-auto w-full max-w-xl rounded-t-[26px] rounded-b-[20px] border border-white/15 bg-black/65 p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.45)] sm:p-5"
-              onMouseDown={(event) => event.stopPropagation()}
-              onTouchStart={(event) => event.stopPropagation()}
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
@@ -3462,30 +3461,20 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
       {referencePreview.open ? (
         <div
           className="fixed inset-0 z-[16200] bg-black/35 backdrop-blur-[6px]"
-          onMouseDown={() =>
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
             setReferencePreview({
               open: false,
               ref: null,
               rows: [],
               status: 'idle',
               error: null,
-            })
-          }
-          onTouchStart={() =>
-            setReferencePreview({
-              open: false,
-              ref: null,
-              rows: [],
-              status: 'idle',
-              error: null,
-            })
-          }
+            });
+          }}
         >
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-4">
             <div
               className="pointer-events-auto w-full max-w-2xl rounded-t-[26px] rounded-b-[20px] border border-white/15 bg-black/72 p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.45)] sm:p-5"
-              onMouseDown={(event) => event.stopPropagation()}
-              onTouchStart={(event) => event.stopPropagation()}
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
