@@ -63,6 +63,125 @@ const variants = {
   }),
 };
 
+function AnnouncementAdOverlay({
+  post,
+  onOpen,
+}: {
+  post: CommunityPost;
+  onOpen: () => void;
+}) {
+  const lines = String(post.content || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const title = lines[0]?.slice(0, 90) || 'Annonce';
+  const subtitle = lines.slice(1).join(' ').slice(0, 140);
+
+  return (
+    <div
+      className="absolute inset-0 z-10"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label="Ouvrir l'annonce"
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/90" />
+      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:34px_34px]" />
+      <div className="absolute -top-20 left-10 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
+      <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-sky-500/20 blur-3xl" />
+
+      <div className="absolute bottom-5 left-4 right-4 sm:bottom-7 sm:left-6 sm:right-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+          className="relative overflow-hidden rounded-3xl border border-white/12 bg-black/35 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-6"
+        >
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute -inset-[2px] rounded-[26px] opacity-60"
+            style={{
+              background:
+                'conic-gradient(from 180deg at 50% 50%, rgba(56,189,248,.0), rgba(56,189,248,.55), rgba(217,70,239,.55), rgba(56,189,248,.0))',
+              filter: 'blur(10px)',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
+          />
+
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/80">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.65)]" />
+              Annonce
+              <span className="opacity-40">•</span>
+              {new Date(post.created_at).toLocaleDateString()}
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[10px] font-bold text-white/70">
+              {post.author_name || 'Organisation'}
+            </div>
+          </div>
+
+          <div className="relative mt-4 grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
+            <div>
+              <div className="text-[22px] font-black leading-[1.05] tracking-[-0.02em] text-white sm:text-[30px]">
+                {title}
+              </div>
+              {subtitle ? (
+                <div className="mt-2 text-sm leading-6 text-white/70">
+                  {subtitle}
+                </div>
+              ) : null}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-2xl bg-white px-4 py-2 text-xs font-extrabold text-black shadow-lg active:scale-[0.99]"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  En savoir plus
+                </button>
+                <button
+                  type="button"
+                  className="rounded-2xl border border-white/14 bg-white/5 px-4 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  Voir l’annonce
+                </button>
+              </div>
+            </div>
+
+            <div className="relative hidden sm:block">
+              <div className="absolute -inset-2 rounded-3xl bg-white/10 blur-2xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-br from-white/10 to-white/5 p-4">
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/70">
+                  Offre
+                </div>
+                <div className="mt-2 text-base font-black text-white">Annonce Église</div>
+                <div className="mt-1 text-xs text-white/65">Durée limitée</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-4 text-[10px] text-white/55">
+            Tape pour ouvrir • Swipe ↑/↓ pour naviguer
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommunityDeck({
   posts,
   showKind,
@@ -161,6 +280,7 @@ export default function CommunityDeck({
 
   if (!current) return null;
   const currentMediaKind = resolveMediaKind(current.media_url, current.media_type);
+  const isAnnouncement = (current.kind || '').toLowerCase() === 'announcement';
 
   return (
     <div className="relative">
@@ -244,23 +364,29 @@ export default function CommunityDeck({
                 <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
                 <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:34px_34px]" />
 
-                <div className="absolute inset-0 grid place-items-center p-6 sm:p-10" onClick={() => onOpenPost(current.id)}>
-                  <div className="max-w-[860px] text-center">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/70 backdrop-blur-md sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.32em]">
-                      {current.author_name || 'Invité'}
-                      <span className="opacity-40">•</span>
-                      {new Date(current.created_at).toLocaleDateString()}
-                    </div>
+                {!isAnnouncement ? (
+                  <div className="absolute inset-0 grid place-items-center p-6 sm:p-10" onClick={() => onOpenPost(current.id)}>
+                    <div className="max-w-[860px] text-center">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/70 backdrop-blur-md sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.32em]">
+                        {current.author_name || 'Invité'}
+                        <span className="opacity-40">•</span>
+                        {new Date(current.created_at).toLocaleDateString()}
+                      </div>
 
-                    <div className="mt-5 line-clamp-8 whitespace-pre-wrap text-[23px] font-extrabold leading-[1.1] tracking-[-0.01em] text-white drop-shadow-[0_18px_55px_rgba(0,0,0,0.55)] sm:mt-6 sm:text-[42px] sm:leading-[1.06] sm:tracking-[-0.015em] lg:text-[60px]">
-                      {current.content}
-                    </div>
+                      <div className="mt-5 line-clamp-8 whitespace-pre-wrap text-[23px] font-extrabold leading-[1.1] tracking-[-0.01em] text-white drop-shadow-[0_18px_55px_rgba(0,0,0,0.55)] sm:mt-6 sm:text-[42px] sm:leading-[1.06] sm:tracking-[-0.015em] lg:text-[60px]">
+                        {current.content}
+                      </div>
 
-                    <div className="mt-4 text-[12px] text-white/65 sm:mt-6 sm:text-sm">Tape pour ouvrir • Swipe ↑/↓ pour naviguer</div>
+                      <div className="mt-4 text-[12px] text-white/65 sm:mt-6 sm:text-sm">Tape pour ouvrir • Swipe ↑/↓ pour naviguer</div>
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             )}
+
+            {isAnnouncement ? (
+              <AnnouncementAdOverlay post={current} onOpen={() => onOpenPost(current.id)} />
+            ) : null}
 
             {current.media_url ? (
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
@@ -358,7 +484,7 @@ export default function CommunityDeck({
               </button>
             </div>
 
-            {current.media_url ? (
+            {current.media_url && !isAnnouncement ? (
               <div
                 className="absolute bottom-0 left-0 right-0 cursor-pointer p-3 pb-4 pr-16 text-white sm:p-6 sm:pr-6"
                 onClick={() => onOpenPost(current.id)}

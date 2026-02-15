@@ -38,6 +38,18 @@ function isPermissionDeniedError(error: any): boolean {
   );
 }
 
+function isAnyMissingColumnError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error.code || '').toUpperCase();
+  const message = String(error.message || '').toLowerCase();
+  return (
+    code === '42703' ||
+    code === 'PGRST204' ||
+    (message.includes('column') && message.includes('does not exist')) ||
+    (message.includes('could not find') && message.includes('schema cache'))
+  );
+}
+
 function isoHoursAgo(hours: number) {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
@@ -64,6 +76,7 @@ async function countRows(
       }
       return Number(retry.count || 0);
     }
+    if (isAnyMissingColumnError(error)) return 0;
     throw error;
   }
   return Number(count || 0);
