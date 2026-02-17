@@ -32,8 +32,8 @@ export default function SidebarNav() {
   return (
     <aside
       className={`fixed left-0 top-0 bottom-0 z-[9999] pointer-events-auto flex flex-col items-center py-5 transition-all duration-300 border-r ${isNight
-          ? 'bg-[#1C1C1E] border-[rgba(84,84,88,0.36)]'
-          : 'bg-[#F5F5F7] border-[rgba(60,60,67,0.12)]'
+        ? 'bg-[#242426] border-[rgba(100,100,108,0.30)]'
+        : 'bg-[#F5F5F7] border-[rgba(60,60,67,0.12)]'
         } ${isExpanded ? 'w-[140px]' : 'w-[68px]'
         }`}
       onMouseEnter={() => {

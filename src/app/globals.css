@@ -71,19 +71,19 @@ body {
 }
 
 .dark {
-  --background: #000000;
+  --background: #161618;
   --foreground: #F5F5F7;
-  --surface: rgba(28, 28, 30, 0.78);
-  --surface-strong: rgba(44, 44, 46, 0.90);
-  --border-soft: rgba(84, 84, 88, 0.36);
-  --border-strong: rgba(84, 84, 88, 0.55);
-  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.30);
-  --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.40);
-  --app-bg: #000000;
-  --panel-bg: rgba(28, 28, 30, 0.82);
-  --panel-border: rgba(84, 84, 88, 0.36);
+  --surface: rgba(38, 38, 40, 0.82);
+  --surface-strong: rgba(54, 54, 58, 0.90);
+  --border-soft: rgba(100, 100, 108, 0.30);
+  --border-strong: rgba(100, 100, 108, 0.48);
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.35);
+  --app-bg: #161618;
+  --panel-bg: rgba(38, 38, 40, 0.85);
+  --panel-border: rgba(100, 100, 108, 0.30);
   --text: #F5F5F7;
-  --text-muted: #86868B;
+  --text-muted: #98989D;
 }
 
 body {
