@@ -99,7 +99,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     (async () => {
       const { syncPushSubscription } = await import('./notifications');
       if (!cancelled) await syncPushSubscription(true);
-    })().catch(() => {});
+    })().catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -143,7 +143,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         const payload = getLocalUserState();
         const updatedAt = Date.now();
         payload.meta.updatedAt = updatedAt;
-        upsertUserState(syncId, payload).catch(() => {});
+        upsertUserState(syncId, payload).catch(() => { });
       }, 1200);
     };
 
@@ -157,12 +157,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
         } else {
           const updatedAt = Date.now();
           local.meta.updatedAt = updatedAt;
-          upsertUserState(syncId, local).catch(() => {});
+          upsertUserState(syncId, local).catch(() => { });
         }
       } else {
         const updatedAt = Date.now();
         local.meta.updatedAt = updatedAt;
-        upsertUserState(syncId, local).catch(() => {});
+        upsertUserState(syncId, local).catch(() => { });
       }
       ready = true;
     };
@@ -209,7 +209,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         deviceId,
         sessionId,
       }),
-    }).catch(() => {});
+    }).catch(() => { });
   }, [pathname]);
 
   return (
@@ -220,7 +220,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div
-          className="transition-all duration-300 w-full ml-0 lg:ml-[var(--sidebar-width,60px)] lg:w-[calc(100%-var(--sidebar-width,60px))]"
+          className="transition-all duration-300 w-full ml-0 lg:ml-[var(--sidebar-width,68px)] lg:w-[calc(100%-var(--sidebar-width,68px))]"
         >
           {children}
         </div>

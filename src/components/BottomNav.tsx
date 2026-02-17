@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMode } from '../contexts/ModeContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Home, Radio, Mic2, Video, BookOpen, Settings, Users } from 'lucide-react';
+import { Home, Radio, Video, BookOpen, Settings, Users } from 'lucide-react';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -25,66 +25,52 @@ export default function BottomNav() {
   const safePathname = pathname;
 
   const items = [
-    { href: '/', icon: Home },
-    { href: '/radio', icon: Radio },
-    { href: '/explorer', icon: Mic2 },
-    { href: '/videos', icon: Video },
-    { href: '/bible', icon: BookOpen },
-    { href: '/community', icon: Users },
+    { href: '/', icon: Home, label: 'Accueil' },
+    { href: '/radio', icon: Radio, label: 'Radio' },
+    { href: '/bible', icon: BookOpen, label: 'Bible' },
+    { href: '/community', icon: Users, label: 'Communauté' },
+    { href: '/videos', icon: Video, label: 'Vidéos' },
   ];
-
-  const baseNavClass = 'fixed inset-x-0 bottom-0 z-[10000] mx-auto w-full max-w-md h-[72px] px-3 pb-[env(safe-area-inset-bottom)]';
-  const baseDivClass = 'relative h-full w-full rounded-2xl backdrop-blur-xl overflow-hidden border';
 
   return (
     <nav
-      className={`${baseNavClass} ${isNight ? 'bg-[#0B1220]/70 border-white/10' : 'bg-white/70 border-white/80'}`}
-    >
-      <div
-        className={`${baseDivClass} ${
-          isNight
-            ? 'bg-[#0B1220]/70 border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
-            : 'bg-white/70 border-white/80 shadow-2xl'
+      className={`fixed inset-x-0 bottom-0 z-[10000] border-t backdrop-blur-xl ${isNight
+        ? 'bg-[rgba(28,28,30,0.88)] border-[rgba(84,84,88,0.36)]'
+        : 'bg-[rgba(249,249,249,0.88)] border-[rgba(60,60,67,0.12)]'
         }`}
-      >
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-
-        <div className="relative z-10 flex items-center gap-1 px-1 py-3 overflow-x-auto scroll-smooth snap-x snap-mandatory">
-          {items.map(({ href, icon: Icon }) => {
-            const active =
-              safePathname === href ||
-              (href === '/community' && safePathname === '/spiritual');
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-300 snap-start min-w-[52px] ${
-                  active
-                    ? isNight
-                      ? 'text-blue-400 bg-white/20 shadow-inner scale-105'
-                      : 'text-blue-600 bg-white shadow-inner scale-105'
-                    : isNight
-                      ? 'text-gray-300 hover:bg-white/10 hover:scale-105'
-                      : 'text-gray-600 hover:bg-white/70 hover:scale-105'
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="flex items-end justify-around px-2" style={{ height: '49px' }}>
+        {items.map(({ href, icon: Icon, label }) => {
+          const active =
+            safePathname === href ||
+            (href === '/community' && safePathname === '/spiritual');
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex flex-col items-center justify-center gap-[2px] pt-1 pb-1 min-w-[52px] transition-colors duration-200 ${active
+                ? 'text-[#007AFF]'
+                : isNight
+                  ? 'text-[#86868B]'
+                  : 'text-[#86868B]'
                 }`}
-              >
-                <Icon size={24} strokeWidth={active ? 2.5 : 2} className={active ? 'scale-110' : ''} />
-              </Link>
-            );
-          })}
+            >
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.6} />
+              <span className={`text-[10px] leading-tight ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+            </Link>
+          );
+        })}
 
-          <button
-            type="button"
-            onClick={() => openSettings()}
-            className={`flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-300 snap-start min-w-[52px] ${
-              isNight
-                ? 'text-gray-300 hover:bg-white/10 hover:scale-105'
-                : 'text-gray-600 hover:bg-white/70 hover:scale-105'
+        <button
+          type="button"
+          onClick={() => openSettings()}
+          className={`flex flex-col items-center justify-center gap-[2px] pt-1 pb-1 min-w-[52px] transition-colors duration-200 ${isNight ? 'text-[#86868B]' : 'text-[#86868B]'
             }`}
-          >
-            <Settings size={24} strokeWidth={2} />
-          </button>
-        </div>
+        >
+          <Settings size={22} strokeWidth={1.6} />
+          <span className="text-[10px] leading-tight font-medium">Réglages</span>
+        </button>
       </div>
     </nav>
   );

@@ -27,26 +27,15 @@ export default function SidebarNav() {
     { href: '/community', label: t('nav.community'), icon: Users },
   ];
 
-  const shell =
-    mode === 'night'
-      ? 'bg-white/5 border-white/10'
-      : 'bg-white/55 border-white/60';
-
-  const active =
-    mode === 'night'
-      ? 'bg-white/12 text-white border-white/15'
-      : 'bg-white text-[#0B1220] border-white/70 shadow-lg';
-
-  const idle =
-    mode === 'night'
-      ? 'text-white/70 hover:text-white hover:bg-white/8'
-      : 'text-[#0B1220]/70 hover:text-[#0B1220] hover:bg-white/70';
+  const isNight = mode === 'night';
 
   return (
     <aside
-      className={`fixed left-4 top-4 bottom-4 z-[9999] pointer-events-auto rounded-[22px] border ${shell} backdrop-blur-xl shadow-2xl flex flex-col items-center py-4 transition-all duration-300 ${
-        isExpanded ? 'w-[120px]' : 'w-[60px]'
-      }`}
+      className={`fixed left-0 top-0 bottom-0 z-[9999] pointer-events-auto flex flex-col items-center py-5 transition-all duration-300 border-r ${isNight
+          ? 'bg-[#1C1C1E] border-[rgba(84,84,88,0.36)]'
+          : 'bg-[#F5F5F7] border-[rgba(60,60,67,0.12)]'
+        } ${isExpanded ? 'w-[140px]' : 'w-[68px]'
+        }`}
       onMouseEnter={() => {
         if (closeTimer.current) clearTimeout(closeTimer.current);
         openTimer.current = setTimeout(() => setExpanded(true), 150);
@@ -56,20 +45,23 @@ export default function SidebarNav() {
         closeTimer.current = setTimeout(() => setExpanded(false), 150);
       }}
     >
-      {/* Logo ICC - only show when open */}
-      {isExpanded && (
-        <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center mb-4 overflow-hidden">
+      {/* Logo ICC */}
+      <div className={`mb-5 flex items-center justify-center ${isExpanded ? 'px-3 w-full' : ''}`}>
+        <div className="w-10 h-10 rounded-[12px] overflow-hidden flex-shrink-0 shadow-sm">
           <Image
             src="/icons/logo-sidebar.jpg"
             alt="Logo ICC"
-            width={44}
-            height={44}
+            width={40}
+            height={40}
             className="h-full w-full object-cover"
           />
         </div>
-      )}
+        {isExpanded && (
+          <span className={`ml-3 text-sm font-bold truncate ${isNight ? 'text-white' : 'text-[#1D1D1F]'}`}>ICC</span>
+        )}
+      </div>
 
-      <div className={`mt-2 flex flex-col gap-3 w-full`}>
+      <div className="flex flex-col gap-1 w-full px-2">
         {items.map((it) => {
           const isActive = pathname === it.href;
           const IconComponent = it.icon;
@@ -79,40 +71,51 @@ export default function SidebarNav() {
               key={it.href}
               href={it.href}
               title={it.label}
-              className={`rounded-2xl border flex items-center text-xl transition mx-2 ${
-                isExpanded ? 'pl-3 h-12 justify-start gap-3' : 'justify-center h-10 p-2'
-              } ${
-                isActive ? active : `border-transparent ${idle}`
-              }`}
+              className={`flex items-center rounded-[10px] transition-all duration-200 ${isExpanded ? 'px-3 h-10 justify-start gap-3' : 'justify-center h-10 mx-1'
+                } ${isActive
+                  ? isNight
+                    ? 'bg-[rgba(0,122,255,0.18)] text-[#64B5F6]'
+                    : 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
+                  : isNight
+                    ? 'text-[#86868B] hover:text-white hover:bg-[rgba(255,255,255,0.06)]'
+                    : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-[rgba(0,0,0,0.04)]'
+                }`}
             >
-              <IconComponent size={20} aria-label={it.label} />
-              {isExpanded && <span className="text-xs truncate max-w-[80px]">{it.label}</span>}
+              <IconComponent size={20} strokeWidth={isActive ? 2.2 : 1.8} aria-label={it.label} />
+              {isExpanded && <span className="text-[13px] font-semibold truncate">{it.label}</span>}
             </Link>
           );
         })}
       </div>
 
-      <div className={`mt-auto flex flex-col gap-3 w-full pb-2`}>
+      {/* Separator */}
+      <div className={`mt-auto mb-2 mx-4 h-px w-[calc(100%-32px)] ${isNight ? 'bg-[rgba(84,84,88,0.36)]' : 'bg-[rgba(60,60,67,0.12)]'}`} />
+
+      <div className="flex flex-col gap-1 w-full px-2 pb-1">
         <Link
           href="/explorer"
           title={t('nav.search')}
-          className={`rounded-2xl flex items-center text-xl transition mx-2 ${
-            isExpanded ? 'pl-3 h-12 justify-start gap-3' : 'justify-center h-10 p-2'
-          } ${idle}`}
+          className={`flex items-center rounded-[10px] transition-all duration-200 ${isExpanded ? 'px-3 h-10 justify-start gap-3' : 'justify-center h-10 mx-1'
+            } ${isNight
+              ? 'text-[#86868B] hover:text-white hover:bg-[rgba(255,255,255,0.06)]'
+              : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-[rgba(0,0,0,0.04)]'
+            }`}
         >
-          <Search size={20} aria-label={t('nav.search')} />
-          {isExpanded && <span className="text-xs truncate max-w-[80px]">{t('nav.search')}</span>}
+          <Search size={20} strokeWidth={1.8} aria-label={t('nav.search')} />
+          {isExpanded && <span className="text-[13px] font-semibold truncate">{t('nav.search')}</span>}
         </Link>
 
         <button
           onClick={openSettings}
           title={t('nav.settings')}
-          className={`rounded-2xl flex items-center text-xl transition mx-2 ${
-            isExpanded ? 'pl-3 h-12 justify-start gap-3' : 'justify-center h-10 p-2'
-          } ${idle}`}
+          className={`flex items-center rounded-[10px] transition-all duration-200 ${isExpanded ? 'px-3 h-10 justify-start gap-3' : 'justify-center h-10 mx-1'
+            } ${isNight
+              ? 'text-[#86868B] hover:text-white hover:bg-[rgba(255,255,255,0.06)]'
+              : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-[rgba(0,0,0,0.04)]'
+            }`}
         >
-          <Settings size={20} aria-label={t('nav.settings')} />
-          {isExpanded && <span className="text-xs truncate max-w-[80px]">{t('nav.settings')}</span>}
+          <Settings size={20} strokeWidth={1.8} aria-label={t('nav.settings')} />
+          {isExpanded && <span className="text-[13px] font-semibold truncate">{t('nav.settings')}</span>}
         </button>
       </div>
     </aside>

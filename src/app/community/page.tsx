@@ -187,28 +187,28 @@ function CommunityPageInner() {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl px-4 py-6 text-[color:var(--foreground)]">
-        <div className="glass-panel rounded-3xl p-6 mb-6 card-anim">
-          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--foreground)]/60">
+        <div className="rounded-2xl bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] p-6 mb-6">
+          <div className="text-[11px] uppercase tracking-[0.06em] font-semibold text-[color:var(--text-muted)]">
             {t('community.badge')}
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold mt-2">{t('community.title')}</h1>
-          <p className="mt-2 text-[color:var(--foreground)]/70">
+          <h1 className="text-2xl sm:text-3xl font-bold mt-2 tracking-tight">{t('community.title')}</h1>
+          <p className="mt-2 text-[15px] text-[color:var(--text-muted)] leading-relaxed">
             {t('community.subtitle')}
           </p>
         </div>
 
         <div
           className={`grid grid-cols-1 gap-6 ${isGroupsTab
-              ? 'xl:grid-cols-[260px_minmax(0,1fr)]'
-              : 'xl:grid-cols-[260px_minmax(0,1fr)_320px]'
+            ? 'xl:grid-cols-[260px_minmax(0,1fr)]'
+            : 'xl:grid-cols-[260px_minmax(0,1fr)_320px]'
             }`}
         >
           <aside className="hidden xl:block space-y-4 xl:sticky xl:top-24 h-fit">
             <CommunityIdentityCard />
 
-            <div className="glass-panel rounded-3xl p-4">
+            <div className="rounded-2xl bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] p-4">
               <div className="text-sm font-semibold mb-3">{t('community.navigation')}</div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const active = tab.key === activeTab;
@@ -217,10 +217,12 @@ function CommunityPageInner() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`btn-base w-full justify-start text-sm px-3 py-3 ${active ? 'btn-primary' : 'btn-secondary'
+                      className={`w-full flex items-center text-[13px] font-semibold px-3 py-2.5 rounded-[10px] transition-all duration-200 ${active
+                          ? 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
+                          : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)]'
                         }`}
                     >
-                      <Icon size={16} className="mr-2" />
+                      <Icon size={16} className="mr-2.5" strokeWidth={active ? 2.2 : 1.8} />
                       {tab.label}
                     </button>
                   );
@@ -241,24 +243,24 @@ function CommunityPageInner() {
           </aside>
 
           <main className="space-y-4">
-            <div className="glass-panel rounded-3xl p-4 sm:p-5">
+            <div className="rounded-2xl bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.18em] opacity-60">
+                  <div className="text-[11px] uppercase tracking-[0.06em] font-semibold text-[color:var(--text-muted)]">
                     {activeTabMeta?.label || t('community.title')}
                   </div>
-                  <div className="text-lg font-extrabold mt-1">
+                  <div className="text-base font-bold mt-1">
                     {activeTabMeta?.description || t('community.subtitle')}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-3 py-2 text-xs font-semibold">
+                <div className="rounded-[10px] bg-[color:var(--surface)] border border-[color:var(--border-soft)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--text-muted)]">
                   {t('identity.subtitle')}
                 </div>
               </div>
             </div>
 
-            <div className="xl:hidden sticky top-[72px] z-20 rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-3 backdrop-blur-md">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="xl:hidden sticky top-[72px] z-20 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)]/95 p-2.5 backdrop-blur-xl">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const active = tab.key === activeTab;
@@ -267,10 +269,12 @@ function CommunityPageInner() {
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`btn-base shrink-0 px-3 py-2 text-xs ${active ? 'btn-primary' : 'btn-secondary'
+                      className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-200 ${active
+                          ? 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
+                          : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)]'
                         }`}
                     >
-                      <Icon size={14} className="mr-1" />
+                      <Icon size={14} strokeWidth={active ? 2.2 : 1.8} />
                       {tab.label}
                     </button>
                   );
