@@ -534,12 +534,12 @@ export default function CommunityFeed({
         prev.map((item) =>
           item.id === post.id
             ? {
-                ...item,
-                reported_count:
-                  typeof (item as any).reported_count === 'number'
-                    ? (item as any).reported_count + 1
-                    : 1,
-              }
+              ...item,
+              reported_count:
+                typeof (item as any).reported_count === 'number'
+                  ? (item as any).reported_count + 1
+                  : 1,
+            }
             : item
         )
       );
@@ -568,7 +568,7 @@ export default function CommunityFeed({
     <div className="space-y-4">
       <div className="relative overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 sm:p-5 shadow-[var(--shadow-soft)] backdrop-blur-xl">
         {/* Glow effect */}
-        <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-sky-500/10 blur-3xl" />
+        <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#C8A836]/10 blur-3xl" />
 
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>

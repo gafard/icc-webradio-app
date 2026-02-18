@@ -47,7 +47,7 @@ export default function RowRailOneToOne({
         {seeAllHref ? (
           <Link
             href={seeAllHref}
-            className="text-[15px] font-semibold text-[#007AFF] hover:opacity-70 transition-opacity duration-200"
+            className="text-[15px] font-semibold text-[#C8A836] hover:opacity-70 transition-opacity duration-200"
           >
             Voir tout
           </Link>

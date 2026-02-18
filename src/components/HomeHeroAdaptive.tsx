@@ -62,8 +62,8 @@ export default function HomeHeroAdaptive({
           <div className="p-6 sm:p-8 max-w-2xl">
             {/* Badge */}
             <div className={`inline-flex items-center gap-2 text-[11px] font-semibold tracking-wide uppercase px-3 py-1 rounded-full mb-3 ${mode === 'radio'
-                ? 'bg-[#FF3B30]/90 text-white'
-                : 'bg-white/20 text-white backdrop-blur-md'
+              ? 'bg-[#FF3B30]/90 text-white'
+              : 'bg-white/20 text-white backdrop-blur-md'
               }`}>
               {mode === 'radio' ? (
                 <>
@@ -72,7 +72,7 @@ export default function HomeHeroAdaptive({
                 </>
               ) : (
                 <>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#007AFF]" />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C8A836]" />
                   <span>À la une</span>
                 </>
               )}

@@ -367,7 +367,7 @@ export default function CommunityDeck({
             {current.media_url ? (
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
             ) : null}
-            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-[#4A6FA5]/8 blur-3xl" />
+            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-[#C8A836]/8 blur-3xl" />
             <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-[#7B64B4]/8 blur-3xl" />
 
             <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4">

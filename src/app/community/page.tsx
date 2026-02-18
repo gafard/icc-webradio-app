@@ -218,8 +218,8 @@ function CommunityPageInner() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={`w-full flex items-center text-[13px] font-semibold px-3 py-2.5 rounded-[10px] transition-all duration-200 ${active
-                          ? 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
-                          : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)]'
+                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
+                        : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)]'
                         }`}
                     >
                       <Icon size={16} className="mr-2.5" strokeWidth={active ? 2.2 : 1.8} />
@@ -270,8 +270,8 @@ function CommunityPageInner() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-200 ${active
-                          ? 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
-                          : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)]'
+                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
+                        : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)]'
                         }`}
                     >
                       <Icon size={14} strokeWidth={active ? 2.2 : 1.8} />

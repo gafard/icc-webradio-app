@@ -50,7 +50,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               className={`flex flex-col items-center justify-center gap-[2px] pt-1 pb-1 min-w-[52px] transition-colors duration-200 ${active
-                ? 'text-[#007AFF]'
+                ? 'text-[#C8A836]'
                 : isNight
                   ? 'text-[#86868B]'
                   : 'text-[#86868B]'

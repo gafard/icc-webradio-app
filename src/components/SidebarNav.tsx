@@ -74,8 +74,8 @@ export default function SidebarNav() {
               className={`flex items-center rounded-[10px] transition-all duration-200 ${isExpanded ? 'px-3 h-10 justify-start gap-3' : 'justify-center h-10 mx-1'
                 } ${isActive
                   ? isNight
-                    ? 'bg-[rgba(0,122,255,0.18)] text-[#64B5F6]'
-                    : 'bg-[rgba(0,122,255,0.10)] text-[#007AFF]'
+                    ? 'bg-[rgba(200,168,54,0.18)] text-[#D4B84A]'
+                    : 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
                   : isNight
                     ? 'text-[#86868B] hover:text-white hover:bg-[rgba(255,255,255,0.06)]'
                     : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-[rgba(0,0,0,0.04)]'
