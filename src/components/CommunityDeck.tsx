@@ -63,12 +63,19 @@ const variants = {
   }),
 };
 
+function isMajorAnnouncement(post: CommunityPost) {
+  const c = (post.content || '').toLowerCase();
+  return c.includes('conférence') || c.includes('célébration') || c.includes('campagne') || c.includes('concert') || c.includes('congrès');
+}
+
 function AnnouncementAdOverlay({
   post,
   onOpen,
+  onShare,
 }: {
   post: CommunityPost;
   onOpen: () => void;
+  onShare: (p: CommunityPost) => void;
 }) {
   const lines = String(post.content || '')
     .split(/\r?\n/)
@@ -76,10 +83,11 @@ function AnnouncementAdOverlay({
     .filter(Boolean);
   const title = lines[0]?.slice(0, 120) || 'Annonce';
   const subtitle = lines.slice(1).join(' ').slice(0, 200);
+  const major = isMajorAnnouncement(post);
 
   return (
     <div
-      className="absolute inset-0 z-10"
+      className="absolute inset-0 z-10 icc-hover-gold icc-watermark"
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -91,25 +99,31 @@ function AnnouncementAdOverlay({
       tabIndex={0}
       aria-label="Ouvrir l'annonce"
     >
-      {/* Noble warm indigo gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1E2030] via-[#1A1B2B] to-[#12131D]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_50%)]" />
+      {/* Background: major → gold→violet gradient, standard → dark indigo */}
+      {major ? (
+        <div className="absolute inset-0 icc-major-gradient" />
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1B1D2B] via-[#191722] to-[#0E0F18]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(201,162,39,0.25),transparent_60%)]" />
+        </>
+      )}
 
-      {/* Subtle gold border */}
-      <div className="absolute inset-0 rounded-[24px] border border-[#C9A227]/15 sm:rounded-[32px]" />
+      {/* Gold border */}
+      <div className="absolute inset-0 rounded-[24px] border border-[#C9A227]/20 sm:rounded-[32px]" />
 
-      {/* Content: institutional centered layout */}
-      <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-10 text-white">
+      {/* Content with gold stripe */}
+      <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-10 text-white icc-official-stripe">
 
-        {/* Top: institutional ribbon */}
-        <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[10px] tracking-[0.35em] uppercase font-semibold text-white/80">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400/80" />
-            Annonce officielle
-          </div>
+        {/* Top: ICC badge */}
+        <div className="relative z-10 ml-4">
+          <span className="icc-badge">
+            <span className="icc-badge-dot" />
+            {major ? 'Événement majeur' : 'Annonce officielle'}
+          </span>
         </div>
 
-        {/* Center: main content — serif, centered, breathes */}
+        {/* Center: serif title */}
         <div className="relative z-10 text-center max-w-3xl mx-auto">
           <motion.h2
             initial={{ opacity: 0, y: 12 }}
@@ -134,13 +148,23 @@ function AnnouncementAdOverlay({
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
-              className="rounded-full bg-white/10 border border-white/15 px-5 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition hover:bg-white/15 active:scale-[0.98]"
+              className="rounded-2xl bg-[var(--icc-gold)] px-5 py-3 text-sm font-extrabold text-black hover:opacity-90 active:scale-95 transition"
               onClick={(event) => {
                 event.stopPropagation();
                 onOpen();
               }}
             >
-              Lire l'annonce
+              Voir les détails
+            </button>
+            <button
+              type="button"
+              className="rounded-2xl border border-white/12 bg-white/5 px-5 py-3 text-sm font-bold text-white/85 hover:bg-white/10 active:scale-95 transition"
+              onClick={(event) => {
+                event.stopPropagation();
+                onShare(post);
+              }}
+            >
+              Partager
             </button>
           </div>
 
@@ -149,9 +173,9 @@ function AnnouncementAdOverlay({
           </div>
         </div>
 
-        {/* Bottom: community signature */}
+        {/* Bottom: ICC signature */}
         <div className="relative z-10 text-center text-[10px] tracking-[0.25em] uppercase text-white/35">
-          Communauté ICC
+          ICC Agoè-Logopé • Communication
         </div>
       </div>
     </div>
@@ -284,7 +308,7 @@ export default function CommunityDeck({
               if (offsetY < -120 || velocityY < -900) goTo(index + 1);
               else if (offsetY > 120 || velocityY > 900) goTo(index - 1);
             }}
-            className="absolute inset-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#141520] shadow-[0_18px_60px_rgba(10,10,30,0.45)] sm:rounded-[32px]"
+            className="absolute inset-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#12131A] shadow-[0_18px_60px_rgba(10,10,30,0.45)] sm:rounded-[32px]"
             style={{ touchAction: 'pan-y' }}
           >
             {current.media_url ? (
@@ -299,10 +323,10 @@ export default function CommunityDeck({
                     loading="lazy"
                     onClick={(event) => event.stopPropagation()}
                   />
-                  <div className="absolute inset-0 bg-[#141520]/10" />
-                  <div className="absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_50%,transparent_72%)] bg-[#141520]/35" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#141520]/85 via-[#141520]/25 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#141520]/25 via-transparent to-[#141520]/25" />
+                  <div className="absolute inset-0 bg-[#12131A]/10" />
+                  <div className="absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_50%,transparent_72%)] bg-[#12131A]/35" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12131A]/85 via-[#12131A]/25 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#12131A]/25 via-transparent to-[#12131A]/25" />
                 </>
               ) : currentMediaKind === 'video' ? (
                 <>
@@ -317,9 +341,9 @@ export default function CommunityDeck({
                     controls={false}
                     onClick={(event) => event.stopPropagation()}
                   />
-                  <div className="absolute inset-0 bg-[#141520]/12" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#141520]/85 via-[#141520]/20 to-[#141520]/20" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#141520]/25 via-transparent to-[#141520]/25" />
+                  <div className="absolute inset-0 bg-[#12131A]/12" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12131A]/85 via-[#12131A]/20 to-[#12131A]/20" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#12131A]/25 via-transparent to-[#12131A]/25" />
                 </>
               ) : (
                 <div className="absolute inset-0 grid place-items-center p-6">
@@ -327,7 +351,7 @@ export default function CommunityDeck({
                     href={current.media_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-3xl border border-white/8 bg-[#141520]/40 p-4 text-sm text-white/80 backdrop-blur-xl"
+                    className="rounded-3xl border border-white/8 bg-[#12131A]/40 p-4 text-sm text-white/80 backdrop-blur-xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     {current.media_url}
@@ -337,7 +361,7 @@ export default function CommunityDeck({
             ) : (
               <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(74,111,165,0.12),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(136,100,180,0.10),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(74,111,165,0.08),transparent_50%)]" />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#1a1b2e] via-[#181a2a] to-[#141520]" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#1a1b2e] via-[#181a2a] to-[#12131A]" />
                 <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:40px_40px]" />
 
                 {!isAnnouncement ? (
@@ -361,24 +385,24 @@ export default function CommunityDeck({
             )}
 
             {isAnnouncement ? (
-              <AnnouncementAdOverlay post={current} onOpen={() => onOpenPost(current.id)} />
+              <AnnouncementAdOverlay post={current} onOpen={() => onOpenPost(current.id)} onShare={onShare} />
             ) : null}
 
             {current.media_url ? (
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
             ) : null}
-            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-[#C8A836]/8 blur-3xl" />
+            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-[#C9A227]/8 blur-3xl" />
             <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-[#7B64B4]/8 blur-3xl" />
 
             <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4">
-              <div className="rounded-full border border-white/8 bg-[#141520]/35 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
+              <div className="rounded-full border border-white/8 bg-[#12131A]/35 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
                 {index + 1} / {safe.length}
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#12131A]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                   onClick={(event) => {
                     event.stopPropagation();
                     onReportPost(current);
@@ -397,7 +421,7 @@ export default function CommunityDeck({
                 {canDelete(current) ? (
                   <button
                     type="button"
-                    className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                    className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#12131A]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                     onClick={(event) => {
                       event.stopPropagation();
                       onDeletePost(current);
@@ -416,7 +440,7 @@ export default function CommunityDeck({
 
                 <button
                   type="button"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#12131A]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                   onClick={(event) => {
                     event.stopPropagation();
                     onShare(current);
@@ -433,7 +457,7 @@ export default function CommunityDeck({
               <button
                 type="button"
                 className={[
-                  'grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#141520]/40 text-white backdrop-blur-md transition sm:h-12 sm:w-12',
+                  'grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#12131A]/40 text-white backdrop-blur-md transition sm:h-12 sm:w-12',
                   heartAnimating[current.id] ? 'scale-105 text-rose-300' : '',
                 ].join(' ')}
                 onClick={(event) => {
@@ -448,7 +472,7 @@ export default function CommunityDeck({
 
               <button
                 type="button"
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#141520]/40 text-white backdrop-blur-md sm:h-12 sm:w-12"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#12131A]/40 text-white backdrop-blur-md sm:h-12 sm:w-12"
                 onClick={(event) => {
                   event.stopPropagation();
                   onToggleComments(current.id);
@@ -466,7 +490,7 @@ export default function CommunityDeck({
                 onClick={() => onOpenPost(current.id)}
               >
                 <div className="max-w-[820px]">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#141520]/35 px-3 py-2 text-[11px] font-bold text-white/80 backdrop-blur-md">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#12131A]/35 px-3 py-2 text-[11px] font-bold text-white/80 backdrop-blur-md">
                     <span className="max-w-[240px] truncate">{current.author_name || 'Invité'}</span>
                     {showKind && current.kind ? (
                       <>
@@ -479,7 +503,7 @@ export default function CommunityDeck({
                   </div>
 
                   <div className="mt-3">
-                    <div className="rounded-2xl border border-white/8 bg-[#141520]/35 p-3 shadow-[0_18px_60px_rgba(10,10,30,0.35)] backdrop-blur-xl sm:rounded-3xl sm:p-5">
+                    <div className="rounded-2xl border border-white/8 bg-[#12131A]/35 p-3 shadow-[0_18px_60px_rgba(10,10,30,0.35)] backdrop-blur-xl sm:rounded-3xl sm:p-5">
                       <div className="line-clamp-3 whitespace-pre-wrap font-reading text-[15px] font-semibold leading-relaxed sm:line-clamp-4 sm:text-[20px] md:text-[24px]">
                         {current.content}
                       </div>
@@ -495,7 +519,7 @@ export default function CommunityDeck({
         <div className="absolute right-4 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 md:flex">
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#141520]/45 disabled:hover:text-white/75"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#12131A]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#12131A]/45 disabled:hover:text-white/75"
             onClick={(event) => {
               event.stopPropagation();
               goTo(index - 1);
@@ -508,7 +532,7 @@ export default function CommunityDeck({
           </button>
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#141520]/45 disabled:hover:text-white/75"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#12131A]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#12131A]/45 disabled:hover:text-white/75"
             onClick={(event) => {
               event.stopPropagation();
               goTo(index + 1);

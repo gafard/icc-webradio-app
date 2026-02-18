@@ -33,7 +33,7 @@ export default function SidebarNav() {
     <aside
       className={`fixed left-0 top-0 bottom-0 z-[9999] pointer-events-auto flex flex-col items-center py-5 transition-all duration-300 border-r ${isNight
         ? 'bg-[#1E2030] border-[rgba(100,105,130,0.25)]'
-        : 'bg-[#FAF8F5] border-[rgba(62,56,48,0.10)]'
+        : 'bg-[#F8F6F2] border-[rgba(62,56,48,0.10)]'
         } ${isExpanded ? 'w-[140px]' : 'w-[68px]'
         }`}
       onMouseEnter={() => {
@@ -75,7 +75,7 @@ export default function SidebarNav() {
                 } ${isActive
                   ? isNight
                     ? 'bg-[rgba(200,168,54,0.18)] text-[#D4B84A]'
-                    : 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
+                    : 'bg-[rgba(200,168,54,0.10)] text-[#C9A227]'
                   : isNight
                     ? 'text-[#86868B] hover:text-white hover:bg-[rgba(255,255,255,0.06)]'
                     : 'text-[#86868B] hover:text-[#1D1D1F] hover:bg-[rgba(0,0,0,0.04)]'

@@ -218,7 +218,7 @@ function CommunityPageInner() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={`w-full flex items-center text-[13px] font-semibold px-3 py-2.5 rounded-[10px] transition-all duration-200 ${active
-                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
+                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C9A227]'
                         : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--foreground)]'
                         }`}
                     >
@@ -270,7 +270,7 @@ function CommunityPageInner() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-200 ${active
-                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C8A836]'
+                        ? 'bg-[rgba(200,168,54,0.10)] text-[#C9A227]'
                         : 'text-[color:var(--text-muted)] hover:bg-[color:var(--surface)]'
                         }`}
                     >

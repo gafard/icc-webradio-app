@@ -3,38 +3,41 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #FAF8F5;
+  --background: #F8F6F2;
   --foreground: #2C2A28;
-  --surface: rgba(255, 252, 248, 0.85);
-  --surface-strong: rgba(255, 253, 250, 0.94);
+  --surface: rgba(255, 252, 246, 0.90);
+  --surface-strong: rgba(250, 245, 235, 0.95);
   --border-soft: rgba(62, 56, 48, 0.10);
   --border-strong: rgba(62, 56, 48, 0.18);
   --shadow-soft: 0 2px 8px rgba(40, 30, 20, 0.06), 0 0 1px rgba(40, 30, 20, 0.03);
   --shadow-strong: 0 4px 24px rgba(40, 30, 20, 0.09);
   --glass-blur: 20px;
   --text-scale: 1;
-  --accent: #C8A836;
+  --accent: #C9A227;
   --accent-2: #D4B84A;
-  --accent-rgb: 200, 168, 54;
-  --accent-border: rgba(200, 168, 54, 0.40);
-  --accent-soft: rgba(200, 168, 54, 0.12);
+  --accent-rgb: 201, 162, 39;
+  --accent-border: rgba(201, 162, 39, 0.40);
+  --accent-soft: rgba(201, 162, 39, 0.15);
   --app-font-ui: var(--font-manrope);
   --app-font-display: var(--font-tiktok-sans);
   --app-font-reading: var(--font-merriweather);
   --app-font-hand: var(--font-typewriter);
 
   /* ICC Agoè-Logopé brand palette */
-  --icc-gold: #C8A836;
-  --icc-green: #4CAF50;
-  --icc-red: #C62828;
-  --icc-purple: #7B1FA2;
-  --icc-gray: #757575;
+  --icc-gold: #C9A227;
+  --icc-purple: #7B2CBF;
+  --icc-green: #1CA77A;
+  --icc-red: #C73E3E;
+  --icc-ink: #141520;
+  --icc-gold-soft: rgba(201, 162, 39, 0.18);
+  --icc-gold-glow: rgba(201, 162, 39, 0.35);
+  --icc-purple-glow: rgba(123, 44, 191, 0.28);
 
-  --app-bg: #FAF8F5;
-  --panel-bg: rgba(255, 252, 248, 0.85);
+  --app-bg: #F8F6F2;
+  --panel-bg: rgba(255, 252, 246, 0.90);
   --panel-border: rgba(62, 56, 48, 0.10);
   --text: #2C2A28;
-  --text-muted: #8E8880;
+  --text-muted: #8A837A;
 
   /* Elegant springs & durations */
   --apple-spring: cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -44,19 +47,19 @@
 }
 
 :root[data-theme="light"] {
-  --background: #FAF8F5;
+  --background: #F8F6F2;
   --foreground: #2C2A28;
-  --surface: rgba(255, 252, 248, 0.85);
-  --surface-strong: rgba(255, 253, 250, 0.94);
+  --surface: rgba(255, 252, 246, 0.90);
+  --surface-strong: rgba(250, 245, 235, 0.95);
   --border-soft: rgba(62, 56, 48, 0.10);
   --border-strong: rgba(62, 56, 48, 0.18);
   --shadow-soft: 0 2px 8px rgba(40, 30, 20, 0.06), 0 0 1px rgba(40, 30, 20, 0.03);
   --shadow-strong: 0 4px 24px rgba(40, 30, 20, 0.09);
-  --app-bg: #FAF8F5;
-  --panel-bg: rgba(255, 252, 248, 0.85);
-  --panel-border: rgba(60, 60, 67, 0.12);
-  --text: #1D1D1F;
-  --text-muted: #86868B;
+  --app-bg: #F8F6F2;
+  --panel-bg: rgba(255, 252, 246, 0.90);
+  --panel-border: rgba(62, 56, 48, 0.10);
+  --text: #2C2A28;
+  --text-muted: #8A837A;
 }
 
 /* applique au body */
@@ -77,19 +80,20 @@ body {
 }
 
 .dark {
-  --background: #141520;
+  --background: #12131A;
   --foreground: #EDEAE6;
-  --surface: rgba(30, 32, 48, 0.82);
-  --surface-strong: rgba(40, 42, 62, 0.88);
+  --surface: rgba(28, 30, 45, 0.85);
+  --surface-strong: rgba(35, 38, 60, 0.90);
   --border-soft: rgba(100, 105, 130, 0.25);
   --border-strong: rgba(100, 105, 130, 0.40);
   --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.25);
   --shadow-strong: 0 8px 40px rgba(0, 0, 0, 0.35);
-  --app-bg: #141520;
-  --panel-bg: rgba(30, 32, 48, 0.85);
+  --accent-soft: rgba(201, 162, 39, 0.20);
+  --app-bg: #12131A;
+  --panel-bg: rgba(28, 30, 45, 0.85);
   --panel-border: rgba(100, 105, 130, 0.25);
   --text: #EDEAE6;
-  --text-muted: #9A96A8;
+  --text-muted: #9B978E;
 }
 
 body {
@@ -133,7 +137,6 @@ textarea {
 
 .app-atmosphere {
   background: var(--app-bg);
-  /* Subtle paper grain — spiritual parchment feel */
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 200px 200px;
@@ -142,6 +145,116 @@ textarea {
 .dark .app-atmosphere {
   background: var(--app-bg);
   background-image: none;
+}
+
+/* =============================================
+   ICC PREMIUM MOTION & EFFECTS
+   ============================================= */
+
+/* 1) Hover doré subtil */
+.icc-hover-gold {
+  position: relative;
+  transform: translateZ(0);
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
+}
+
+.icc-hover-gold::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  background: radial-gradient(circle at 30% 20%, var(--icc-gold-soft), transparent 60%),
+    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.10), transparent 55%);
+}
+
+.icc-hover-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(201, 162, 39, 0.25);
+}
+
+.icc-hover-gold:hover::before {
+  opacity: 1;
+}
+
+.icc-hover-gold:active {
+  transform: scale(0.985);
+}
+
+/* 2) Ligne verticale OR (annonce officielle) */
+.icc-official-stripe {
+  position: relative;
+}
+
+.icc-official-stripe::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(to bottom,
+      rgba(201, 162, 39, 0.95),
+      rgba(201, 162, 39, 0.25),
+      rgba(201, 162, 39, 0.85));
+  box-shadow: 0 0 20px rgba(201, 162, 39, 0.28);
+}
+
+/* 3) Filigrane ICC ultra subtil */
+.icc-watermark {
+  position: relative;
+  overflow: hidden;
+}
+
+.icc-watermark::before {
+  content: "ICC";
+  position: absolute;
+  right: -18px;
+  bottom: -30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-size: 128px;
+  line-height: 1;
+  opacity: 0.06;
+  color: rgba(255, 255, 255, 0.9);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/* 4) Gradient OR → Violet (événements majeurs) */
+.icc-major-gradient {
+  background:
+    radial-gradient(circle at 20% 10%, var(--icc-gold-glow), transparent 55%),
+    radial-gradient(circle at 80% 20%, var(--icc-purple-glow), transparent 60%),
+    linear-gradient(135deg, rgba(201, 162, 39, 0.22), rgba(123, 44, 191, 0.18)),
+    linear-gradient(180deg, rgba(15, 16, 24, 0.92), rgba(10, 10, 16, 0.96));
+}
+
+/* 5) Badge premium ICC */
+.icc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 162, 39, 0.30);
+  background: rgba(201, 162, 39, 0.10);
+  color: rgba(201, 162, 39, 0.95);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.icc-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(201, 162, 39, 0.95);
+  box-shadow: 0 0 12px rgba(201, 162, 39, 0.35);
 }
 
 /* Smooth scrolling for rails */

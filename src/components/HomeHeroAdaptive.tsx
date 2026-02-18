@@ -72,7 +72,7 @@ export default function HomeHeroAdaptive({
                 </>
               ) : (
                 <>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C8A836]" />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A227]" />
                   <span>À la une</span>
                 </>
               )}
