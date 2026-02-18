@@ -52,7 +52,9 @@ export default function MobileRadioPlayer({
   const hideOnRoute =
     pathname?.startsWith('/bible') ||
     pathname?.startsWith('/community') ||
-    pathname?.startsWith('/spiritual');
+    pathname?.startsWith('/spiritual') ||
+    pathname?.startsWith('/watch') ||
+    pathname?.startsWith('/y/watch');
 
   if (!hasMounted || hideOnRoute) {
     return null;
