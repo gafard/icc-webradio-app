@@ -74,8 +74,8 @@ function AnnouncementAdOverlay({
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const title = lines[0]?.slice(0, 90) || 'Annonce';
-  const subtitle = lines.slice(1).join(' ').slice(0, 140);
+  const title = lines[0]?.slice(0, 120) || 'Annonce';
+  const subtitle = lines.slice(1).join(' ').slice(0, 200);
 
   return (
     <div
@@ -91,92 +91,68 @@ function AnnouncementAdOverlay({
       tabIndex={0}
       aria-label="Ouvrir l'annonce"
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/90" />
-      <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:34px_34px]" />
-      <div className="absolute -top-20 left-10 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
-      <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-sky-500/20 blur-3xl" />
+      {/* Noble warm indigo gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1E2030] via-[#1A1B2B] to-[#12131D]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_50%)]" />
 
-      <div className="absolute bottom-5 left-4 right-4 sm:bottom-7 sm:left-6 sm:right-6">
-        <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-          className="relative overflow-hidden rounded-3xl border border-white/12 bg-black/35 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-6"
-        >
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute -inset-[2px] rounded-[26px] opacity-60"
-            style={{
-              background:
-                'conic-gradient(from 180deg at 50% 50%, rgba(56,189,248,.0), rgba(56,189,248,.55), rgba(217,70,239,.55), rgba(56,189,248,.0))',
-              filter: 'blur(10px)',
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 10, ease: 'linear' }}
-          />
+      {/* Subtle gold border */}
+      <div className="absolute inset-0 rounded-[24px] border border-[#C9A227]/15 sm:rounded-[32px]" />
 
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/80">
-              <span className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.65)]" />
-              Annonce
-              <span className="opacity-40">•</span>
-              {new Date(post.created_at).toLocaleDateString()}
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[10px] font-bold text-white/70">
-              {post.author_name || 'Organisation'}
-            </div>
+      {/* Content: institutional centered layout */}
+      <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-10 text-white">
+
+        {/* Top: institutional ribbon */}
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[10px] tracking-[0.35em] uppercase font-semibold text-white/80">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400/80" />
+            Annonce officielle
+          </div>
+        </div>
+
+        {/* Center: main content — serif, centered, breathes */}
+        <div className="relative z-10 text-center max-w-3xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="font-reading text-[22px] sm:text-[32px] md:text-[40px] font-semibold leading-tight tracking-[-0.01em] text-white/95"
+          >
+            {title}
+          </motion.h2>
+
+          {subtitle ? (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="mt-4 text-sm sm:text-base leading-relaxed text-white/65 max-w-xl mx-auto"
+            >
+              {subtitle}
+            </motion.p>
+          ) : null}
+
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              className="rounded-full bg-white/10 border border-white/15 px-5 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition hover:bg-white/15 active:scale-[0.98]"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen();
+              }}
+            >
+              Lire l'annonce
+            </button>
           </div>
 
-          <div className="relative mt-4 grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
-            <div>
-              <div className="text-[22px] font-black leading-[1.05] tracking-[-0.02em] text-white sm:text-[30px]">
-                {title}
-              </div>
-              {subtitle ? (
-                <div className="mt-2 text-sm leading-6 text-white/70">
-                  {subtitle}
-                </div>
-              ) : null}
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-2xl bg-white px-4 py-2 text-xs font-extrabold text-black shadow-lg active:scale-[0.99]"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpen();
-                  }}
-                >
-                  En savoir plus
-                </button>
-                <button
-                  type="button"
-                  className="rounded-2xl border border-white/14 bg-white/5 px-4 py-2 text-xs font-bold text-white/80 hover:bg-white/10"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpen();
-                  }}
-                >
-                  Voir l’annonce
-                </button>
-              </div>
-            </div>
-
-            <div className="relative hidden sm:block">
-              <div className="absolute -inset-2 rounded-3xl bg-white/10 blur-2xl" />
-              <div className="relative overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-br from-white/10 to-white/5 p-4">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/70">
-                  Offre
-                </div>
-                <div className="mt-2 text-base font-black text-white">Annonce Église</div>
-                <div className="mt-1 text-xs text-white/65">Durée limitée</div>
-              </div>
-            </div>
+          <div className="mt-4 text-[11px] text-white/45">
+            {post.author_name || 'Organisation'} • {new Date(post.created_at).toLocaleDateString()}
           </div>
+        </div>
 
-          <div className="relative mt-4 text-[10px] text-white/55">
-            Tape pour ouvrir • Swipe ↑/↓ pour naviguer
-          </div>
-        </motion.div>
+        {/* Bottom: community signature */}
+        <div className="relative z-10 text-center text-[10px] tracking-[0.25em] uppercase text-white/35">
+          Communauté ICC
+        </div>
       </div>
     </div>
   );
@@ -308,7 +284,7 @@ export default function CommunityDeck({
               if (offsetY < -120 || velocityY < -900) goTo(index + 1);
               else if (offsetY > 120 || velocityY > 900) goTo(index - 1);
             }}
-            className="absolute inset-0 overflow-hidden rounded-[24px] border border-white/10 bg-black shadow-[0_18px_60px_rgba(0,0,0,0.45)] sm:rounded-[32px]"
+            className="absolute inset-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#141520] shadow-[0_18px_60px_rgba(10,10,30,0.45)] sm:rounded-[32px]"
             style={{ touchAction: 'pan-y' }}
           >
             {current.media_url ? (
@@ -323,10 +299,10 @@ export default function CommunityDeck({
                     loading="lazy"
                     onClick={(event) => event.stopPropagation()}
                   />
-                  <div className="absolute inset-0 bg-black/10" />
-                  <div className="absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_50%,transparent_72%)] bg-black/35" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
+                  <div className="absolute inset-0 bg-[#141520]/10" />
+                  <div className="absolute inset-0 [mask-image:radial-gradient(circle_at_center,black_50%,transparent_72%)] bg-[#141520]/35" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#141520]/85 via-[#141520]/25 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#141520]/25 via-transparent to-[#141520]/25" />
                 </>
               ) : currentMediaKind === 'video' ? (
                 <>
@@ -341,9 +317,9 @@ export default function CommunityDeck({
                     controls={false}
                     onClick={(event) => event.stopPropagation()}
                   />
-                  <div className="absolute inset-0 bg-black/12" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/20" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
+                  <div className="absolute inset-0 bg-[#141520]/12" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#141520]/85 via-[#141520]/20 to-[#141520]/20" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#141520]/25 via-transparent to-[#141520]/25" />
                 </>
               ) : (
                 <div className="absolute inset-0 grid place-items-center p-6">
@@ -351,7 +327,7 @@ export default function CommunityDeck({
                     href={current.media_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-3xl border border-white/10 bg-black/40 p-4 text-sm text-white/80 backdrop-blur-xl"
+                    className="rounded-3xl border border-white/8 bg-[#141520]/40 p-4 text-sm text-white/80 backdrop-blur-xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     {current.media_url}
@@ -391,18 +367,18 @@ export default function CommunityDeck({
             {current.media_url ? (
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
             ) : null}
-            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -top-24 left-1/3 h-56 w-56 rounded-full bg-[#4A6FA5]/8 blur-3xl" />
+            <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-[#7B64B4]/8 blur-3xl" />
 
             <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4">
-              <div className="rounded-full border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
+              <div className="rounded-full border border-white/8 bg-[#141520]/35 px-3 py-2 text-xs text-white/80 backdrop-blur-md">
                 {index + 1} / {safe.length}
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                   onClick={(event) => {
                     event.stopPropagation();
                     onReportPost(current);
@@ -421,7 +397,7 @@ export default function CommunityDeck({
                 {canDelete(current) ? (
                   <button
                     type="button"
-                    className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                    className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                     onClick={(event) => {
                       event.stopPropagation();
                       onDeletePost(current);
@@ -440,7 +416,7 @@ export default function CommunityDeck({
 
                 <button
                   type="button"
-                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/80 backdrop-blur-md transition hover:bg-white/12 hover:text-white sm:h-10 sm:w-10"
                   onClick={(event) => {
                     event.stopPropagation();
                     onShare(current);
@@ -457,7 +433,7 @@ export default function CommunityDeck({
               <button
                 type="button"
                 className={[
-                  'grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-md transition sm:h-12 sm:w-12',
+                  'grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#141520]/40 text-white backdrop-blur-md transition sm:h-12 sm:w-12',
                   heartAnimating[current.id] ? 'scale-105 text-rose-300' : '',
                 ].join(' ')}
                 onClick={(event) => {
@@ -472,7 +448,7 @@ export default function CommunityDeck({
 
               <button
                 type="button"
-                className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-md sm:h-12 sm:w-12"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/8 bg-[#141520]/40 text-white backdrop-blur-md sm:h-12 sm:w-12"
                 onClick={(event) => {
                   event.stopPropagation();
                   onToggleComments(current.id);
@@ -490,7 +466,7 @@ export default function CommunityDeck({
                 onClick={() => onOpenPost(current.id)}
               >
                 <div className="max-w-[820px]">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/35 px-3 py-2 text-[11px] font-bold text-white/80 backdrop-blur-md">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#141520]/35 px-3 py-2 text-[11px] font-bold text-white/80 backdrop-blur-md">
                     <span className="max-w-[240px] truncate">{current.author_name || 'Invité'}</span>
                     {showKind && current.kind ? (
                       <>
@@ -503,7 +479,7 @@ export default function CommunityDeck({
                   </div>
 
                   <div className="mt-3">
-                    <div className="rounded-2xl border border-white/10 bg-black/35 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:rounded-3xl sm:p-5">
+                    <div className="rounded-2xl border border-white/8 bg-[#141520]/35 p-3 shadow-[0_18px_60px_rgba(10,10,30,0.35)] backdrop-blur-xl sm:rounded-3xl sm:p-5">
                       <div className="line-clamp-3 whitespace-pre-wrap font-reading text-[15px] font-semibold leading-relaxed sm:line-clamp-4 sm:text-[20px] md:text-[24px]">
                         {current.content}
                       </div>
@@ -519,7 +495,7 @@ export default function CommunityDeck({
         <div className="absolute right-4 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-3 md:flex">
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-black/45 disabled:hover:text-white/75"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#141520]/45 disabled:hover:text-white/75"
             onClick={(event) => {
               event.stopPropagation();
               goTo(index - 1);
@@ -532,7 +508,7 @@ export default function CommunityDeck({
           </button>
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-black/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-black/45 disabled:hover:text-white/75"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/8 bg-[#141520]/45 text-white/75 backdrop-blur-md transition hover:bg-white/12 hover:text-white disabled:opacity-30 disabled:hover:bg-[#141520]/45 disabled:hover:text-white/75"
             onClick={(event) => {
               event.stopPropagation();
               goTo(index + 1);
