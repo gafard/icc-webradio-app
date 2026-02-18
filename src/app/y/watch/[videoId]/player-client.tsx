@@ -62,7 +62,7 @@ export default function YoutubePlayerClient({
   const currentRef = useRef(0);
   const durationRef = useRef(0);
   const metaRef = useRef({ id: video.id, title: video.title, thumb: video.thumb, channelTitle: video.channelTitle });
-  const saveProgressRef = useRef<(override?: number) => void>(() => {});
+  const saveProgressRef = useRef<(override?: number) => void>(() => { });
   const resumeRef = useRef(0);
   const resumeAppliedRef = useRef(false);
 
@@ -141,7 +141,7 @@ export default function YoutubePlayerClient({
           duration: dur,
           progress: Math.min(0.99, Math.max(0, prog)),
           updatedAt: now,
-        }).catch(() => {});
+        }).catch(() => { });
       }
       upsertHistory({
         id: `yt:${meta.id}`,
@@ -191,7 +191,7 @@ export default function YoutubePlayerClient({
         resumeAppliedRef.current = true;
       }
     };
-    loadRemote().catch(() => {});
+    loadRemote().catch(() => { });
     return () => {
     };
   }, [syncId, video.id, ready]);
@@ -223,7 +223,7 @@ export default function YoutubePlayerClient({
       if (playerRef.current) {
         try {
           playerRef.current.destroy();
-        } catch {}
+        } catch { }
         playerRef.current = null;
       }
 
@@ -307,7 +307,7 @@ export default function YoutubePlayerClient({
       if (playerRef.current) {
         try {
           playerRef.current.destroy();
-        } catch {}
+        } catch { }
         playerRef.current = null;
       }
     };
@@ -401,24 +401,24 @@ export default function YoutubePlayerClient({
         <div className="fixed left-1/2 -translate-x-1/2 z-[10000] px-4" style={{ bottom: `calc(72px + env(safe-area-inset-bottom) + 16px)` }}>
           <div className="glass-panel rounded-full px-4 py-2 text-xs font-semibold text-[color:var(--foreground)] flex items-center gap-2 shadow-2xl">
             <span>Lecture suivante dans</span>
-            <span className="rounded-full bg-blue-600 text-white px-2 py-0.5">{nextCountdown}s</span>
+            <span className="rounded-full bg-[#C9A227] text-black px-2 py-0.5">{nextCountdown}s</span>
           </div>
         </div>
       ) : null}
       <div className={isClient && isFullscreen ? 'h-full' : 'h-full max-w-7xl mx-auto'}>
-        <section className={`relative ${isClient && isFullscreen ? 'h-full' : 'h-[calc(100vh-120px)]'} overflow-hidden rounded-[22px] border border-white/10 bg-black/60 shadow-[0_40px_120px_rgba(0,0,0,0.68)]`}>
+        <section className={`relative ${isClient && isFullscreen ? 'h-full' : 'h-[calc(100vh-120px)]'} overflow-hidden rounded-[22px] border border-[#C9A227]/12 bg-black/60 shadow-[0_40px_120px_rgba(0,0,0,0.68)]`}>
           {/* strict "cinema blur" backdrop */}
           <div
             className="absolute inset-0 scale-[1.12] blur-[28px] opacity-[0.42]"
             style={{ backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_60%_20%,rgba(255,255,255,0.08),transparent_50%),linear-gradient(to_bottom,rgba(0,0,0,0.35),rgba(0,0,0,0.68))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_60%_20%,rgba(201,162,39,0.08),transparent_50%),linear-gradient(to_bottom,rgba(0,0,0,0.35),rgba(0,0,0,0.68))]" />
 
           {/* top bar */}
           <div className="relative flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full bg-red-600 shadow-[0_0_0_6px_rgba(255,0,0,0.12)]" />
-              <div className="text-white/85 text-sm font-extrabold tracking-wide">
+              <div className="h-3 w-3 rounded-full bg-[#C9A227] shadow-[0_0_0_6px_rgba(201,162,39,0.12)]" />
+              <div className="text-[#C9A227] text-sm font-extrabold tracking-wide">
                 {process.env.NEXT_PUBLIC_SITE_NAME ?? 'ICC TV'}
               </div>
               <div className="hidden sm:block text-white/35 text-xs font-semibold">
@@ -430,7 +430,7 @@ export default function YoutubePlayerClient({
               <div className="hidden sm:block text-white/65 text-sm font-semibold">
                 {video.channelTitle}
               </div>
-              <div className="h-8 w-8 rounded-full bg-white/10 border border-white/15" />
+              <div className="h-8 w-8 rounded-full bg-[#C9A227]/15 border border-[#C9A227]/25" />
             </div>
           </div>
 
@@ -484,10 +484,10 @@ export default function YoutubePlayerClient({
                   <button
                     type="button"
                     onClick={toggle}
-                    className="btn-icon h-16 w-16 bg-white text-black text-2xl font-black shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+                    className="h-16 w-16 rounded-full bg-[#C9A227] text-black grid place-items-center shadow-[0_0_50px_rgba(201,162,39,0.35)] hover:opacity-90 active:scale-95 transition"
                     aria-label="Play"
                   >
-                    ▶
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                   </button>
                 </div>
               </div>
@@ -498,7 +498,7 @@ export default function YoutubePlayerClient({
                   type="button"
                   onClick={() => seekBy(-10)}
                   disabled={!ready}
-                  className="btn-base btn-outline-light text-xs px-3 py-2 disabled:opacity-50"
+                  className="h-10 px-3 py-2 rounded-full bg-white/8 border border-white/12 text-white/80 text-xs font-bold hover:bg-white/12 transition disabled:opacity-50"
                   aria-label="Reculer de 10 secondes"
                 >
                   ⟲ 10s
@@ -508,17 +508,21 @@ export default function YoutubePlayerClient({
                   type="button"
                   onClick={toggle}
                   disabled={!ready}
-                  className="btn-icon bg-white/10 border-white/15 text-white disabled:opacity-50"
+                  className="h-12 w-12 rounded-full bg-[#C9A227] text-black grid place-items-center shadow-[0_0_30px_rgba(201,162,39,0.25)] hover:opacity-90 active:scale-95 transition disabled:opacity-50"
                   aria-label={playing ? 'Pause' : 'Play'}
                 >
-                  <span className="text-lg font-black">{playing ? '❚❚' : '▶'}</span>
+                  {playing ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                  )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => seekBy(10)}
                   disabled={!ready}
-                  className="btn-base btn-outline-light text-xs px-3 py-2 disabled:opacity-50"
+                  className="h-10 px-3 py-2 rounded-full bg-white/8 border border-white/12 text-white/80 text-xs font-bold hover:bg-white/12 transition disabled:opacity-50"
                   aria-label="Avancer de 10 secondes"
                 >
                   10s ⟳
@@ -531,7 +535,7 @@ export default function YoutubePlayerClient({
                   </div>
 
                   <div
-                    className="h-2 rounded-full bg-white/15 overflow-hidden cursor-pointer"
+                    className="group h-2 rounded-full bg-white/15 overflow-hidden cursor-pointer relative hover:h-3 transition-all"
                     onClick={(e) => {
                       const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                       const x = (e.clientX - rect.left) / rect.width;
@@ -540,9 +544,11 @@ export default function YoutubePlayerClient({
                     role="presentation"
                   >
                     <div
-                      className="h-full bg-red-500 shadow-[0_0_18px_rgba(255,0,0,0.35)]"
+                      className="h-full bg-[#C9A227] shadow-[0_0_18px_rgba(201,162,39,0.35)] rounded-full relative transition-all"
                       style={{ width: `${progress * 100}%` }}
-                    />
+                    >
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[#C9A227] shadow-[0_0_12px_rgba(201,162,39,0.5)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
                 </div>
 
@@ -550,7 +556,7 @@ export default function YoutubePlayerClient({
                 <button
                   type="button"
                   onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="btn-icon bg-white/10 border-white/15 text-white"
+                  className="h-10 w-10 rounded-full bg-white/10 border border-white/12 text-white/80 grid place-items-center hover:bg-white/15 transition"
                   aria-label={isClient && isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 >
                   {isClient && isFullscreen ? '⛶' : '⛶'}
@@ -559,7 +565,7 @@ export default function YoutubePlayerClient({
                 <ShareButton
                   title={video.title}
                   text="Regarde cette vidéo sur ICC WebRadio"
-                  className="btn-base btn-secondary text-xs px-3 py-2"
+                  className="h-10 px-3 py-2 rounded-full bg-white/8 border border-white/12 text-white/80 text-xs font-bold hover:bg-white/12 transition"
                 />
               </div>
 
@@ -627,8 +633,8 @@ export default function YoutubePlayerClient({
 
         {!(isClient && isFullscreen) && (
           <div className="mt-6 space-y-6">
-            <YoutubeEnhancedFeatures 
-              videoId={video.id} 
+            <YoutubeEnhancedFeatures
+              videoId={video.id}
               title={video.title}
               onLoadTranscript={(transcript) => {
                 if (!transcript?.text) return;
@@ -640,7 +646,7 @@ export default function YoutubePlayerClient({
                 setSummaryBullets(bullets);
               }}
             />
-            
+
             <CommentsPanel postKey={`yt:${video.id}`} title={video.title} />
             <QaPanel postKey={`yt:${video.id}`} />
           </div>

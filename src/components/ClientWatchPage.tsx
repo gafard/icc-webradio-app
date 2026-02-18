@@ -277,20 +277,20 @@ export default function ClientWatchPage({
   return (
     <div className="w-full min-h-[100dvh] flex items-center justify-center px-3 sm:px-6 py-8">
       {/* background */}
-      <div className="fixed inset-0 -z-10 bg-[#070A1A]" />
-      <div className="fixed inset-0 -z-10 opacity-90 bg-[radial-gradient(1100px_680px_at_70%_20%,rgba(70,110,255,0.35),transparent_60%),radial-gradient(900px_650px_at_25%_10%,rgba(20,40,120,0.55),transparent_55%),radial-gradient(1100px_760px_at_50%_100%,rgba(0,0,0,0.75),transparent_65%)]" />
+      <div className="fixed inset-0 -z-10 bg-[#0A0B14]" />
+      <div className="fixed inset-0 -z-10 opacity-90 bg-[radial-gradient(1100px_680px_at_70%_20%,rgba(201,162,39,0.20),transparent_60%),radial-gradient(900px_650px_at_25%_10%,rgba(123,44,191,0.18),transparent_55%),radial-gradient(1100px_760px_at_50%_100%,rgba(0,0,0,0.75),transparent_65%)]" />
 
       {/* tablet frame (agrandie) */}
       <div className="relative w-[1440px] max-w-[99vw] aspect-[16/9]">
-        <div className="absolute inset-0 rounded-[46px] bg-black/70 shadow-[0_45px_120px_rgba(0,0,0,0.65)] border border-white/10" />
+        <div className="absolute inset-0 rounded-[46px] bg-black/70 shadow-[0_45px_120px_rgba(0,0,0,0.65)] border border-[#C9A227]/10" />
         <div className="absolute inset-[10px] rounded-[38px] overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_55%_25%,rgba(255,255,255,0.12),transparent_55%),linear-gradient(to_bottom,rgba(0,0,0,0.20),rgba(0,0,0,0.55))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(1200px_700px_at_55%_25%,rgba(201,162,39,0.08),transparent_55%),linear-gradient(to_bottom,rgba(0,0,0,0.20),rgba(0,0,0,0.55))]" />
 
           {/* top status (sans Hi Rosen) */}
           <div className="relative px-10 pt-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-white/10 border border-white/15" />
-              <div className="text-white/80 text-sm font-extrabold">ICC</div>
+              <div className="h-8 w-8 rounded-full bg-[#C9A227]/15 border border-[#C9A227]/30" />
+              <div className="text-[#C9A227] text-sm font-extrabold tracking-wide">ICC</div>
             </div>
 
             <div className="flex items-center gap-4 text-white/85">
@@ -325,10 +325,10 @@ export default function ClientWatchPage({
                       </div>
 
                       {/* Lecteur principal + progression + prev/stop/next */}
-                      <div className="mt-6 rounded-3xl bg-white/6 border border-white/10 p-5 shadow-[0_25px_70px_rgba(0,0,0,0.45)]">
+                      <div className="mt-6 rounded-3xl bg-white/6 border border-[#C9A227]/12 p-5 shadow-[0_25px_70px_rgba(0,0,0,0.45)]">
                         {/* progress bar */}
                         <div
-                          className="h-2 rounded-full bg-white/10 overflow-hidden cursor-pointer"
+                          className="group h-2 rounded-full bg-white/10 overflow-hidden cursor-pointer relative hover:h-3 transition-all"
                           onClick={(e) => {
                             const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                             const x = (e.clientX - rect.left) / rect.width;
@@ -337,9 +337,11 @@ export default function ClientWatchPage({
                           role="presentation"
                         >
                           <div
-                            className="h-full bg-[#4A7BFF] shadow-[0_0_18px_rgba(74,123,255,0.35)]"
+                            className="h-full bg-[#C9A227] shadow-[0_0_18px_rgba(201,162,39,0.35)] relative rounded-full transition-all"
                             style={{ width: `${progress * 100}%` }}
-                          />
+                          >
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[#C9A227] shadow-[0_0_12px_rgba(201,162,39,0.5)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
                         </div>
 
                         <div className="mt-2 flex items-center justify-between text-[11px] text-white/55 font-semibold tabular-nums">
@@ -347,46 +349,54 @@ export default function ClientWatchPage({
                           <span>{duration ? fmtTime(duration) : '—:—'}</span>
                         </div>
 
-                        <div className="mt-4 flex items-center gap-3">
+                        <div className="mt-4 flex items-center justify-center gap-4">
                           <button
                             type="button"
                             onClick={prevTrack}
-                            className="h-10 px-4 rounded-full bg-white/8 border border-white/12 text-white font-extrabold"
+                            className="h-11 w-11 rounded-full bg-white/8 border border-white/12 text-white/80 grid place-items-center hover:bg-white/12 transition disabled:opacity-30"
                             disabled={currentIndex <= 0}
+                            aria-label="Previous"
                           >
-                            Prev
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
                           </button>
 
                           <button
                             type="button"
                             onClick={toggle}
                             disabled={!audioUrl}
-                            className="h-10 px-5 rounded-full bg-[#4A7BFF] text-white font-extrabold shadow-[0_20px_50px_rgba(74,123,255,0.25)] disabled:opacity-50"
+                            className="h-14 w-14 rounded-full bg-[#C9A227] text-black grid place-items-center shadow-[0_0_40px_rgba(201,162,39,0.30)] hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+                            aria-label={playing ? 'Pause' : 'Play'}
                           >
-                            {playing ? 'Pause' : 'Play'}
+                            {playing ? (
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+                            ) : (
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                            )}
                           </button>
 
                           <button
                             type="button"
                             onClick={stopTrack}
-                            className="h-10 px-4 rounded-full bg-white/8 border border-white/12 text-white font-extrabold"
+                            className="h-11 w-11 rounded-full bg-white/8 border border-white/12 text-white/80 grid place-items-center hover:bg-white/12 transition disabled:opacity-30"
                             disabled={!audioUrl}
+                            aria-label="Stop"
                           >
-                            Stop
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
                           </button>
 
                           <button
                             type="button"
                             onClick={nextTrack}
-                            className="h-10 px-4 rounded-full bg-white/8 border border-white/12 text-white font-extrabold"
+                            className="h-11 w-11 rounded-full bg-white/8 border border-white/12 text-white/80 grid place-items-center hover:bg-white/12 transition disabled:opacity-30"
                             disabled={currentIndex < 0 || currentIndex >= queue.length - 1}
+                            aria-label="Next"
                           >
-                            Next
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
                           </button>
 
                           <button
                             type="button"
-                            className="ml-auto h-10 w-10 rounded-full bg-white/8 border border-white/12 text-white/90 grid place-items-center"
+                            className="ml-auto h-10 w-10 rounded-full bg-white/8 border border-white/12 text-white/90 grid place-items-center hover:text-[#C9A227] transition"
                             aria-label="Like"
                             title="Like"
                           >
@@ -449,7 +459,7 @@ export default function ClientWatchPage({
                             key={it.id}
                             href={it.href}
                             className={`group flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition
-                              ${isActive ? 'bg-[#4A7BFF]/90 border-white/0' : 'bg-white/5 border-white/10 hover:bg-white/8'}
+                              ${isActive ? 'bg-[#C9A227]/90 border-[#C9A227]/20' : 'bg-white/5 border-white/10 hover:bg-white/8'}
                             `}
                           >
                             <div className="flex items-center gap-3 min-w-0">
@@ -496,12 +506,26 @@ export default function ClientWatchPage({
 
       {/* mobile fallback (simple) */}
       <div className="mt-6 w-full max-w-[98vw] sm:hidden">
-        <div className="rounded-3xl bg-white/5 border border-white/10 p-4">
-          <div className="text-white font-extrabold text-lg">{title}</div>
-          <div className="text-white/60 text-sm">{author}</div>
+        <div className="rounded-3xl bg-white/5 border border-[#C9A227]/12 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 rounded-2xl overflow-hidden border border-[#C9A227]/20 shrink-0">
+              <img src={cover} alt="" className="h-full w-full object-cover" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-white font-extrabold text-lg truncate">{title}</div>
+              <div className="text-white/60 text-sm">{author}</div>
+            </div>
+          </div>
 
-          <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full bg-[#4A7BFF]" style={{ width: `${progress * 100}%` }} />
+          <div className="mt-3 group h-2 rounded-full bg-white/10 overflow-hidden relative hover:h-3 transition-all cursor-pointer"
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+              seek((e.clientX - rect.left) / rect.width);
+            }}
+          >
+            <div className="h-full bg-[#C9A227] shadow-[0_0_12px_rgba(201,162,39,0.35)] rounded-full relative" style={{ width: `${progress * 100}%` }}>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#C9A227] shadow-[0_0_8px_rgba(201,162,39,0.5)] opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
           </div>
 
           <div className="mt-2 flex items-center justify-between text-[11px] text-white/55 font-semibold tabular-nums">
@@ -509,18 +533,22 @@ export default function ClientWatchPage({
             <span>{duration ? fmtTime(duration) : '—:—'}</span>
           </div>
 
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            <button onClick={prevTrack} className="h-11 rounded-2xl bg-white/8 border border-white/10 text-white font-bold">
-              Prev
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <button onClick={prevTrack} className="h-11 w-11 rounded-full bg-white/8 border border-white/10 text-white grid place-items-center disabled:opacity-30" disabled={currentIndex <= 0} aria-label="Prev">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
             </button>
-            <button onClick={toggle} disabled={!audioUrl} className="h-11 rounded-2xl bg-[#4A7BFF] text-white font-extrabold disabled:opacity-50">
-              {playing ? 'Pause' : 'Play'}
+            <button onClick={toggle} disabled={!audioUrl} className="h-14 w-14 rounded-full bg-[#C9A227] text-black grid place-items-center shadow-[0_0_30px_rgba(201,162,39,0.25)] disabled:opacity-50 active:scale-95 transition" aria-label={playing ? 'Pause' : 'Play'}>
+              {playing ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+              )}
             </button>
-            <button onClick={stopTrack} disabled={!audioUrl} className="h-11 rounded-2xl bg-white/8 border border-white/10 text-white font-bold disabled:opacity-50">
-              Stop
+            <button onClick={stopTrack} disabled={!audioUrl} className="h-11 w-11 rounded-full bg-white/8 border border-white/10 text-white grid place-items-center disabled:opacity-30" aria-label="Stop">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
             </button>
-            <button onClick={nextTrack} className="h-11 rounded-2xl bg-white/8 border border-white/10 text-white font-bold">
-              Next
+            <button onClick={nextTrack} className="h-11 w-11 rounded-full bg-white/8 border border-white/10 text-white grid place-items-center disabled:opacity-30" disabled={currentIndex < 0 || currentIndex >= queue.length - 1} aria-label="Next">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
             </button>
           </div>
 
