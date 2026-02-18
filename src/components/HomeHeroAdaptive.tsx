@@ -51,19 +51,21 @@ export default function HomeHeroAdaptive({
             alt="hero"
             className="w-full h-full object-cover"
           />
-          {/* Apple TV+ vignette: bottom gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          {/* Side gradient for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+          {/* ICC premium vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0E0F18]/90 via-[#12131A]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#12131A]/50 to-transparent" />
+          {/* Gold aura */}
+          <div className="absolute -top-20 right-10 h-72 w-72 rounded-full bg-[#C9A227]/12 blur-3xl" />
+          <div className="absolute -bottom-24 left-6 h-56 w-56 rounded-full bg-[#7B2CBF]/10 blur-3xl" />
         </div>
 
         {/* Content — always white text on dark vignette */}
         <div className="relative z-10 h-full flex items-end">
           <div className="p-6 sm:p-8 max-w-2xl">
             {/* Badge */}
-            <div className={`inline-flex items-center gap-2 text-[11px] font-semibold tracking-wide uppercase px-3 py-1 rounded-full mb-3 ${mode === 'radio'
+            <div className={`inline-flex items-center gap-2 text-[11px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 rounded-full mb-3 ${mode === 'radio'
               ? 'bg-[#FF3B30]/90 text-white'
-              : 'bg-white/20 text-white backdrop-blur-md'
+              : 'border border-[#C9A227]/30 bg-[#C9A227]/10 text-[#C9A227]'
               }`}>
               {mode === 'radio' ? (
                 <>
@@ -72,7 +74,7 @@ export default function HomeHeroAdaptive({
                 </>
               ) : (
                 <>
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A227]" />
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#C9A227] shadow-[0_0_12px_rgba(201,162,39,0.35)]" />
                   <span>À la une</span>
                 </>
               )}
@@ -97,18 +99,18 @@ export default function HomeHeroAdaptive({
                 <>
                   <Link
                     href="/radio"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] font-semibold text-[15px] bg-white text-black transition-opacity duration-200 hover:opacity-85 active:scale-[0.97]"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-[15px] bg-[#C9A227] text-black transition-opacity duration-200 hover:opacity-90 active:scale-95"
                   >
                     <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><path d="M11 7L1 13.66V.34L11 7z" /></svg>
-                    Écouter
+                    Écouter maintenant
                   </Link>
                   <a
                     href={radioStreamUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] font-semibold text-[15px] bg-white/15 text-white border border-white/20 transition-all duration-200 hover:bg-white/25 active:scale-[0.97]"
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-2xl font-bold text-[15px] bg-white/8 text-white border border-[#C9A227]/25 transition-all duration-200 hover:bg-white/15 active:scale-95"
                   >
-                    Stream externe
+                    🔗 Stream direct
                   </a>
                 </>
               ) : (
@@ -116,7 +118,7 @@ export default function HomeHeroAdaptive({
                   {latestVideo ? (
                     <Link
                       href={`/watch/${latestVideo.id}`}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] font-semibold text-[15px] bg-white text-black transition-opacity duration-200 hover:opacity-85 active:scale-[0.97]"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-[15px] bg-[#C9A227] text-black transition-opacity duration-200 hover:opacity-90 active:scale-95"
                     >
                       <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><path d="M11 7L1 13.66V.34L11 7z" /></svg>
                       Regarder
@@ -124,7 +126,7 @@ export default function HomeHeroAdaptive({
                   ) : (
                     <Link
                       href="/videos"
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[10px] font-semibold text-[15px] bg-white text-black transition-opacity duration-200 hover:opacity-85 active:scale-[0.97]"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-[15px] bg-[#C9A227] text-black transition-opacity duration-200 hover:opacity-90 active:scale-95"
                     >
                       Voir les vidéos
                     </Link>
@@ -132,7 +134,7 @@ export default function HomeHeroAdaptive({
 
                   <Link
                     href="/ma-liste"
-                    className="inline-flex items-center justify-center px-5 py-2.5 rounded-[10px] font-semibold text-[15px] bg-white/15 text-white border border-white/20 transition-all duration-200 hover:bg-white/25 active:scale-[0.97]"
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-2xl font-bold text-[15px] bg-white/8 text-white border border-[#C9A227]/25 transition-all duration-200 hover:bg-white/15 active:scale-95"
                   >
                     Ma liste
                   </Link>

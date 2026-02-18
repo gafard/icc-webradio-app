@@ -32,7 +32,7 @@ export default function SidebarNav() {
   return (
     <aside
       className={`fixed left-0 top-0 bottom-0 z-[9999] pointer-events-auto flex flex-col items-center py-5 transition-all duration-300 border-r ${isNight
-        ? 'bg-[#1E2030] border-[rgba(100,105,130,0.25)]'
+        ? 'bg-[#12131A] border-[rgba(100,105,130,0.25)]'
         : 'bg-[#F8F6F2] border-[rgba(62,56,48,0.10)]'
         } ${isExpanded ? 'w-[140px]' : 'w-[68px]'
         }`}

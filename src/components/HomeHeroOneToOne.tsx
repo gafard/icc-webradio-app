@@ -43,8 +43,8 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
   // Effet premium global (glass jour / cinema nuit)
   const frame =
     heroKind === 'radio'
-      ? 'bg-[#070B14] border-white/10'
-      : 'bg-white/45 border-white/70';
+      ? 'bg-[#0A0B14] border-[#C9A227]/15'
+      : 'bg-white/45 border-[#C9A227]/20';
 
   const title =
     heroKind === 'radio'
@@ -79,13 +79,13 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
 
   const primaryBtn =
     heroKind === 'radio'
-      ? 'btn-base btn-white'
-      : 'btn-base btn-primary';
+      ? 'inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-[15px] bg-[#C9A227] text-black transition-opacity duration-200 hover:opacity-90 active:scale-95'
+      : 'inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-[15px] bg-[#C9A227] text-black transition-opacity duration-200 hover:opacity-90 active:scale-95';
 
   const secondaryBtn =
     heroKind === 'radio'
-      ? 'btn-base btn-outline-light'
-      : 'btn-base btn-secondary';
+      ? 'inline-flex items-center justify-center px-6 py-3 rounded-2xl font-bold text-[15px] bg-white/8 text-white border border-[#C9A227]/25 transition-all duration-200 hover:bg-white/15 active:scale-95'
+      : 'inline-flex items-center justify-center px-6 py-3 rounded-2xl font-bold text-[15px] bg-black/5 text-[#2C2A28] border border-[#C9A227]/25 transition-all duration-200 hover:bg-black/10 active:scale-95';
 
   // Badges (chips) façon Netflix
   const chip =
@@ -113,8 +113,9 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
           )}
           {/* Cinema overlay */}
           <div className={`absolute inset-0 ${overlay}`} />
-          {/* Vignette + glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.25),transparent_55%)]" />
+          {/* ICC aura glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(201,162,39,0.22),transparent_55%)]" />
+          <div className="absolute -bottom-20 left-10 h-56 w-56 rounded-full bg-[#7B2CBF]/12 blur-3xl" />
         </div>
 
         {/* Content area */}
@@ -128,10 +129,10 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
                   EN DIRECT
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-1 rounded-full bg-blue-600/10 border border-blue-600/20">
-                  <span className="w-2 h-2 rounded-full bg-blue-600" />
+                <span className="icc-badge">
+                  <span className="icc-badge-dot" />
                   À LA UNE
-                </div>
+                </span>
               )}
 
               <div className={`text-xs font-semibold px-3 py-1 rounded-full ${chip}`}>
@@ -170,7 +171,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             <div className="mt-7 flex flex-wrap items-center gap-3">
               {heroKind === 'radio' ? (
                 <>
-                <button
+                  <button
                     type="button"
                     className={primaryBtn}
                     onClick={() => {
@@ -178,7 +179,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
                       requestRadioPlay(target);
                       if (typeof window !== 'undefined') {
                         import('./radioAudioEngine').then(({ playRadio }) => {
-                          playRadio(radioStreamUrl).catch(() => {});
+                          playRadio(radioStreamUrl).catch(() => { });
                         });
                       }
                     }}
