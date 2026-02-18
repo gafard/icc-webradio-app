@@ -360,9 +360,9 @@ export default function CommunityDeck({
               )
             ) : (
               <div className="absolute inset-0">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.10),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(255,255,255,0.08),transparent_50%)]" />
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
-                <div className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,0.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.22)_1px,transparent_1px)] [background-size:34px_34px]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(74,111,165,0.12),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(136,100,180,0.10),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(74,111,165,0.08),transparent_50%)]" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#1a1b2e] via-[#181a2a] to-[#141520]" />
+                <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(rgba(255,255,255,0.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.15)_1px,transparent_1px)] [background-size:40px_40px]" />
 
                 {!isAnnouncement ? (
                   <div className="absolute inset-0 grid place-items-center p-6 sm:p-10" onClick={() => onOpenPost(current.id)}>
@@ -373,7 +373,7 @@ export default function CommunityDeck({
                         {new Date(current.created_at).toLocaleDateString()}
                       </div>
 
-                      <div className="mt-5 line-clamp-8 whitespace-pre-wrap text-[23px] font-extrabold leading-[1.1] tracking-[-0.01em] text-white drop-shadow-[0_18px_55px_rgba(0,0,0,0.55)] sm:mt-6 sm:text-[42px] sm:leading-[1.06] sm:tracking-[-0.015em] lg:text-[60px]">
+                      <div className="mt-5 line-clamp-8 whitespace-pre-wrap font-reading text-[20px] font-semibold leading-relaxed tracking-[-0.01em] text-white/95 sm:mt-6 sm:text-[28px] sm:leading-[1.45] sm:tracking-[-0.015em] lg:text-[36px]">
                         {current.content}
                       </div>
 
@@ -504,7 +504,7 @@ export default function CommunityDeck({
 
                   <div className="mt-3">
                     <div className="rounded-2xl border border-white/10 bg-black/35 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:rounded-3xl sm:p-5">
-                      <div className="line-clamp-3 whitespace-pre-wrap text-[16px] font-extrabold leading-snug sm:line-clamp-4 sm:text-[24px] md:text-[28px]">
+                      <div className="line-clamp-3 whitespace-pre-wrap font-reading text-[15px] font-semibold leading-relaxed sm:line-clamp-4 sm:text-[20px] md:text-[24px]">
                         {current.content}
                       </div>
                       <div className="mt-2 text-[10px] text-white/65 sm:mt-3 sm:text-[11px]">Swipe ↑ pour suivant • Swipe ↓ pour précédent</div>
