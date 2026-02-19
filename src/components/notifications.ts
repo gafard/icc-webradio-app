@@ -77,7 +77,8 @@ export async function sendNotification(payload: NotifyPayload) {
     const n = new Notification(payload.title, options);
     if (payload.url) {
       n.onclick = () => {
-        window.open(payload.url, '_blank');
+        window.focus();
+        window.location.href = payload.url!;
       };
     }
     return;

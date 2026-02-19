@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     console.log('Récupération des abonnements push...');
     const { data: subscriptions, error: subsError } = await supabaseServer
       .from('push_subscriptions')
-      .select('subscription_json, device_id')
+      .select('endpoint,p256dh,auth,subscription_json,device_id')
       .in('device_id', targetDeviceIds);
 
     if (subsError) {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       throw new Error(subsError.message);
     }
 
-    console.log('Abonnements push trouvés:', subscriptions);
+    console.log('Abonnements push trouvés:', subscriptions?.length ?? 0);
 
     if (!subscriptions || subscriptions.length === 0) {
       console.log('Aucun abonnement push à notifier');
@@ -114,28 +114,66 @@ export async function POST(req: Request) {
 
     // Envoyer les notifications push
     console.log('Envoi des notifications push...');
-    const notificationPromises = subscriptions.map(sub => {
-      if (!sub.subscription_json) {
-        console.log('Abonnement vide ignoré pour device:', sub.device_id);
-        return Promise.resolve();
-      }
+    let sent = 0;
+    let failed = 0;
+    const staleEndpoints: string[] = [];
 
-      console.log('Envoi de la notification à:', sub.device_id);
-      return sendWebPush(sub.subscription_json, {
-        title: `Appel de groupe ${callType === 'video' ? 'vidéo' : 'audio'}`,
-        body: `${callerDisplayName} vous invite à rejoindre un appel de groupe`,
-        url: `/community?group=${encodeURIComponent(groupId)}`,
-        tag: `group-call-${groupId}`,
-      });
-    });
+    await Promise.all(
+      subscriptions.map(async (sub) => {
+        // Normalize subscription: prefer individual columns, fall back to subscription_json
+        const endpoint = sub.endpoint || sub.subscription_json?.endpoint;
+        const p256dh = sub.p256dh || sub.subscription_json?.keys?.p256dh;
+        const auth = sub.auth || sub.subscription_json?.keys?.auth;
 
-    await Promise.all(notificationPromises);
-    console.log('Toutes les notifications ont été envoyées');
+        if (!endpoint || !p256dh || !auth) {
+          console.log('Abonnement incomplet ignoré pour device:', sub.device_id);
+          failed += 1;
+          return;
+        }
+
+        try {
+          console.log('Envoi de la notification à:', sub.device_id);
+          await sendWebPush(
+            { endpoint, keys: { p256dh, auth } },
+            {
+              title: `Appel de groupe ${callType === 'video' ? 'vidéo' : 'audio'}`,
+              body: `${callerDisplayName} vous invite à rejoindre un appel de groupe`,
+              url: `/community?group=${encodeURIComponent(groupId)}`,
+              tag: `group-call-${groupId}`,
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-192.png',
+            }
+          );
+          sent += 1;
+        } catch (error: any) {
+          failed += 1;
+          const status = Number(error?.statusCode || 0);
+          if (status === 404 || status === 410) {
+            staleEndpoints.push(endpoint);
+          }
+          console.error('Erreur envoi push à', sub.device_id, ':', error?.message || error);
+        }
+      })
+    );
+
+    // Cleanup stale subscriptions
+    let removed = 0;
+    if (staleEndpoints.length) {
+      const { error: removeError } = await supabaseServer
+        .from('push_subscriptions')
+        .delete()
+        .in('endpoint', staleEndpoints);
+      if (!removeError) removed = staleEndpoints.length;
+    }
+
+    console.log(`Notifications envoyées: ${sent}, échouées: ${failed}, nettoyées: ${removed}`);
 
     return NextResponse.json({
       ok: true,
-      message: `Notifications sent to ${subscriptions.length} members`,
-      notifiedCount: subscriptions.length
+      message: `Notifications sent to ${sent} members`,
+      sent,
+      failed,
+      removed,
     });
   } catch (error: any) {
     console.error('Erreur lors de l\'envoi des notifications d\'appel de groupe:', error);
