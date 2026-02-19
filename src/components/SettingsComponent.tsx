@@ -154,12 +154,14 @@ export default function SettingsComponent() {
                     const { ensureNotificationPermission } = await import('./notifications');
                     const perm = await ensureNotificationPermission();
                     if (perm !== 'granted') {
+                      alert('Notifications bloquées. Vérifiez les paramètres de votre navigateur.');
                       setNotificationsEnabled(false);
                       return;
                     }
                     const result = await syncPushSubscription(true);
                     if (!result.ok) {
                       console.error('[Notifications] subscribe failed:', result.error);
+                      alert(`Erreur d'activation : ${result.error}`);
                       setNotificationsEnabled(false);
                       return;
                     }
