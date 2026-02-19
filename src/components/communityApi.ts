@@ -419,7 +419,7 @@ export async function uploadCommunityMedia(file: File, authorDeviceId: string) {
   throw new Error(lastError?.message || 'Impossible de televerser le media.');
 }
 
-function normalizePost(row: any): CommunityPost {
+export function normalizePost(row: any): CommunityPost {
   const withNoInlineMedia = extractInlineMedia(String(row?.content || ''));
   const withNoInlineGroup = extractInlineGroup(withNoInlineMedia.content);
   const extracted = extractKindFromContent(withNoInlineGroup.content);

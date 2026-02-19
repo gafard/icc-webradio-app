@@ -23,6 +23,7 @@ import {
   fetchPosts,
   updatePost,
   uploadCommunityMedia,
+  normalizePost,
   type CommunityPost,
 } from './communityApi';
 
@@ -551,8 +552,22 @@ export default function CommunityGroupChat({
           table: 'community_posts',
           filter: `group_id=eq.${groupId}`,
         },
-        () => {
-          void loadMessages();
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newPost = normalizePost(payload.new);
+            setMessages((prev) => {
+              if (prev.some((p) => p.id === newPost.id)) return prev;
+              return [...prev, newPost].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPost = normalizePost(payload.new);
+            setMessages((prev) =>
+              prev.map((p) => (p.id === updatedPost.id ? updatedPost : p))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setMessages((prev) => prev.filter((p) => p.id !== deletedId));
+          }
         }
       )
       .subscribe();
@@ -560,7 +575,7 @@ export default function CommunityGroupChat({
     return () => {
       supabase?.removeChannel(channel);
     };
-  }, [groupId, loadMessages]);
+  }, [groupId]);
 
   useEffect(() => {
     if (!supabase || !groupId || !actor.deviceId) return;
@@ -883,9 +898,9 @@ export default function CommunityGroupChat({
 
       const seenCount = mine
         ? Object.entries(presenceByDeviceId).filter(([deviceId, peer]) => {
-            if (deviceId === actor.deviceId) return false;
-            return toMillis(peer.lastReadAt) >= toMillis(message.created_at);
-          }).length
+          if (deviceId === actor.deviceId) return false;
+          return toMillis(peer.lastReadAt) >= toMillis(message.created_at);
+        }).length
         : 0;
 
       return (
