@@ -12,9 +12,14 @@ export type WpPost = {
 export async function wpFetch<T>(path: string, revalidate = 300): Promise<T | null> {
   const base = process.env.NEXT_PUBLIC_WP_BASE_URL || 'https://webradio.iccagoe.net';
   const url = `${base}${path}`;
-  const res = await fetch(url, { next: { revalidate } });
-  if (!res.ok) return null;
-  return (await res.json()) as T;
+  try {
+    const res = await fetch(url, { next: { revalidate } });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    // Network error, DNS failure, timeout, etc.
+    return null;
+  }
 }
 
 export function decodeHtmlEntities(input: string) {
