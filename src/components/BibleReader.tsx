@@ -2577,7 +2577,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
             }`}
         >
           <main
-            className={`bible-grid relative flex flex-col rounded-3xl overflow-hidden ${embedded ? 'bible-embedded-grid light-particles flex-1 h-full min-h-0 !p-0' : 'border border-[#e9dec9] py-5 px-4 pl-6 sm:px-5 sm:pl-6 md:py-6 md:px-6 md:pl-6 lg:pl-16 '}${!embedded && (fullScreen || !isClient) ? 'min-h-screen' : !embedded ? 'min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]' : ''
+            className={`bible-grid relative flex flex-col rounded-3xl ${embedded ? 'bible-embedded-grid light-particles flex-1 h-full min-h-0 !p-0' : 'overflow-hidden border border-[#e9dec9] py-5 px-4 pl-6 sm:px-5 sm:pl-6 md:py-6 md:px-6 md:pl-6 lg:pl-16 '}${!embedded && (fullScreen || !isClient) ? 'min-h-screen' : !embedded ? 'min-h-[calc(100vh-180px)] lg:min-h-[calc(100vh-220px)]' : ''
               }`}
           >
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -2900,7 +2900,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={chapterSceneKey}
-                    className={`bible-enter ${embedded ? 'mt-2' : 'mt-5'} flex-1 min-h-0 pr-2 bible-type`}
+                    className={`bible-enter ${embedded ? 'mt-2' : 'mt-5'} flex-1 min-h-0 min-w-0 pr-2 bible-type`}
                     style={{
                       fontSize: `${verseFontPx}px`,
                       lineHeight,
@@ -2924,9 +2924,9 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                     <div
                       ref={verseScrollRef}
                       className={`verse-paper custom-scrollbar overflow-y-auto overscroll-y-contain touch-pan-y ${embedded
-                          ? `h-full min-h-[260px] max-h-full p-4 md:p-5 ${studyBarOpen ? 'pb-[42vh] md:pb-[40vh]' : ''}`
-                          : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${studyBarOpen ? 'pb-[48vh]' : 'pb-32'
-                          } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
+                        ? `h-full min-h-0 max-h-full p-4 md:p-5 ${studyBarOpen ? 'pb-[42vh] md:pb-[40vh]' : ''}`
+                        : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${studyBarOpen ? 'pb-[48vh]' : 'pb-32'
+                        } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
                         }`}
                       style={{
                         ['--lh' as any]: `${lhPx}px`,
@@ -2962,8 +2962,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                         {playerPlaying ? (
                           <div
                             className={`rounded-xl border backdrop-blur-xl overflow-hidden ${immersiveMode
-                                ? 'border-white/15 bg-black/55 text-white'
-                                : 'border-black/10 bg-white/55 text-[color:var(--foreground)]'
+                              ? 'border-white/15 bg-black/55 text-white'
+                              : 'border-black/10 bg-white/55 text-[color:var(--foreground)]'
                               }`}
                           >
                             <div className="px-3 py-1.5">
@@ -3522,8 +3522,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                       <div
                         key={`preview-ref-verse-${row.number}`}
                         className={`rounded-xl border px-3 py-2 ${active
-                            ? 'border-orange-300/45 bg-orange-400/16'
-                            : 'border-white/12 bg-white/6'
+                          ? 'border-orange-300/45 bg-orange-400/16'
+                          : 'border-white/12 bg-white/6'
                           }`}
                       >
                         <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/65">

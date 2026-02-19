@@ -1751,7 +1751,7 @@ export default function CommunityGroupCall({
           : `grid gap-4 ${presenterMode && !!screenSharePeerId ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)_330px]'}`
           }`}
       >
-        <div className={`flex min-w-0 flex-col space-y-3 ${isFullscreen ? 'h-full' : ''}`}>
+        <div className={`flex min-w-0 min-h-0 flex-col space-y-3 ${isFullscreen ? 'h-full' : ''}`}>
           {viewMode === 'bible' ? (
             <>
               <div className={`flex overflow-x-auto pb-1 custom-scrollbar ${presenterMode ? 'gap-1.5' : 'gap-2'}`}>
