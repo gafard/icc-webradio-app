@@ -277,6 +277,7 @@ function StageVideo({
   screenSharing,
   dominant,
   shareViewMode,
+  expand,
   onToggleShareViewMode,
 }: {
   participant: CallParticipant | null;
@@ -284,6 +285,7 @@ function StageVideo({
   screenSharing: boolean;
   dominant: boolean;
   shareViewMode: ShareViewMode;
+  expand?: boolean;
   onToggleShareViewMode: () => void;
 }) {
   const showVideo = isPeerShowingVideo(participant);
@@ -292,9 +294,8 @@ function StageVideo({
 
   return (
     <div
-      className={`group-call-stage glass-veil-strong relative min-h-[260px] overflow-hidden rounded-3xl border border-[color:var(--border-soft)] sm:min-h-[360px] ${dominant ? 'h-[74vh] max-h-[860px]' : ''
-        } ${speaking ? 'speaker-halo' : ''
-        }`}
+      className={`group-call-stage glass-veil-strong relative overflow-hidden rounded-3xl border border-[color:var(--border-soft)] ${expand ? 'flex-1 min-h-0' : 'min-h-[260px] sm:min-h-[360px]'
+        } ${!expand && dominant ? 'h-[74vh] max-h-[860px]' : ''} ${speaking ? 'speaker-halo' : ''}`}
     >
       <video
         autoPlay
@@ -1653,7 +1654,7 @@ export default function CommunityGroupCall({
     <section
       ref={containerRef}
       className={`group-call-shell atmospheric-noise light-particles relative overflow-hidden rounded-[40px] border border-[color:var(--border-soft)] p-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] transition-all duration-700 sm:p-6 ${viewMode === 'bible' ? 'ring-1 ring-amber-300/35' : ''
-        } ${isFullscreen ? 'fixed inset-0 z-[100] m-0 max-w-none rounded-none border-none h-screen w-screen bg-[color:var(--background)]' : ''}`}
+        } ${isFullscreen ? 'flex flex-col fixed inset-0 z-[100] m-0 max-w-none rounded-none border-none h-screen w-screen bg-[color:var(--background)]' : ''}`}
     >
       <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-amber-300/10 blur-[100px] animate-pulse" />
       <div className="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full bg-blue-300/10 blur-[100px] call-pulse-slow" />
@@ -1745,12 +1746,12 @@ export default function CommunityGroupCall({
       }
 
       <div
-        className={`relative mt-4 grid gap-4 transition-all duration-500 ${presenterMode && !!screenSharePeerId
-          ? 'md:grid-cols-[minmax(0,1fr)_280px]'
-          : 'md:grid-cols-[minmax(0,1fr)_330px]'
+        className={`relative mt-4 transition-all duration-500 ${isFullscreen
+            ? 'flex flex-1 min-h-0 flex-col'
+            : `grid gap-4 ${presenterMode && !!screenSharePeerId ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)_330px]'}`
           }`}
       >
-        <div className="flex min-w-0 flex-col space-y-3">
+        <div className={`flex min-w-0 flex-col space-y-3 ${isFullscreen ? 'flex-1 min-h-0' : ''}`}>
           {viewMode === 'bible' ? (
             <>
               <div className={`flex overflow-x-auto pb-1 custom-scrollbar ${presenterMode ? 'gap-1.5' : 'gap-2'}`}>
@@ -1771,7 +1772,7 @@ export default function CommunityGroupCall({
                 ))}
               </div>
 
-              <div className="group-call-stage group-call-bible-stage glass-veil-strong bible-mode-enter relative flex h-[68vh] min-h-[420px] max-h-[760px] md:h-[62vh] md:min-h-[360px] flex-col overflow-hidden rounded-3xl border border-[color:var(--border-soft)]">
+              <div className={`group-call-stage group-call-bible-stage glass-veil-strong bible-mode-enter relative flex flex-col overflow-hidden rounded-3xl border border-[color:var(--border-soft)] ${isFullscreen ? 'flex-1 min-h-0' : 'h-[68vh] min-h-[420px] max-h-[760px] md:h-[62vh] md:min-h-[360px]'}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 backdrop-blur-xl">
                   <span>Mode Bible</span>
                   <div className="flex items-center gap-2">
@@ -1824,6 +1825,7 @@ export default function CommunityGroupCall({
                 screenSharing={stageParticipant?.peerId === screenSharePeerId}
                 dominant={presenterMode && !!screenSharePeerId}
                 shareViewMode={shareViewMode}
+                expand={isFullscreen}
                 onToggleShareViewMode={() => {
                   setShareViewMode((prev) => (prev === 'fit' ? 'fill' : 'fit'));
                 }}
@@ -1943,7 +1945,7 @@ export default function CommunityGroupCall({
           </div>
         </div>
 
-        <aside className="group-call-sidebar glass-veil overflow-hidden rounded-3xl md:flex md:h-full md:min-h-0 md:flex-col">
+        <aside className={`group-call-sidebar glass-veil overflow-hidden rounded-3xl ${isFullscreen ? 'hidden' : 'md:flex md:h-full md:min-h-0 md:flex-col'}`}>
           <div className="flex items-center justify-between border-b border-[color:var(--border-soft)] px-3 py-2">
             <div className="text-sm font-semibold text-[color:var(--foreground)]/90">{t('community.groups.callSidebarTitle')}</div>
             <div className="inline-flex items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
