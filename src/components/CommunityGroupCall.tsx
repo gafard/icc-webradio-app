@@ -1747,11 +1747,11 @@ export default function CommunityGroupCall({
 
       <div
         className={`relative mt-4 transition-all duration-500 ${isFullscreen
-            ? 'flex flex-1 min-h-0 flex-col'
-            : `grid gap-4 ${presenterMode && !!screenSharePeerId ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)_330px]'}`
+          ? `grid gap-4 flex-1 min-h-0 ${presenterMode && !!screenSharePeerId ? 'md:grid-cols-[minmax(0,1fr)_320px]' : 'md:grid-cols-[minmax(0,1fr)_360px]'}`
+          : `grid gap-4 ${presenterMode && !!screenSharePeerId ? 'md:grid-cols-[minmax(0,1fr)_280px]' : 'md:grid-cols-[minmax(0,1fr)_330px]'}`
           }`}
       >
-        <div className={`flex min-w-0 flex-col space-y-3 ${isFullscreen ? 'flex-1 min-h-0' : ''}`}>
+        <div className={`flex min-w-0 flex-col space-y-3 ${isFullscreen ? 'h-full' : ''}`}>
           {viewMode === 'bible' ? (
             <>
               <div className={`flex overflow-x-auto pb-1 custom-scrollbar ${presenterMode ? 'gap-1.5' : 'gap-2'}`}>
@@ -1945,7 +1945,7 @@ export default function CommunityGroupCall({
           </div>
         </div>
 
-        <aside className={`group-call-sidebar glass-veil overflow-hidden rounded-3xl ${isFullscreen ? 'hidden' : 'md:flex md:h-full md:min-h-0 md:flex-col'}`}>
+        <aside className={`group-call-sidebar glass-veil overflow-hidden rounded-3xl ${isFullscreen ? 'flex h-full min-h-0 flex-col' : 'md:flex md:h-full md:min-h-0 md:flex-col'}`}>
           <div className="flex items-center justify-between border-b border-[color:var(--border-soft)] px-3 py-2">
             <div className="text-sm font-semibold text-[color:var(--foreground)]/90">{t('community.groups.callSidebarTitle')}</div>
             <div className="inline-flex items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
