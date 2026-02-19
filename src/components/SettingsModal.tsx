@@ -127,11 +127,10 @@ export default function SettingsModal() {
                 <button
                   key={q}
                   onClick={() => setAudioQuality(q)}
-                  className={`btn-base text-xs px-3 py-2 ${
-                    audioQuality === q
+                  className={`btn-base text-xs px-3 py-2 ${audioQuality === q
                       ? 'btn-primary'
                       : 'btn-secondary'
-                  }`}
+                    }`}
                 >
                   {q === 'auto' ? 'Auto' : q === 'low' ? 'Faible' : 'Haute'}
                 </button>
@@ -152,11 +151,10 @@ export default function SettingsModal() {
                   <button
                     key={v}
                     onClick={() => setTextScale(v)}
-                    className={`btn-base text-xs px-3 py-2 ${
-                      textScale === v
+                    className={`btn-base text-xs px-3 py-2 ${textScale === v
                         ? 'btn-primary'
                         : 'btn-secondary'
-                    }`}
+                      }`}
                   >
                     {v === 1 ? 'Normal' : v === 1.1 ? 'Grand' : 'Très grand'}
                   </button>
@@ -179,9 +177,8 @@ export default function SettingsModal() {
                   <button
                     key={c}
                     onClick={() => setAccent(c)}
-                    className={`btn-base text-xs px-3 py-2 ${
-                      accent === c ? 'btn-primary' : 'btn-secondary'
-                    }`}
+                    className={`btn-base text-xs px-3 py-2 ${accent === c ? 'btn-primary' : 'btn-secondary'
+                      }`}
                   >
                     {c === 'blue' ? 'Bleu' : c === 'emerald' ? 'Émeraude' : 'Ambre'}
                   </button>
@@ -205,12 +202,14 @@ export default function SettingsModal() {
                   const { ensureNotificationPermission } = await import('./notifications');
                   const perm = await ensureNotificationPermission();
                   if (perm !== 'granted') {
+                    alert('Notifications bloquées. Vérifiez les paramètres de votre navigateur.');
                     setNotificationsEnabled(false);
                     return;
                   }
                   const result = await syncPushSubscription(true);
                   if (!result.ok) {
                     console.error('[Notifications] subscribe failed:', result.error);
+                    alert(`Erreur d'activation : ${result.error}`);
                     setNotificationsEnabled(false);
                     return;
                   }
@@ -348,15 +347,13 @@ function Toggle({
     >
       <div className="text-sm font-semibold">{label}</div>
       <div
-        className={`h-6 w-11 rounded-full border transition relative ${
-          value ? 'border-white/20' : 'bg-white/10 border-white/15'
-        }`}
+        className={`h-6 w-11 rounded-full border transition relative ${value ? 'border-white/20' : 'bg-white/10 border-white/15'
+          }`}
         style={value ? { background: 'var(--accent)' } : undefined}
       >
         <div
-          className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white transition ${
-            value ? 'left-[22px]' : 'left-[2px]'
-          }`}
+          className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white transition ${value ? 'left-[22px]' : 'left-[2px]'
+            }`}
         />
       </div>
     </button>
