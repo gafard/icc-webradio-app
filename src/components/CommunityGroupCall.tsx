@@ -1772,8 +1772,8 @@ export default function CommunityGroupCall({
                 ))}
               </div>
 
-              <div className={`group-call-stage group-call-bible-stage glass-veil-strong bible-mode-enter relative flex flex-col overflow-hidden rounded-3xl border border-[color:var(--border-soft)] ${isFullscreen ? 'flex-1 min-h-0' : 'h-[68vh] min-h-[420px] max-h-[760px] md:h-[62vh] md:min-h-[360px]'}`}>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 backdrop-blur-xl">
+              <div className={`group-call-stage group-call-bible-stage glass-veil-strong bible-mode-enter relative flex flex-col rounded-3xl border border-[color:var(--border-soft)] ${isFullscreen ? 'flex-1 min-h-0' : 'h-[68vh] min-h-[420px] max-h-[760px] md:h-[62vh] md:min-h-[360px]'}`}>
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--foreground)]/75 backdrop-blur-xl">
                   <span>Mode Bible</span>
                   <div className="flex items-center gap-2">
                     <span className="rounded-full border border-amber-300/35 bg-amber-400/14 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-100">
@@ -1794,7 +1794,7 @@ export default function CommunityGroupCall({
                     </button>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 overflow-hidden p-0">
+                <div className="min-h-0 flex-1 overflow-y-auto p-0 custom-scrollbar">
                   <BibleReader embedded={true} />
                 </div>
               </div>

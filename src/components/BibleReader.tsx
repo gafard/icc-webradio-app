@@ -166,10 +166,9 @@ function ReaderModesMenu({
   }, [open]);
 
   const itemClass = (enabled: boolean) =>
-    `w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-bold transition ${
-      enabled
-        ? 'border-orange-300/70 bg-orange-100/85 text-orange-800 dark:border-orange-300/45 dark:bg-orange-400/20 dark:text-orange-100'
-        : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/92 hover:bg-[color:var(--surface)]'
+    `w-full rounded-xl border px-2.5 py-2 text-left text-[11px] font-bold transition ${enabled
+      ? 'border-orange-300/70 bg-orange-100/85 text-orange-800 dark:border-orange-300/45 dark:bg-orange-400/20 dark:text-orange-100'
+      : 'border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] text-[color:var(--foreground)]/92 hover:bg-[color:var(--surface)]'
     }`;
 
   return (
@@ -2524,17 +2523,16 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
   return (
     <section
       ref={rootSectionRef}
-      className={`relative transition-all duration-700 ${
-        embedded ? 'bible-embedded-shell bible-enter h-full flex flex-col overflow-hidden p-0 bg-transparent' : 'px-4 pb-16 pt-8'
-      } ${immersiveMode ? 'text-white' : ''} ${fullScreen ? 'fixed inset-0 z-[12000] overflow-hidden bg-[color:var(--background)]' : ''}`}
+      className={`relative transition-all duration-700 ${embedded ? 'bible-embedded-shell bible-enter h-full flex flex-col p-0 bg-transparent' : 'px-4 pb-16 pt-8'
+        } ${immersiveMode ? 'text-white' : ''} ${fullScreen ? 'fixed inset-0 z-[12000] overflow-hidden bg-[color:var(--background)]' : ''}`}
       style={{
         ['--accent' as any]: currentBookTheme.accent,
         ...(embedded
           ? {}
           : immersiveMode
             ? {
-                background: `radial-gradient(circle at center, rgba(249,115,22,0.08), rgba(2,6,23,0.95) 70%), ${currentBookTheme.background}`,
-              }
+              background: `radial-gradient(circle at center, rgba(249,115,22,0.08), rgba(2,6,23,0.95) 70%), ${currentBookTheme.background}`,
+            }
             : { background: currentBookTheme.background }),
       }}
     >
@@ -2574,7 +2572,7 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
 
         <div
           className={`grid gap-6 ${embedded
-            ? 'h-full min-h-0 grid-cols-1 overflow-hidden'
+            ? 'h-full min-h-0 grid-cols-1'
             : 'lg:grid-cols-1'
             }`}
         >
@@ -2787,9 +2785,8 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   <select
                     value={translation?.id}
                     onChange={(e) => setTranslationId(e.target.value)}
-                    className={`select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none ${
-                      hasSelahAudio(translation?.id ?? '') ? '!pl-7' : ''
-                    }`}
+                    className={`select-field !h-9 !w-[168px] !px-2.5 !py-1.5 text-xs shadow-none ${hasSelahAudio(translation?.id ?? '') ? '!pl-7' : ''
+                      }`}
                   >
                     {LOCAL_BIBLE_TRANSLATIONS.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -2926,13 +2923,11 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                   >
                     <div
                       ref={verseScrollRef}
-                      className={`verse-paper custom-scrollbar overflow-y-auto overscroll-y-contain touch-pan-y ${
-                        embedded
+                      className={`verse-paper custom-scrollbar overflow-y-auto overscroll-y-contain touch-pan-y ${embedded
                           ? `h-full min-h-[260px] max-h-full p-4 md:p-5 ${studyBarOpen ? 'pb-[42vh] md:pb-[40vh]' : ''}`
-                          : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${
-                              studyBarOpen ? 'pb-[48vh]' : 'pb-32'
-                            } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
-                      }`}
+                          : `h-[58vh] min-h-[250px] max-h-[58vh] p-4 ${studyBarOpen ? 'pb-[48vh]' : 'pb-32'
+                          } md:h-[74vh] md:min-h-[440px] md:max-h-[78vh] md:p-5 md:pb-20`
+                        }`}
                       style={{
                         ['--lh' as any]: `${lhPx}px`,
                         WebkitOverflowScrolling: 'touch',
@@ -2955,318 +2950,314 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                       onTouchStart={() => revealUI()}
                       onPointerUp={handleEmbeddedReaderPointerUp}
                     >
-                    <div
-                      className={`pointer-events-none absolute inset-0 rounded-[22px] transition-opacity duration-700 ${
-                        playerPlaying && activeCueVerse !== null ? 'opacity-100' : 'opacity-0'
-                      }`}
-                      style={{
-                        background:
-                          'radial-gradient(circle at 50% 42%, rgba(249,115,22,0.09), transparent 72%)',
-                      }}
-                    />
-                    <div className="sticky top-0 z-40 transition-opacity duration-300 opacity-100">
-                      {playerPlaying ? (
-                        <div
-                          className={`rounded-xl border backdrop-blur-xl overflow-hidden ${
-                            immersiveMode
-                              ? 'border-white/15 bg-black/55 text-white'
-                              : 'border-black/10 bg-white/55 text-[color:var(--foreground)]'
+                      <div
+                        className={`pointer-events-none absolute inset-0 rounded-[22px] transition-opacity duration-700 ${playerPlaying && activeCueVerse !== null ? 'opacity-100' : 'opacity-0'
                           }`}
-                        >
-                          <div className="px-3 py-1.5">
-                            <div className="flex items-center justify-between text-[11px] font-semibold">
-                              <span className="truncate">
-                                {book.name} {chapter}
-                              </span>
-                              {playerDuration > 0 ? (
-                                <span>{formatAudioClock(playerPosition)} / {formatAudioClock(playerDuration)}</span>
-                              ) : (
-                                <span
-                                  className={`text-[10px] uppercase tracking-[0.08em] ${
-                                    immersiveMode ? 'text-white/75' : 'text-[color:var(--foreground)]/70'
-                                  }`}
-                                >
-                                  {translation?.label ?? 'Lecture'}
+                        style={{
+                          background:
+                            'radial-gradient(circle at 50% 42%, rgba(249,115,22,0.09), transparent 72%)',
+                        }}
+                      />
+                      <div className="sticky top-0 z-40 transition-opacity duration-300 opacity-100">
+                        {playerPlaying ? (
+                          <div
+                            className={`rounded-xl border backdrop-blur-xl overflow-hidden ${immersiveMode
+                                ? 'border-white/15 bg-black/55 text-white'
+                                : 'border-black/10 bg-white/55 text-[color:var(--foreground)]'
+                              }`}
+                          >
+                            <div className="px-3 py-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-semibold">
+                                <span className="truncate">
+                                  {book.name} {chapter}
                                 </span>
-                              )}
+                                {playerDuration > 0 ? (
+                                  <span>{formatAudioClock(playerPosition)} / {formatAudioClock(playerDuration)}</span>
+                                ) : (
+                                  <span
+                                    className={`text-[10px] uppercase tracking-[0.08em] ${immersiveMode ? 'text-white/75' : 'text-[color:var(--foreground)]/70'
+                                      }`}
+                                  >
+                                    {translation?.label ?? 'Lecture'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="h-[2px] w-full bg-black/8 dark:bg-white/12">
+                              <div
+                                className="h-full bg-orange-500 transition-[width] duration-200"
+                                style={{
+                                  width: `${Math.round(
+                                    (playerDuration > 0 ? globalAudioProgress : scrollProgress) * 100
+                                  )}%`,
+                                }}
+                              />
                             </div>
                           </div>
-                          <div className="h-[2px] w-full bg-black/8 dark:bg-white/12">
-                            <div
-                              className="h-full bg-orange-500 transition-[width] duration-200"
-                              style={{
-                                width: `${Math.round(
-                                  (playerDuration > 0 ? globalAudioProgress : scrollProgress) * 100
-                                )}%`,
+                        ) : null}
+                      </div>
+                      {!studyBarOpen ? (
+                        <div
+                          className={`sticky z-50 mb-2 md:mb-4 ${playerPlaying ? 'top-[28px] md:top-[32px]' : 'top-0 md:top-0'
+                            }${embedded ? ' hidden' : ''}`}
+                          data-no-embedded-fullscreen="true"
+                        > {/* Toolbar au-dessus du contenu */}
+                          <div className="transition-all duration-300 opacity-100">
+                            <BibleToolbar
+                              tool={tool}
+                              setTool={setTool}
+                              highlightColor={highlightColor}
+                              setHighlightColor={setHighlightColor}
+                              onCopy={() => {
+                                if (!selectedVerse) return;
+                                const ref = `${book.name} ${chapter}:${selectedVerse.number}`;
+                                const text = `${ref}\n${selectedVerse.text}`;
+                                navigator.clipboard?.writeText(text);
+                                showToast('Verset copié ✅');
                               }}
+                              onOpenCompare={() => {
+                                void openCompareForVerse();
+                              }}
+                              onOpenAdvancedStudyTools={openAdvancedStudyTools}
+                              playerProgress={playerProgress}
+                              playerPlaying={playerPlaying}
+                              onTogglePlayer={togglePlayer}
+                              audioAvailable={audioAvailable}
+                              isClient={isClient}
+                              audioVerseSegments={audioVerseSegments}
+                              activeAudioVerseNumber={activeCueVerse}
+                              onSeekToAudioVerse={seekToAudioVerse}
                             />
                           </div>
                         </div>
                       ) : null}
-                    </div>
-                    {!studyBarOpen ? (
-                      <div
-                        className={`sticky z-50 mb-2 md:mb-4 ${
-                          playerPlaying ? 'top-[28px] md:top-[32px]' : 'top-0 md:top-0'
-                        }${embedded ? ' hidden' : ''}`}
-                        data-no-embedded-fullscreen="true"
-                      > {/* Toolbar au-dessus du contenu */}
-                        <div className="transition-all duration-300 opacity-100">
-                          <BibleToolbar
-                            tool={tool}
-                            setTool={setTool}
-                            highlightColor={highlightColor}
-                            setHighlightColor={setHighlightColor}
-                            onCopy={() => {
-                              if (!selectedVerse) return;
-                              const ref = `${book.name} ${chapter}:${selectedVerse.number}`;
-                              const text = `${ref}\n${selectedVerse.text}`;
-                              navigator.clipboard?.writeText(text);
-                              showToast('Verset copié ✅');
-                            }}
-                            onOpenCompare={() => {
-                              void openCompareForVerse();
-                            }}
-                            onOpenAdvancedStudyTools={openAdvancedStudyTools}
-                            playerProgress={playerProgress}
-                            playerPlaying={playerPlaying}
-                            onTogglePlayer={togglePlayer}
-                            audioAvailable={audioAvailable}
-                            isClient={isClient}
-                            audioVerseSegments={audioVerseSegments}
-                            activeAudioVerseNumber={activeCueVerse}
-                            onSeekToAudioVerse={seekToAudioVerse}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    {loading && <div className="text-sm text-[color:var(--foreground)]/60">Chargement...</div>}
-                    {error && <div className="text-sm text-rose-700 dark:text-rose-300">{error}</div>}
-                    {!loading && !error && visibleVerses.length === 0 && (
-                      <div className="text-sm text-[color:var(--foreground)]/60">Aucun verset trouve.</div>
-                    )}
-                    {!loading && !error && visibleVerses.map((verse) => {
-                      const audioImmersionMode = playerPlaying && activeCueVerse !== null;
-                      const verseHighlightColor = highlightMap[verse.number];
-                      const highlightClass = verseHighlightColor
-                        ? `marker-${verseHighlightColor}`
-                        : '';
-                      const verseId = `${book.id}-${chapter}-${verse.number}`;
-                      const isActive = activeVerseId === verseId;
-                      const isSelected = selectedVerse?.number === verse.number;
-                      const isAudioActive = activeCueVerse === verse.number;
-                      const verseAudioProgress = isAudioActive ? activeVerseProgress : 0;
-                      const verseAudioPercent = Math.round(Math.min(1, Math.max(0, verseAudioProgress)) * 100);
-                      const verseWordCount = (verse.text.match(/\S+/g) ?? []).length;
-                      const activeWordIndex =
-                        isAudioActive && verseWordCount > 0
-                          ? Math.min(
+                      {loading && <div className="text-sm text-[color:var(--foreground)]/60">Chargement...</div>}
+                      {error && <div className="text-sm text-rose-700 dark:text-rose-300">{error}</div>}
+                      {!loading && !error && visibleVerses.length === 0 && (
+                        <div className="text-sm text-[color:var(--foreground)]/60">Aucun verset trouve.</div>
+                      )}
+                      {!loading && !error && visibleVerses.map((verse) => {
+                        const audioImmersionMode = playerPlaying && activeCueVerse !== null;
+                        const verseHighlightColor = highlightMap[verse.number];
+                        const highlightClass = verseHighlightColor
+                          ? `marker-${verseHighlightColor}`
+                          : '';
+                        const verseId = `${book.id}-${chapter}-${verse.number}`;
+                        const isActive = activeVerseId === verseId;
+                        const isSelected = selectedVerse?.number === verse.number;
+                        const isAudioActive = activeCueVerse === verse.number;
+                        const verseAudioProgress = isAudioActive ? activeVerseProgress : 0;
+                        const verseAudioPercent = Math.round(Math.min(1, Math.max(0, verseAudioProgress)) * 100);
+                        const verseWordCount = (verse.text.match(/\S+/g) ?? []).length;
+                        const activeWordIndex =
+                          isAudioActive && verseWordCount > 0
+                            ? Math.min(
                               verseWordCount - 1,
                               Math.max(0, Math.floor(verseWordCount * verseAudioProgress))
                             )
-                          : -1;
-                      const memoryRevealUntil = memoryMode && isAudioActive ? activeWordIndex : -1;
-                      let spokenWordIndex = -1;
-                      const cardOpacity = audioImmersionMode
-                        ? isAudioActive
-                          ? 1
-                          : 0.42
-                        : isActive
-                          ? 1
-                          : 0.55;
-                      const cardScale = audioImmersionMode
-                        ? isAudioActive
-                          ? 1.02
-                          : 0.982
-                        : isActive
-                          ? 1
-                          : 0.985;
-                      const cardY = audioImmersionMode
-                        ? isAudioActive
-                          ? 0
-                          : 6
-                        : isActive
-                          ? 0
-                          : 4;
+                            : -1;
+                        const memoryRevealUntil = memoryMode && isAudioActive ? activeWordIndex : -1;
+                        let spokenWordIndex = -1;
+                        const cardOpacity = audioImmersionMode
+                          ? isAudioActive
+                            ? 1
+                            : 0.42
+                          : isActive
+                            ? 1
+                            : 0.55;
+                        const cardScale = audioImmersionMode
+                          ? isAudioActive
+                            ? 1.02
+                            : 0.982
+                          : isActive
+                            ? 1
+                            : 0.985;
+                        const cardY = audioImmersionMode
+                          ? isAudioActive
+                            ? 0
+                            : 6
+                          : isActive
+                            ? 0
+                            : 4;
 
-                      return (
-                        <motion.button
-                          ref={(el) => {
-                            verseNodeRefs.current[verse.number] = el;
-                          }}
-                          data-verse-id={verseId}
-                          id={`verse-${book.id}-${chapter}-${verse.number}`}
-                          key={`${verse.number}-${verse.text.slice(0, 6)}`}
-                          type="button"
-                          onClick={(event) => {
-                            if (longPressTriggeredRef.current) {
-                              longPressTriggeredRef.current = false;
-                              event.preventDefault();
-                              return;
-                            }
-                            handleVerseClick(verse);
-                          }}
-                          onContextMenu={embedded ? undefined : (event) => {
-                            event.preventDefault();
-                            longPressTriggeredRef.current = true;
-                            setLongPressTarget({
-                              verse,
-                              ref: `${book.name} ${chapter}:${verse.number}`,
-                            });
-                          }}
-                          onPointerDown={embedded ? undefined : (event) => {
-                            startHold(verse, event);
-                          }}
-                          onPointerMove={embedded ? undefined : cancelHoldIfMoved}
-                          onPointerUp={embedded ? undefined : endHold}
-                          onPointerCancel={embedded ? undefined : endHold}
-                          onPointerLeave={embedded ? undefined : endHold}
-                          style={{ scrollSnapAlign: 'center' }}
-                          initial={false}
-                          animate={{
-                            opacity: cardOpacity,
-                            scale: cardScale,
-                            y: cardY,
-                          }}
-                          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                          className={[
-                            'group relative my-2 w-full touch-pan-y text-left rounded-[26px] py-4 pl-8 pr-4',
-                            'border border-black/10 dark:border-white/10',
-                            'bg-white/70 dark:bg-white/5 backdrop-blur-xl',
-                            'shadow-[0_18px_60px_rgba(0,0,0,0.10)]',
-                            'hover:bg-white/85 dark:hover:bg-white/7 transition',
-                            audioImmersionMode && !isAudioActive ? 'blur-[0.5px]' : '',
-                            isAudioActive
-                              ? 'bible-wave-active verse-pulse-soft ring-2 ring-orange-400/65 shadow-[0_0_0_2px_rgba(251,146,60,0.25)] before:pointer-events-none before:absolute before:-inset-2 before:-z-10 before:rounded-[30px] before:bg-orange-400/18 before:blur-md before:animate-pulse before:content-[""]'
-                              : isSelected
-                                ? 'ring-1 ring-orange-300/50'
-                                : '',
-                          ].join(' ')}
-                        >
-                          <div
-                            className={[
-                              'pointer-events-none absolute inset-0 rounded-[26px] opacity-0 transition-opacity duration-300',
-                              isActive ? 'opacity-100' : 'opacity-0',
-                            ].join(' ')}
-                            style={{
-                              background:
-                                'radial-gradient(1200px 380px at 50% 0%, rgba(255,173,51,0.22), transparent 55%), radial-gradient(800px 240px at 20% 10%, rgba(99,179,237,0.16), transparent 60%)',
+                        return (
+                          <motion.button
+                            ref={(el) => {
+                              verseNodeRefs.current[verse.number] = el;
                             }}
-                          />
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute left-2 top-3 bottom-3 z-10 w-[6px] overflow-hidden rounded-full bg-black/12 dark:bg-white/12"
+                            data-verse-id={verseId}
+                            id={`verse-${book.id}-${chapter}-${verse.number}`}
+                            key={`${verse.number}-${verse.text.slice(0, 6)}`}
+                            type="button"
+                            onClick={(event) => {
+                              if (longPressTriggeredRef.current) {
+                                longPressTriggeredRef.current = false;
+                                event.preventDefault();
+                                return;
+                              }
+                              handleVerseClick(verse);
+                            }}
+                            onContextMenu={embedded ? undefined : (event) => {
+                              event.preventDefault();
+                              longPressTriggeredRef.current = true;
+                              setLongPressTarget({
+                                verse,
+                                ref: `${book.name} ${chapter}:${verse.number}`,
+                              });
+                            }}
+                            onPointerDown={embedded ? undefined : (event) => {
+                              startHold(verse, event);
+                            }}
+                            onPointerMove={embedded ? undefined : cancelHoldIfMoved}
+                            onPointerUp={embedded ? undefined : endHold}
+                            onPointerCancel={embedded ? undefined : endHold}
+                            onPointerLeave={embedded ? undefined : endHold}
+                            style={{ scrollSnapAlign: 'center' }}
+                            initial={false}
+                            animate={{
+                              opacity: cardOpacity,
+                              scale: cardScale,
+                              y: cardY,
+                            }}
+                            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                            className={[
+                              'group relative my-2 w-full touch-pan-y text-left rounded-[26px] py-4 pl-8 pr-4',
+                              'border border-black/10 dark:border-white/10',
+                              'bg-white/70 dark:bg-white/5 backdrop-blur-xl',
+                              'shadow-[0_18px_60px_rgba(0,0,0,0.10)]',
+                              'hover:bg-white/85 dark:hover:bg-white/7 transition',
+                              audioImmersionMode && !isAudioActive ? 'blur-[0.5px]' : '',
+                              isAudioActive
+                                ? 'bible-wave-active verse-pulse-soft ring-2 ring-orange-400/65 shadow-[0_0_0_2px_rgba(251,146,60,0.25)] before:pointer-events-none before:absolute before:-inset-2 before:-z-10 before:rounded-[30px] before:bg-orange-400/18 before:blur-md before:animate-pulse before:content-[""]'
+                                : isSelected
+                                  ? 'ring-1 ring-orange-300/50'
+                                  : '',
+                            ].join(' ')}
                           >
-                            <span
-                              className="absolute bottom-0 left-0 w-full rounded-full bg-[color:var(--accent)] transition-[height] duration-[120ms] ease-linear"
-                              style={{ height: isAudioActive ? `${verseAudioPercent}%` : '0%' }}
-                            />
-                          </span>
-                          {isAudioActive ? (
-                            <span
-                              aria-hidden
-                              className="pointer-events-none absolute left-0 top-0 bottom-0 z-0 w-20"
+                            <div
+                              className={[
+                                'pointer-events-none absolute inset-0 rounded-[26px] opacity-0 transition-opacity duration-300',
+                                isActive ? 'opacity-100' : 'opacity-0',
+                              ].join(' ')}
                               style={{
                                 background:
-                                  'linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
+                                  'radial-gradient(1200px 380px at 50% 0%, rgba(255,173,51,0.22), transparent 55%), radial-gradient(800px 240px at 20% 10%, rgba(99,179,237,0.16), transparent 60%)',
                               }}
                             />
-                          ) : null}
-
-                          <div className="relative z-10 flex items-start gap-3">
                             <span
-                              className="inline-flex h-9 min-w-[40px] shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/5 px-2 font-black tracking-wide dark:border-white/10 dark:bg-white/10"
-                              style={{ fontSize: `${verseNumberFontPx}px` }}
+                              aria-hidden
+                              className="pointer-events-none absolute left-2 top-3 bottom-3 z-10 w-[6px] overflow-hidden rounded-full bg-black/12 dark:bg-white/12"
                             >
-                              {verse.number}
+                              <span
+                                className="absolute bottom-0 left-0 w-full rounded-full bg-[color:var(--accent)] transition-[height] duration-[120ms] ease-linear"
+                                style={{ height: isAudioActive ? `${verseAudioPercent}%` : '0%' }}
+                              />
                             </span>
+                            {isAudioActive ? (
+                              <span
+                                aria-hidden
+                                className="pointer-events-none absolute left-0 top-0 bottom-0 z-0 w-20"
+                                style={{
+                                  background:
+                                    'linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0))',
+                                }}
+                              />
+                            ) : null}
 
-                            <div className="min-w-0 flex-1">
-                              <div
-                                className={[
-                                  'text-[color:var(--foreground)]/90 leading-relaxed',
-                                  isActive ? 'font-semibold' : 'font-medium',
-                                ].join(' ')}
+                            <div className="relative z-10 flex items-start gap-3">
+                              <span
+                                className="inline-flex h-9 min-w-[40px] shrink-0 items-center justify-center rounded-full border border-black/10 bg-black/5 px-2 font-black tracking-wide dark:border-white/10 dark:bg-white/10"
+                                style={{ fontSize: `${verseNumberFontPx}px` }}
                               >
-                                <span className={highlightClass}>
-                                  {verse.text.split(/(\s+)/).map((token, index) => {
-                                    if (!token) return null;
-                                    const isSpace = /^\s+$/.test(token);
-                                    if (isSpace) {
-                                      return <span key={`${verse.number}-space-${index}`}>{token}</span>;
-                                    }
-                                    spokenWordIndex += 1;
+                                {verse.number}
+                              </span>
 
-                                    const cleanWord = token.replace(RADAR_WORD_CLEAN_RE, '');
-                                    const displayToken = memoryMode
-                                      ? maskMemoryWordToken(
+                              <div className="min-w-0 flex-1">
+                                <div
+                                  className={[
+                                    'text-[color:var(--foreground)]/90 leading-relaxed',
+                                    isActive ? 'font-semibold' : 'font-medium',
+                                  ].join(' ')}
+                                >
+                                  <span className={highlightClass}>
+                                    {verse.text.split(/(\s+)/).map((token, index) => {
+                                      if (!token) return null;
+                                      const isSpace = /^\s+$/.test(token);
+                                      if (isSpace) {
+                                        return <span key={`${verse.number}-space-${index}`}>{token}</span>;
+                                      }
+                                      spokenWordIndex += 1;
+
+                                      const cleanWord = token.replace(RADAR_WORD_CLEAN_RE, '');
+                                      const displayToken = memoryMode
+                                        ? maskMemoryWordToken(
                                           token,
                                           spokenWordIndex,
                                           clampedMemoryMaskLevel,
                                           memoryRevealUntil
                                         )
-                                      : token;
-                                    const wordIsMasked = memoryMode && displayToken !== token;
-                                    const displayWord = memoryMode
-                                      ? displayToken
-                                      : renderTextWithSearchMatch(token, searchQuery);
-                                    const clickable = tool === 'read' && zenMode;
-                                    const wordIsPast = isAudioActive && spokenWordIndex < activeWordIndex;
-                                    const wordIsCurrent = isAudioActive && spokenWordIndex === activeWordIndex;
-                                    const wordClassName = wordIsPast
-                                      ? 'text-orange-600 transition-colors duration-200 dark:text-orange-300'
-                                      : wordIsCurrent
-                                        ? 'relative inline-block font-semibold text-[color:var(--foreground)] transition-all duration-200'
-                                        : wordIsMasked
-                                          ? 'tracking-[0.08em] text-[color:var(--foreground)]/72 transition-colors duration-200'
-                                        : 'transition-colors duration-200';
+                                        : token;
+                                      const wordIsMasked = memoryMode && displayToken !== token;
+                                      const displayWord = memoryMode
+                                        ? displayToken
+                                        : renderTextWithSearchMatch(token, searchQuery);
+                                      const clickable = tool === 'read' && zenMode;
+                                      const wordIsPast = isAudioActive && spokenWordIndex < activeWordIndex;
+                                      const wordIsCurrent = isAudioActive && spokenWordIndex === activeWordIndex;
+                                      const wordClassName = wordIsPast
+                                        ? 'text-orange-600 transition-colors duration-200 dark:text-orange-300'
+                                        : wordIsCurrent
+                                          ? 'relative inline-block font-semibold text-[color:var(--foreground)] transition-all duration-200'
+                                          : wordIsMasked
+                                            ? 'tracking-[0.08em] text-[color:var(--foreground)]/72 transition-colors duration-200'
+                                            : 'transition-colors duration-200';
 
-                                    if (!clickable) {
+                                      if (!clickable) {
+                                        return (
+                                          <span key={`${verse.number}-word-${index}`} className={wordClassName}>
+                                            {wordIsCurrent ? (
+                                              <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-orange-500/26 via-orange-300/40 to-transparent blur-[2px] animate-pulse" />
+                                            ) : null}
+                                            {displayWord}
+                                          </span>
+                                        );
+                                      }
+
                                       return (
-                                        <span key={`${verse.number}-word-${index}`} className={wordClassName}>
+                                        <span
+                                          key={`${verse.number}-word-${index}`}
+                                          onClick={(event) => {
+                                            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                                            const centerX = rect.left + rect.width / 2;
+                                            const centerY = rect.top + rect.height / 2;
+                                            openRadarAt(
+                                              centerX,
+                                              centerY,
+                                              verse,
+                                              cleanWord || token,
+                                              null
+                                            );
+                                            event.stopPropagation();
+                                          }}
+                                          className={`cursor-pointer ${wordClassName}`}
+                                        >
                                           {wordIsCurrent ? (
                                             <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-orange-500/26 via-orange-300/40 to-transparent blur-[2px] animate-pulse" />
                                           ) : null}
                                           {displayWord}
                                         </span>
                                       );
-                                    }
-
-                                    return (
-                                      <span
-                                        key={`${verse.number}-word-${index}`}
-                                        onClick={(event) => {
-                                          const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-                                          const centerX = rect.left + rect.width / 2;
-                                          const centerY = rect.top + rect.height / 2;
-                                          openRadarAt(
-                                            centerX,
-                                            centerY,
-                                            verse,
-                                            cleanWord || token,
-                                            null
-                                          );
-                                          event.stopPropagation();
-                                        }}
-                                        className={`cursor-pointer ${wordClassName}`}
-                                      >
-                                        {wordIsCurrent ? (
-                                          <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-orange-500/26 via-orange-300/40 to-transparent blur-[2px] animate-pulse" />
-                                        ) : null}
-                                        {displayWord}
-                                      </span>
-                                    );
-                                  })}
-                                </span>
+                                    })}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               );
             })()}
           </main>
@@ -3530,11 +3521,10 @@ export default function BibleReader({ embedded = false }: { embedded?: boolean }
                     return (
                       <div
                         key={`preview-ref-verse-${row.number}`}
-                        className={`rounded-xl border px-3 py-2 ${
-                          active
+                        className={`rounded-xl border px-3 py-2 ${active
                             ? 'border-orange-300/45 bg-orange-400/16'
                             : 'border-white/12 bg-white/6'
-                        }`}
+                          }`}
                       >
                         <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/65">
                           Verset {row.number}
