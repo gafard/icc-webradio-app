@@ -16,6 +16,8 @@ import {
   Sparkles,
   Users,
   BookOpen,
+  Disc,
+  StopCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BibleReader from './BibleReader';
@@ -220,11 +222,10 @@ function ParticipantThumb({
     <button
       type="button"
       onClick={onClick}
-      className={`relative ${
-        compact ? 'w-[96px]' : 'w-[132px]'
-      } shrink-0 overflow-hidden rounded-2xl border text-left transition ${active
-        ? 'border-[color:var(--accent-border)] bg-[color:var(--surface-strong)] shadow-[0_10px_22px_rgba(0,0,0,0.28)]'
-        : 'border-[color:var(--border-soft)] bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]'
+      className={`relative ${compact ? 'w-[96px]' : 'w-[132px]'
+        } shrink-0 overflow-hidden rounded-2xl border text-left transition ${active
+          ? 'border-[color:var(--accent-border)] bg-[color:var(--surface-strong)] shadow-[0_10px_22px_rgba(0,0,0,0.28)]'
+          : 'border-[color:var(--border-soft)] bg-[color:var(--surface)] hover:border-[color:var(--border-strong)]'
         } ${speaking ? 'speaker-halo' : ''}`}
     >
       <div className={`relative w-full bg-gradient-to-br from-slate-900/90 via-purple-950/55 to-slate-900/90 ${compact ? 'h-[56px]' : 'h-[78px]'}`}>
@@ -243,9 +244,8 @@ function ParticipantThumb({
         {!showVideo ? (
           <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-xs font-extrabold text-white/90">
             <div
-              className={`flex items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface)] shadow-inner ${
-                compact ? 'h-8 w-8 text-[10px]' : 'h-10 w-10'
-              }`}
+              className={`flex items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface)] shadow-inner ${compact ? 'h-8 w-8 text-[10px]' : 'h-10 w-10'
+                }`}
             >
               {initials(name)}
             </div>
@@ -253,9 +253,8 @@ function ParticipantThumb({
         ) : null}
         {active && (
           <div
-            className={`absolute inset-0 ring-2 ring-inset shadow-[0_0_15px_rgba(251,146,60,0.3)] ${
-              speaking ? 'ring-amber-300/60' : 'ring-orange-400/45'
-            }`}
+            className={`absolute inset-0 ring-2 ring-inset shadow-[0_0_15px_rgba(251,146,60,0.3)] ${speaking ? 'ring-amber-300/60' : 'ring-orange-400/45'
+              }`}
           />
         )}
         {screenSharing && !compact ? (
@@ -293,11 +292,9 @@ function StageVideo({
 
   return (
     <div
-      className={`group-call-stage glass-veil-strong relative min-h-[260px] overflow-hidden rounded-3xl border border-[color:var(--border-soft)] sm:min-h-[360px] ${
-        dominant ? 'h-[74vh] max-h-[860px]' : ''
-      } ${
-        speaking ? 'speaker-halo' : ''
-      }`}
+      className={`group-call-stage glass-veil-strong relative min-h-[260px] overflow-hidden rounded-3xl border border-[color:var(--border-soft)] sm:min-h-[360px] ${dominant ? 'h-[74vh] max-h-[860px]' : ''
+        } ${speaking ? 'speaker-halo' : ''
+        }`}
     >
       <video
         autoPlay
@@ -383,7 +380,11 @@ export default function CommunityGroupCall({
   const [shareViewMode, setShareViewMode] = useState<ShareViewMode>('fit');
   const [screenShareStartedAt, setScreenShareStartedAt] = useState<number | null>(null);
   const [screenShareElapsedSec, setScreenShareElapsedSec] = useState(0);
+
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>('offline');
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const channelRef = useRef<ReturnType<NonNullable<typeof supabase>['channel']> | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -541,25 +542,25 @@ export default function CommunityGroupCall({
       }),
       channel
         ? channel.send({
-            type: 'broadcast',
-            event: 'bible.sync',
-            payload: {
-              from: deviceId,
-              displayName,
-              ref: syncedRef,
-              content: syncedContent,
-            },
-          })
+          type: 'broadcast',
+          event: 'bible.sync',
+          payload: {
+            from: deviceId,
+            displayName,
+            ref: syncedRef,
+            content: syncedContent,
+          },
+        })
         : Promise.resolve('ok'),
       channel
         ? channel.track({
-            displayName,
-            audioEnabled: localAudioEnabled,
-            videoEnabled: syncedVideoEnabled,
-            joinedAt,
-            sharedBibleRef: syncedRef,
-            sharedBibleContent: syncedContent,
-          })
+          displayName,
+          audioEnabled: localAudioEnabled,
+          videoEnabled: syncedVideoEnabled,
+          joinedAt,
+          sharedBibleRef: syncedRef,
+          sharedBibleContent: syncedContent,
+        })
         : Promise.resolve('ok'),
     ]);
   }, [deviceId, displayName, groupId, localAudioEnabled, localVideoEnabled]);
@@ -792,6 +793,63 @@ export default function CommunityGroupCall({
     joinedStateRef.current = false;
     joinedAtRef.current = '';
   }, [clearAudioMeters, closePeer, joinMode]);
+
+  const stopRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen' } as any,
+        audio: true,
+      });
+
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+      mediaRecorderRef.current = recorder;
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `icc_call_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        window.setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+
+        setIsRecording(false);
+        // Stop all tracks to stop the "sharing" indicator
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start(1000); // Collect 1s chunks
+      setIsRecording(true);
+
+      // Handle user clicking "Stop sharing" on the browser UI
+      stream.getVideoTracks()[0].onended = () => {
+        stopRecording();
+      };
+
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      // User likely cancelled the picker
+    }
+  }, [stopRecording]);
 
   const leaveCall = useCallback(async () => {
     try {
@@ -1620,9 +1678,8 @@ export default function CommunityGroupCall({
 
   return (
     <section
-      className={`group-call-shell atmospheric-noise light-particles relative overflow-hidden rounded-[40px] border border-[color:var(--border-soft)] p-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] transition-all duration-700 sm:p-6 ${
-        viewMode === 'bible' ? 'ring-1 ring-amber-300/35' : ''
-      }`}
+      className={`group-call-shell atmospheric-noise light-particles relative overflow-hidden rounded-[40px] border border-[color:var(--border-soft)] p-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] transition-all duration-700 sm:p-6 ${viewMode === 'bible' ? 'ring-1 ring-amber-300/35' : ''
+        }`}
     >
       <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-amber-300/10 blur-[100px] animate-pulse" />
       <div className="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full bg-blue-300/10 blur-[100px] call-pulse-slow" />
@@ -1651,71 +1708,73 @@ export default function CommunityGroupCall({
         </button>
       </div>
 
-      {screenSharePeerId ? (
-        <div className="relative mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-500/14 px-3 py-2 text-[11px] text-cyan-700 dark:text-cyan-100">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-[color:var(--surface)] px-2.5 py-1 text-cyan-700 dark:text-cyan-100 backdrop-blur-xl">
-            <ScreenShare size={12} />
-            {screenSharePeerId === 'local'
-              ? 'Vous presentez'
-              : `${screenShareOwnerLabel || 'Participant'} presente`}
-          </div>
-          {localScreenSharing ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-[color:var(--surface)] px-2.5 py-1 text-cyan-700 dark:text-cyan-100 backdrop-blur-xl">
-              <span className="opacity-70">Timer</span>
-              <span className="font-bold tabular-nums">{formatElapsed(screenShareElapsedSec)}</span>
+      {
+        screenSharePeerId ? (
+          <div className="relative mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-500/14 px-3 py-2 text-[11px] text-cyan-700 dark:text-cyan-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-[color:var(--surface)] px-2.5 py-1 text-cyan-700 dark:text-cyan-100 backdrop-blur-xl">
+              <ScreenShare size={12} />
+              {screenSharePeerId === 'local'
+                ? 'Vous presentez'
+                : `${screenShareOwnerLabel || 'Participant'} presente`}
             </div>
-          ) : null}
-          <div
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${
-              NETWORK_QUALITY_BADGES[networkQuality]
-            }`}
-          >
-            Reseau {NETWORK_QUALITY_LABELS[networkQuality]}
+            {localScreenSharing ? (
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-[color:var(--surface)] px-2.5 py-1 text-cyan-700 dark:text-cyan-100 backdrop-blur-xl">
+                <span className="opacity-70">Timer</span>
+                <span className="font-bold tabular-nums">{formatElapsed(screenShareElapsedSec)}</span>
+              </div>
+            ) : null}
+            <div
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 font-semibold ${NETWORK_QUALITY_BADGES[networkQuality]
+                }`}
+            >
+              Reseau {NETWORK_QUALITY_LABELS[networkQuality]}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null
+      }
 
-      {!joined ? (
-        <div className="glass-veil relative mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl p-2">
-          <div className="inline-flex items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setJoinMode('audio');
-                setLocalVideoEnabled(false);
-                void persistEvent('mode_audio');
-              }}
-              disabled={busy}
-              className={`btn-base px-3 py-1.5 text-xs ${joinMode === 'audio' ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              {t('community.groups.callModeAudio')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setJoinMode('video');
-                setLocalVideoEnabled(true);
-                void persistEvent('mode_video');
-              }}
-              disabled={busy}
-              className={`btn-base px-3 py-1.5 text-xs ${joinMode === 'video' ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              {t('community.groups.callModeVideo')}
+      {
+        !joined ? (
+          <div className="glass-veil relative mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl p-2">
+            <div className="inline-flex items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setJoinMode('audio');
+                  setLocalVideoEnabled(false);
+                  void persistEvent('mode_audio');
+                }}
+                disabled={busy}
+                className={`btn-base px-3 py-1.5 text-xs ${joinMode === 'audio' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {t('community.groups.callModeAudio')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setJoinMode('video');
+                  setLocalVideoEnabled(true);
+                  void persistEvent('mode_video');
+                }}
+                disabled={busy}
+                className={`btn-base px-3 py-1.5 text-xs ${joinMode === 'video' ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {t('community.groups.callModeVideo')}
+              </button>
+            </div>
+            <button type="button" className="btn-base btn-primary px-4 py-2 text-xs" onClick={joinCall} disabled={busy}>
+              <Phone size={13} />
+              {busy ? t('community.groups.callJoining') : t('community.groups.callJoin')}
             </button>
           </div>
-          <button type="button" className="btn-base btn-primary px-4 py-2 text-xs" onClick={joinCall} disabled={busy}>
-            <Phone size={13} />
-            {busy ? t('community.groups.callJoining') : t('community.groups.callJoin')}
-          </button>
-        </div>
-      ) : null}
+        ) : null
+      }
 
       <div
-        className={`relative mt-4 grid gap-4 transition-all duration-500 ${
-          presenterMode && !!screenSharePeerId
-            ? 'md:grid-cols-[minmax(0,1fr)_280px]'
-            : 'md:grid-cols-[minmax(0,1fr)_330px]'
-        }`}
+        className={`relative mt-4 grid gap-4 transition-all duration-500 ${presenterMode && !!screenSharePeerId
+          ? 'md:grid-cols-[minmax(0,1fr)_280px]'
+          : 'md:grid-cols-[minmax(0,1fr)_330px]'
+          }`}
       >
         <div className="flex min-w-0 flex-col space-y-3">
           {viewMode === 'bible' ? (
@@ -1751,11 +1810,10 @@ export default function CommunityGroupCall({
                       onClick={() => {
                         void syncBibleFromLocalSettings();
                       }}
-                      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${
-                        joined
-                          ? 'border-orange-300/40 bg-orange-400/20 text-orange-700 hover:bg-orange-400/30 dark:text-orange-100'
-                          : 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/45'
-                      }`}
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${joined
+                        ? 'border-orange-300/40 bg-orange-400/20 text-orange-700 hover:bg-orange-400/30 dark:text-orange-100'
+                        : 'cursor-not-allowed border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/45'
+                        }`}
                     >
                       Sync
                     </button>
@@ -1809,7 +1867,19 @@ export default function CommunityGroupCall({
               {localAudioEnabled ? <Mic size={14} /> : <MicOff size={14} />}
               {localAudioEnabled ? t('community.groups.callMute') : t('community.groups.callUnmute')}
             </button>
-
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={[
+                'btn-base rounded-full px-3 py-2 text-xs transition flex items-center gap-2',
+                isRecording
+                  ? 'border-rose-500/50 bg-rose-500/10 text-rose-600 dark:text-rose-200 animate-pulse'
+                  : 'btn-secondary',
+              ].join(' ')}
+            >
+              {isRecording ? <StopCircle size={14} /> : <Disc size={14} />}
+              {isRecording ? 'Arrêter Enreg.' : 'Enregistrer'}
+            </button>
             <button
               type="button"
               className={`btn-base rounded-full px-3 py-2 text-xs ${localVideoEnabled ? 'btn-secondary' : 'btn-primary'}`}
@@ -1822,9 +1892,8 @@ export default function CommunityGroupCall({
 
             <button
               type="button"
-              className={`btn-base rounded-full px-3 py-2 text-xs ${
-                localScreenSharing ? 'bg-cyan-600 text-white border-cyan-400' : 'btn-secondary'
-              }`}
+              className={`btn-base rounded-full px-3 py-2 text-xs ${localScreenSharing ? 'bg-cyan-600 text-white border-cyan-400' : 'btn-secondary'
+                }`}
               onClick={() => {
                 if (localScreenSharing) {
                   void stopScreenShare();
@@ -1844,9 +1913,8 @@ export default function CommunityGroupCall({
             {screenSharePeerId ? (
               <button
                 type="button"
-                className={`btn-base rounded-full px-3 py-2 text-xs ${
-                  presenterMode ? 'bg-indigo-600 text-white border-indigo-400' : 'btn-secondary'
-                }`}
+                className={`btn-base rounded-full px-3 py-2 text-xs ${presenterMode ? 'bg-indigo-600 text-white border-indigo-400' : 'btn-secondary'
+                  }`}
                 onClick={() => setPresenterMode((prev) => !prev)}
               >
                 <Sparkles size={14} />
@@ -2021,11 +2089,10 @@ export default function CommunityGroupCall({
                   onClick={() => {
                     void syncBibleFromLocalSettings();
                   }}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold ring-1 transition-colors ${
-                    joined
-                      ? 'bg-orange-500/20 text-orange-300 ring-orange-400/20 hover:bg-orange-500/30'
-                      : 'cursor-not-allowed bg-[color:var(--surface)] text-[color:var(--foreground)]/45 ring-[color:var(--border-soft)]'
-                  }`}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[10px] font-bold ring-1 transition-colors ${joined
+                    ? 'bg-orange-500/20 text-orange-300 ring-orange-400/20 hover:bg-orange-500/30'
+                    : 'cursor-not-allowed bg-[color:var(--surface)] text-[color:var(--foreground)]/45 ring-[color:var(--border-soft)]'
+                    }`}
                 >
                   <Sparkles size={12} />
                   SYNCHRONISER
@@ -2060,18 +2127,22 @@ export default function CommunityGroupCall({
         </aside>
       </div>
 
-      {error ? (
-        <div className="mt-3 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-100">
-          {error}
-        </div>
-      ) : null}
+      {
+        error ? (
+          <div className="mt-3 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-rose-100">
+            {error}
+          </div>
+        ) : null
+      }
 
-      {!joined ? (
-        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-1 text-[11px] text-[color:var(--foreground)]/70">
-          <Users size={12} />
-          {t('community.groups.callNotStarted')}
-        </div>
-      ) : null}
-    </section>
+      {
+        !joined ? (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-1 text-[11px] text-[color:var(--foreground)]/70">
+            <Users size={12} />
+            {t('community.groups.callNotStarted')}
+          </div>
+        ) : null
+      }
+    </section >
   );
 }
