@@ -16,8 +16,8 @@ import {
   Sparkles,
   Users,
   BookOpen,
-  Disc,
-  StopCircle,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import BibleReader from './BibleReader';
@@ -382,9 +382,8 @@ export default function CommunityGroupCall({
   const [screenShareElapsedSec, setScreenShareElapsedSec] = useState(0);
 
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>('offline');
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const channelRef = useRef<ReturnType<NonNullable<typeof supabase>['channel']> | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const videoSendersRef = useRef<Map<string, RTCRtpSender>>(new Map());
@@ -794,62 +793,36 @@ export default function CommunityGroupCall({
     joinedAtRef.current = '';
   }, [clearAudioMeters, closePeer, joinMode]);
 
-  const stopRecording = useCallback(() => {
-    const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.stop();
+  const toggleFullscreen = useCallback(async () => {
+    if (!document) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+          setIsFullscreen(true);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+          setIsFullscreen(false);
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
     }
   }, []);
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { mediaSource: 'screen' } as any,
-        audio: true,
-      });
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
-      mediaRecorderRef.current = recorder;
-      recordedChunksRef.current = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `icc_call_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        window.setTimeout(() => {
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 100);
-
-        setIsRecording(false);
-        // Stop all tracks to stop the "sharing" indicator
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      recorder.start(1000); // Collect 1s chunks
-      setIsRecording(true);
-
-      // Handle user clicking "Stop sharing" on the browser UI
-      stream.getVideoTracks()[0].onended = () => {
-        stopRecording();
-      };
-
-    } catch (err) {
-      console.error('Error starting recording:', err);
-      // User likely cancelled the picker
-    }
-  }, [stopRecording]);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   const leaveCall = useCallback(async () => {
     try {
@@ -1678,8 +1651,9 @@ export default function CommunityGroupCall({
 
   return (
     <section
+      ref={containerRef}
       className={`group-call-shell atmospheric-noise light-particles relative overflow-hidden rounded-[40px] border border-[color:var(--border-soft)] p-4 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] transition-all duration-700 sm:p-6 ${viewMode === 'bible' ? 'ring-1 ring-amber-300/35' : ''
-        }`}
+        } ${isFullscreen ? 'fixed inset-0 z-[100] m-0 max-w-none rounded-none border-none h-screen w-screen bg-[color:var(--background)]' : ''}`}
     >
       <div className="pointer-events-none absolute -top-24 -left-20 h-64 w-64 rounded-full bg-amber-300/10 blur-[100px] animate-pulse" />
       <div className="pointer-events-none absolute -bottom-24 -right-20 h-64 w-64 rounded-full bg-blue-300/10 blur-[100px] call-pulse-slow" />
@@ -1869,16 +1843,12 @@ export default function CommunityGroupCall({
             </button>
             <button
               type="button"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={[
-                'btn-base rounded-full px-3 py-2 text-xs transition flex items-center gap-2',
-                isRecording
-                  ? 'border-rose-500/50 bg-rose-500/10 text-rose-600 dark:text-rose-200 animate-pulse'
-                  : 'btn-secondary',
-              ].join(' ')}
+              onClick={toggleFullscreen}
+              className={`btn-base rounded-full px-3 py-2 text-xs transition flex items-center gap-2 ${isFullscreen ? 'bg-[color:var(--surface-strong)] text-[color:var(--foreground)] border border-[color:var(--border-strong)]' : 'btn-secondary'
+                }`}
             >
-              {isRecording ? <StopCircle size={14} /> : <Disc size={14} />}
-              {isRecording ? 'Arrêter Enreg.' : 'Enregistrer'}
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Réduire' : 'Plein écran'}</span>
             </button>
             <button
               type="button"
