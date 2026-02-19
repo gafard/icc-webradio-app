@@ -84,7 +84,7 @@ function RadioPlayerContent() {
         {/* Background */}
         <div className="mx-auto max-w-5xl">
           <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#101425]/70 shadow-[0_30px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl hero-float">
-            <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_30%_20%,rgba(255,0,150,0.18),transparent_60%),radial-gradient(900px_600px_at_70%_0%,rgba(120,190,255,0.18),transparent_60%),radial-gradient(1000px_700px_at_50%_100%,rgba(0,0,0,0.55),transparent_65%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_30%_20%,rgba(201,162,39,0.15),transparent_60%),radial-gradient(900px_600px_at_70%_0%,rgba(123,44,191,0.12),transparent_60%),radial-gradient(1000px_700px_at_50%_100%,rgba(0,0,0,0.55),transparent_65%)]" />
 
             {/* Top bar */}
             <div className="relative flex items-center justify-between px-6 py-5">
@@ -148,8 +148,8 @@ function RadioPlayerContent() {
                     >
                       <defs>
                         <linearGradient id="gradPink" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="rgba(255,80,190,1)" />
-                          <stop offset="100%" stopColor="rgba(255,160,90,1)" />
+                          <stop offset="0%" stopColor="rgba(201,162,39,1)" />
+                          <stop offset="100%" stopColor="rgba(218,185,80,1)" />
                         </linearGradient>
                       </defs>
 
@@ -188,12 +188,16 @@ function RadioPlayerContent() {
                       <button
                         type="button"
                         onClick={togglePlay}
-                        className="absolute grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,rgba(255,90,190,1),rgba(255,165,95,1))] text-white shadow-[0_18px_50px_rgba(255,90,190,0.25)] hover:brightness-110"
+                        className="absolute grid h-16 w-16 place-items-center rounded-full bg-[#C9A227] text-black shadow-[0_18px_50px_rgba(201,162,39,0.25)] hover:brightness-110"
                         aria-label={isPlaying ? 'Pause' : 'Play'}
                         title={isPlaying ? 'Pause' : 'Play'}
                       >
                         <span className="text-2xl font-black">
-                          {isPlaying ? '❚❚' : '▶'}
+                          {isPlaying ? (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
+                          ) : (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                          )}
                         </span>
                       </button>
                     </div>
@@ -213,7 +217,7 @@ function RadioPlayerContent() {
                       {Array.from({ length: 9 }).map((_, i) => (
                         <div
                           key={i}
-                          className="wave h-3 w-[5px] rounded-full bg-[rgba(255,90,190,0.9)]"
+                          className="wave h-3 w-[5px] rounded-full bg-[#C9A227]"
                           style={{ animationDelay: `${i * 0.08}s` }}
                         />
                       ))}
@@ -225,7 +229,7 @@ function RadioPlayerContent() {
                         {title}
                       </div>
                       <div className="truncate text-xs text-white/50">{subtitle}</div>
-                      <div className="mt-1 text-xs font-bold text-[rgba(255,90,190,0.95)]">
+                      <div className="mt-1 text-xs font-bold text-[#C9A227]">
                         LIVE
                       </div>
                     </div>
@@ -307,7 +311,7 @@ function RadioPlayerContent() {
               .ring-anim {
                 transform-origin: 170px 170px;
                 animation: spinRing 6s linear infinite;
-                filter: drop-shadow(0 10px 20px rgba(255, 90, 190, 0.22));
+                filter: drop-shadow(0 10px 20px rgba(201, 162, 39, 0.22));
               }
               @keyframes spinRing {
                 0% {
@@ -341,6 +345,6 @@ function RadioPlayerContent() {
           </div>
         </div>
       </main>
-    </AppShell>
+    </AppShell >
   );
 }

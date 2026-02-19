@@ -312,11 +312,20 @@ export default function ClientWatchPage({
             <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-[#C9A227]/10 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
               {/* Cover + info hero */}
               <div className="flex items-center gap-6 p-6 sm:p-8">
-                {/* Cover art (spinning when playing) */}
-                <div className={`shrink-0 h-28 w-28 sm:h-36 sm:w-36 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ${playing ? 'animate-[spin_8s_linear_infinite]' : ''}`}
-                  style={{ animationPlayState: playing ? 'running' : 'paused' }}
-                >
-                  <img src={cover} alt="" className="h-full w-full object-cover" />
+                {/* Cover art — vinyl disc (spins when playing) */}
+                <div className="shrink-0 h-28 w-28 sm:h-36 sm:w-36 relative">
+                  <div
+                    className={`h-full w-full rounded-full overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 ${playing ? 'animate-[spin_8s_linear_infinite]' : ''}`}
+                    style={{ animationPlayState: playing ? 'running' : 'paused' }}
+                  >
+                    <img src={cover} alt="" className="h-full w-full object-cover" />
+                    {/* Vinyl grooves overlay */}
+                    <div className="absolute inset-0 rounded-full" style={{
+                      background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 8px, rgba(0,0,0,0.08) 8px, rgba(0,0,0,0.08) 9px)'
+                    }} />
+                    {/* Center hole */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-[#0A0B14] border-2 border-[#C9A227]/40 shadow-[0_0_10px_rgba(201,162,39,0.3)]" />
+                  </div>
                 </div>
 
                 <div className="min-w-0 flex-1">
