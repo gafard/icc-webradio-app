@@ -69,10 +69,13 @@ export default function NotificationManager() {
 
                     // Check if push subscription is active — if so, the server
                     // broadcast already sent a push to this device. Skip local.
+                    // UNLESS we are on localhost, where webhooks probably don't reach us.
                     try {
                         const reg = await navigator.serviceWorker?.getRegistration?.();
                         const pushSub = await reg?.pushManager?.getSubscription?.();
-                        if (pushSub) {
+                        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                        if (pushSub && !isLocal) {
                             console.log('[NotificationManager] Push subscription active — skipping local notification');
                             return;
                         }
