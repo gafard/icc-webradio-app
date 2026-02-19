@@ -22,13 +22,15 @@ export default function SettingsComponent() {
     syncId,
     setSyncId,
     regenerateSyncId,
+    audioQuality,
+    setAudioQuality,
   } = useSettings();
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="glass-panel card-anim rounded-2xl p-6 shadow-2xl text-[color:var(--foreground)]">
         <h1 className="text-2xl font-bold mb-6">Paramètres</h1>
-        
+
         <div className="space-y-6">
           {/* Thème - Jour/Nuit */}
           <div className="glass-card rounded-xl p-4">
@@ -39,29 +41,27 @@ export default function SettingsComponent() {
                   Changer entre le mode jour et nuit
                 </p>
               </div>
-              
+
               <button
                 onClick={toggleMode}
-                className={`btn-icon ${
-                  mode === 'night' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-yellow-400 text-yellow-900'
-                }`}
+                className={`btn-icon ${mode === 'night'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-yellow-400 text-yellow-900'
+                  }`}
                 aria-label={mode === 'night' ? 'Passer en mode jour' : 'Passer en mode nuit'}
               >
                 {mode === 'night' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
             </div>
-            
+
             <div className="mt-4 flex items-center gap-4">
               <span className={`text-sm font-medium ${mode === 'day' ? 'opacity-100' : 'opacity-60'}`}>
                 Jour
               </span>
               <div className="relative flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className={`absolute top-0 left-0 h-full transition-all duration-300 ${
-                    mode === 'night' ? 'w-1/2 bg-blue-500' : 'w-full bg-yellow-400'
-                  }`}
+                <div
+                  className={`absolute top-0 left-0 h-full transition-all duration-300 ${mode === 'night' ? 'w-1/2 bg-blue-500' : 'w-full bg-yellow-400'
+                    }`}
                 />
               </div>
               <span className={`text-sm font-medium ${mode === 'night' ? 'opacity-100' : 'opacity-60'}`}>
@@ -69,7 +69,7 @@ export default function SettingsComponent() {
               </span>
             </div>
           </div>
-          
+
           {/* Autres paramètres pourraient être ajoutés ici */}
           <div className="glass-card rounded-xl p-4">
             <h2 className="text-lg font-semibold">Personnalisation</h2>
@@ -80,9 +80,8 @@ export default function SettingsComponent() {
                   <button
                     key={v}
                     onClick={() => setTextScale(v)}
-                    className={`btn-base text-xs px-3 py-2 ${
-                      textScale === v ? 'btn-primary' : 'btn-secondary'
-                    }`}
+                    className={`btn-base text-xs px-3 py-2 ${textScale === v ? 'btn-primary' : 'btn-secondary'
+                      }`}
                   >
                     {v === 1 ? 'Normal' : v === 1.1 ? 'Grand' : 'Très grand'}
                   </button>
@@ -97,15 +96,13 @@ export default function SettingsComponent() {
               >
                 <div className="font-bold">Mode éco data</div>
                 <div
-                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${
-                    dataSaver ? '' : 'bg-white/10'
-                  }`}
+                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${dataSaver ? '' : 'bg-white/10'
+                    }`}
                   style={dataSaver ? { background: 'var(--accent)' } : undefined}
                 >
                   <div
-                    className={`h-4 w-4 rounded-full bg-white transition ${
-                      dataSaver ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`h-4 w-4 rounded-full bg-white transition ${dataSaver ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </div>
               </button>
@@ -118,9 +115,8 @@ export default function SettingsComponent() {
                   <button
                     key={c}
                     onClick={() => setAccent(c)}
-                    className={`btn-base text-xs px-3 py-2 ${
-                      accent === c ? 'btn-primary' : 'btn-secondary'
-                    }`}
+                    className={`btn-base text-xs px-3 py-2 ${accent === c ? 'btn-primary' : 'btn-secondary'
+                      }`}
                   >
                     {c === 'blue' ? 'Bleu' : c === 'emerald' ? 'Émeraude' : 'Ambre'}
                   </button>
@@ -128,14 +124,23 @@ export default function SettingsComponent() {
               </div>
             </div>
           </div>
-          
+
           <div className="glass-card rounded-xl p-4">
             <h2 className="text-lg font-semibold">Qualité audio</h2>
-            <select className="mt-2 select-field text-[color:var(--foreground)]">
-              <option>Haute qualité</option>
-              <option>Standard</option>
-              <option>Basse consommation</option>
-            </select>
+            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+              {(['low', 'high'] as const).map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setAudioQuality(q)}
+                  className={`flex-1 py-2 rounded-md text-xs font-bold transition ${audioQuality === q
+                    ? 'bg-[var(--accent)] text-white shadow-lg'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                >
+                  {q === 'low' ? 'Standard (64kbps)' : 'Haut (128kbps)'}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="glass-card rounded-xl p-4">
@@ -170,15 +175,13 @@ export default function SettingsComponent() {
               >
                 <div className="font-bold">Nouveaux contenus</div>
                 <div
-                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${
-                    notificationsEnabled ? '' : 'bg-white/10'
-                  }`}
+                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${notificationsEnabled ? '' : 'bg-white/10'
+                    }`}
                   style={notificationsEnabled ? { background: 'var(--accent)' } : undefined}
                 >
                   <div
-                    className={`h-4 w-4 rounded-full bg-white transition ${
-                      notificationsEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`h-4 w-4 rounded-full bg-white transition ${notificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </div>
               </button>
@@ -200,15 +203,13 @@ export default function SettingsComponent() {
               >
                 <div className="font-bold">Rappel quotidien</div>
                 <div
-                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${
-                    remindersEnabled ? '' : 'bg-white/10'
-                  }`}
+                  className={`h-6 w-11 rounded-full border border-white/15 p-1 transition ${remindersEnabled ? '' : 'bg-white/10'
+                    }`}
                   style={remindersEnabled ? { background: 'var(--accent)' } : undefined}
                 >
                   <div
-                    className={`h-4 w-4 rounded-full bg-white transition ${
-                      remindersEnabled ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`h-4 w-4 rounded-full bg-white transition ${remindersEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </div>
               </button>

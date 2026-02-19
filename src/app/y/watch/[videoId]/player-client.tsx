@@ -292,7 +292,7 @@ export default function YoutubePlayerClient({
       playerRef.current = new window.YT.Player(containerId, {
         videoId: video.id,
         playerVars: {
-          autoplay: 0,
+          autoplay: autoPlayOnOpen ? 1 : 0,
           controls: 0,
           rel: 0,
           modestbranding: 1,
