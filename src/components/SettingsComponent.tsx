@@ -227,12 +227,21 @@ export default function SettingsComponent() {
                   type="button"
                   className="btn-base btn-secondary text-xs px-3 py-2"
                   onClick={async () => {
-                    const { sendNotification } = await import('./notifications');
+                    const { sendNotification, sendServerPushTest } = await import('./notifications');
+                    // 1. Local test
                     await sendNotification({
                       title: 'ICC WebRadio',
-                      body: 'Test de notification OK ✅',
+                      body: 'Test local OK ✅. Tentative serveur...',
                       url: '/radio',
                     });
+
+                    // 2. Server push test
+                    const res = await sendServerPushTest();
+                    if (res.ok) {
+                      alert('Test serveur envoyé ! Si vous ne recevez rien, vérifiez vos clés VAPID sur Vercel.');
+                    } else {
+                      alert(`Erreur serveur : ${res.error}`);
+                    }
                   }}
                 >
                   Tester

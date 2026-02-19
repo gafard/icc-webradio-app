@@ -169,3 +169,30 @@ export async function syncPushSubscription(enabled: boolean): Promise<Subscripti
     return { ok: false, error: error?.message || 'Unknown error during subscription' };
   }
 }
+
+export async function sendServerPushTest(): Promise<{ ok: boolean; error?: string }> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return { ok: false, error: 'Not supported' };
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      return { ok: false, error: 'No active subscription. Enable notifications first.' };
+    }
+
+    const res = await fetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub }),
+    });
+
+    if (!res.ok) {
+      const json = await res.json();
+      return { ok: false, error: json.error || res.statusText };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+}

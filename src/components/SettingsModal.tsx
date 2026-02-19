@@ -128,8 +128,8 @@ export default function SettingsModal() {
                   key={q}
                   onClick={() => setAudioQuality(q)}
                   className={`btn-base text-xs px-3 py-2 ${audioQuality === q
-                      ? 'btn-primary'
-                      : 'btn-secondary'
+                    ? 'btn-primary'
+                    : 'btn-secondary'
                     }`}
                 >
                   {q === 'auto' ? 'Auto' : q === 'low' ? 'Faible' : 'Haute'}
@@ -152,8 +152,8 @@ export default function SettingsModal() {
                     key={v}
                     onClick={() => setTextScale(v)}
                     className={`btn-base text-xs px-3 py-2 ${textScale === v
-                        ? 'btn-primary'
-                        : 'btn-secondary'
+                      ? 'btn-primary'
+                      : 'btn-secondary'
                       }`}
                   >
                     {v === 1 ? 'Normal' : v === 1.1 ? 'Grand' : 'Très grand'}
@@ -252,12 +252,21 @@ export default function SettingsModal() {
                 type="button"
                 className="btn-base btn-secondary text-xs px-3 py-2"
                 onClick={async () => {
-                  const { sendNotification } = await import('./notifications');
+                  const { sendNotification, sendServerPushTest } = await import('./notifications');
+                  // 1. Local test
                   await sendNotification({
                     title: 'ICC WebRadio',
-                    body: 'Test de notification OK ✅',
+                    body: 'Test local OK ✅. Tentative serveur...',
                     url: '/radio',
                   });
+
+                  // 2. Server push test
+                  const res = await sendServerPushTest();
+                  if (res.ok) {
+                    alert('Test serveur envoyé ! Si vous ne recevez rien, vérifiez vos clés VAPID sur Vercel.');
+                  } else {
+                    alert(`Erreur serveur : ${res.error}`);
+                  }
                 }}
               >
                 Tester
