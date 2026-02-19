@@ -1946,32 +1946,32 @@ export default function CommunityGroupCall({
         </div>
 
         <aside className={`group-call-sidebar glass-veil overflow-hidden rounded-3xl ${isFullscreen ? 'flex h-full min-h-0 flex-col' : 'md:flex md:h-full md:min-h-0 md:flex-col'}`}>
-          <div className="flex items-center justify-between border-b border-[color:var(--border-soft)] px-3 py-2">
-            <div className="text-sm font-semibold text-[color:var(--foreground)]/90">{t('community.groups.callSidebarTitle')}</div>
-            <div className="inline-flex items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--border-soft)] px-3 py-2">
+            <div className="text-sm font-semibold text-[color:var(--foreground)]/90 truncate mr-2">{t('community.groups.callSidebarTitle')}</div>
+            <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-1">
               <button
                 type="button"
                 onClick={() => setChatTab('chat')}
-                className={`btn-base px-2.5 py-1.5 text-[11px] ${chatTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn-base px-2 py-1.5 text-[10px] sm:text-[11px] ${chatTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <MessageSquareText size={12} />
-                {t('community.groups.callTabChat')}
+                <span className="hidden min-[360px]:inline">{t('community.groups.callTabChat')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setChatTab('participants')}
-                className={`btn-base px-2.5 py-1.5 text-[11px] ${chatTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn-base px-2 py-1.5 text-[10px] sm:text-[11px] ${chatTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <Users size={12} />
-                {t('community.groups.callTabParticipants')}
+                <span className="hidden min-[360px]:inline">{t('community.groups.callTabParticipants')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setChatTab('bible')}
-                className={`btn-base px-2.5 py-1.5 text-[11px] ${chatTab === 'bible' ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn-base px-2 py-1.5 text-[10px] sm:text-[11px] ${chatTab === 'bible' ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <BookOpen size={12} />
-                Bible
+                <span className="hidden min-[360px]:inline">Bible</span>
               </button>
             </div>
           </div>
