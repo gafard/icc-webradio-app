@@ -21,7 +21,8 @@ import {
   updatePrayerRequestRemote,
 } from '../../components/prayerRequests';
 import type { PrayerRequest } from '../../types/spiritual';
-import { BookOpen, HandHeart, Megaphone, Handshake, LayoutList, Users } from 'lucide-react';
+import { BookOpen, HandHeart, Megaphone, Handshake, LayoutList, Users, ArrowRight } from 'lucide-react';
+import { useCommunityIdentity } from '../../lib/useCommunityIdentity';
 
 type TabKey = 'all' | 'prayer' | 'help' | 'announcements' | 'content' | 'groups';
 
@@ -41,11 +42,13 @@ export default function CommunityPage() {
 function CommunityPageInner() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
+  const { identity, updateName } = useCommunityIdentity();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [feedRefreshToken, setFeedRefreshToken] = useState(0);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([]);
   const [canPostAnnouncements, setCanPostAnnouncements] = useState(false);
   const [announcementAccessChecked, setAnnouncementAccessChecked] = useState(false);
+  const [onboardName, setOnboardName] = useState('');
   const tabs = useMemo<Array<{ key: TabKey; label: string; icon: ElementType; description: string }>>(
     () => [
       {
@@ -186,6 +189,52 @@ function CommunityPageInner() {
 
   return (
     <AppShell>
+      {identity !== null && !identity.displayName && (
+        <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-2xl" />
+          <div className="relative w-full max-w-sm overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-2xl sm:p-8">
+            <div className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 rounded-full bg-[color:var(--accent)]/15 blur-3xl animate-pulse" />
+            <div className="relative text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[color:var(--accent)]/20 to-blue-500/20 text-[color:var(--foreground)] ring-1 ring-[color:var(--border-soft)]">
+                <Users size={28} className="opacity-80" />
+              </div>
+              <h2 className="mb-2 text-2xl font-extrabold tracking-tight text-[color:var(--foreground)]">
+                Bienvenue !
+              </h2>
+              <p className="mb-6 text-sm leading-relaxed text-[color:var(--foreground)]/70">
+                Comment pouvons-nous vous appeler dans de l'Espace Communautaire ?
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onboardName.trim()) {
+                    updateName(onboardName.trim());
+                  }
+                }}
+                className="space-y-4"
+              >
+                <input
+                  autoFocus
+                  className="h-12 w-full rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface-strong)] px-4 text-base text-[color:var(--foreground)] outline-none shadow-inner transition-colors placeholder:text-[color:var(--foreground)]/45 focus:border-[color:var(--accent-border)]/50 text-center"
+                  value={onboardName}
+                  onChange={(e) => setOnboardName(e.target.value)}
+                  placeholder="Votre nom ou prénom"
+                  maxLength={30}
+                />
+                <button
+                  type="submit"
+                  disabled={!onboardName.trim()}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--foreground)] px-6 text-sm font-bold text-[color:var(--background)] shadow-lg transition-transform hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:opacity-50"
+                >
+                  Continuer
+                  <ArrowRight size={16} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-4 py-6 text-[color:var(--foreground)]">
         <div className="rounded-2xl bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] p-6 mb-6">
           <div className="text-[11px] uppercase tracking-[0.06em] font-semibold text-[color:var(--text-muted)]">
