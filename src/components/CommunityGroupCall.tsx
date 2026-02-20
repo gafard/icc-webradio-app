@@ -1628,21 +1628,28 @@ export default function CommunityGroupCall({
 
   if (!callUiOpen) {
     return (
-      <section className="group-call-launch glass-veil-strong relative overflow-hidden rounded-3xl border border-[color:var(--border-soft)] p-4 shadow-[0_16px_44px_rgba(0,0,0,0.24)]">
-        <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-14 -bottom-14 h-40 w-40 rounded-full bg-sky-400/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-xs uppercase tracking-[0.18em] text-[color:var(--foreground)]/60">
-              {t('community.groups.inAppCall')}
-            </div>
-            <div className="mt-1 text-lg font-extrabold">{t('community.groups.callLaunchTitle')}</div>
-            <p className="mt-1 text-sm text-[color:var(--foreground)]/70">
-              {t('community.groups.callLaunchHint')}
-            </p>
+      <section className={`group-call-launch glass-veil-strong relative overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] shadow-[0_16px_44px_rgba(0,0,0,0.24)] ${isFullscreen ? 'flex-1 m-4' : 'min-h-[280px] p-6'}`}>
+        <div className="pointer-events-none absolute -right-14 -top-14 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl animate-pulse" />
+        <div className="pointer-events-none absolute -left-14 -bottom-14 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl call-pulse-slow" />
+        <div className="relative flex h-full flex-col items-center justify-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-sky-500/20 text-[color:var(--foreground)] mb-4 ring-1 ring-[color:var(--border-soft)]">
+            <Phone size={28} className="opacity-80" />
           </div>
-          <button type="button" className="btn-base btn-primary px-4 py-2 text-sm" onClick={openCallPage}>
-            <Phone size={14} />
+          <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-[color:var(--foreground)]/50 mb-2">
+            {t('community.groups.inAppCall')}
+          </div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[color:var(--foreground)] mb-2">
+            {t('community.groups.callLaunchTitle')}
+          </h2>
+          <p className="max-w-sm text-sm text-[color:var(--foreground)]/60 mb-8 mx-auto leading-relaxed">
+            {t('community.groups.callLaunchHint')}
+          </p>
+          <button
+            type="button"
+            className="btn-base btn-primary px-6 py-3 text-sm rounded-xl hover:scale-[1.02] transition-transform shadow-lg shadow-emerald-500/10"
+            onClick={openCallPage}
+          >
+            <Phone size={16} />
             {t('community.groups.callLaunch')}
           </button>
         </div>
