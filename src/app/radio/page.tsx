@@ -1,37 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppShell from '../../components/AppShell';
 import { getRadioAudio, pauseRadio, playRadio } from '../../components/radioAudioEngine';
-
-type WpItem = {
-  id: string;
-  slug: string;
-  title: string;
-  date: string;
-  thumbnail: string;
-};
+import { Star, SkipBack, Play, Pause, SkipForward } from 'lucide-react';
 
 export default function RadioPage() {
   return <RadioPlayerContent />;
 }
 
-// Composant client pour le lecteur radio
 function RadioPlayerContent() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [logoIndex, setLogoIndex] = useState(0);
-
-  // Données temporaires (à remplacer ensuite par fetch WP si tu veux)
-  const wpContent: WpItem[] = [];
-
-  // à remplacer par ton image (ou une image WP)
-  const coverUrl = '/hero-radio.jpg';
-
-  const title = 'ICC WebRadio — En direct';
-  const subtitle = 'Louange • Enseignements • Programmes';
   const streamUrl = 'https://streamer.iccagoe.net:8443/live';
-  const logos = ['/icons/header-logo-web.jpg', '/icons/logo-sidebar.jpg', '/hero-radio.jpg'];
 
   const togglePlay = async () => {
     const a = audioRef.current;
@@ -71,280 +52,109 @@ function RadioPlayerContent() {
     };
   }, []);
 
-  // SVG ring setup
-  const ring = useMemo(() => {
-    const r = 110;
-    const c = 2 * Math.PI * r;
-    return { r, c };
-  }, []);
-
   return (
     <AppShell>
-      <main className="min-h-[calc(100vh-72px)] px-4 py-10">
-        {/* Background */}
-        <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#101425]/70 shadow-[0_30px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl hero-float">
-            <div className="absolute inset-0 bg-[radial-gradient(900px_500px_at_30%_20%,rgba(201,162,39,0.15),transparent_60%),radial-gradient(900px_600px_at_70%_0%,rgba(123,44,191,0.12),transparent_60%),radial-gradient(1000px_700px_at_50%_100%,rgba(0,0,0,0.55),transparent_65%)]" />
+      <main className="min-h-[calc(100vh-72px)] flex items-center justify-center p-4 bg-zinc-200 dark:bg-black transition-colors duration-500">
 
-            {/* Top bar */}
-            <div className="relative flex items-center justify-between px-6 py-5">
-              <div className="flex items-center gap-3">
-                <img
-                  src={logos[Math.min(logoIndex, logos.length - 1)]}
-                  alt=""
-                  className="h-10 w-10 rounded-full object-cover ring-1 ring-white/15"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'block';
-                    setLogoIndex((prev) => Math.min(prev + 1, logos.length - 1));
-                  }}
-                />
-                <div className="leading-tight">
-                  <div className="text-xs text-white/50">Radio</div>
-                  <div className="text-sm font-extrabold text-white">ICC Agoè-Logopé</div>
-                </div>
-              </div>
+        {/* Widget Container */}
+        <div className="relative w-full max-w-[360px] rounded-[42px] bg-[#0E0E0E] text-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden">
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="btn-base btn-ghost text-white/80 text-xs px-4 py-2"
-                >
-                  Open in Spotify
-                </button>
-                <button
-                  type="button"
-                  className="btn-icon text-white/80"
-                  aria-label="Settings"
-                  title="Settings"
-                >
-                  ⚙
-                </button>
+          {/* Subtle top border gradient like a physical spec */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+          {/* Header */}
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-2">
+              {/* Recording / Live Red Dot */}
+              <div className="relative flex items-center justify-center h-2 w-2">
+                <div className="absolute h-full w-full rounded-full bg-[#FF1A35] blur-[2px] animate-pulse" />
+                <div className="h-1.5 w-1.5 rounded-full bg-[#FF1A35] shadow-[0_0_8px_#FF1A35]" />
               </div>
+              <span className="text-sm font-medium tracking-wide text-white/90">ICC WebRadio™</span>
             </div>
 
-            {/* Main */}
-            <div className="relative px-6 pb-7">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-                {/* Left: Player */}
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] card-anim">
-                  {/* Playlist label */}
-                  <div className="text-center">
-                    <div className="text-xs tracking-widest text-white/35">Playlist</div>
-                    <div className="mt-1 text-sm font-extrabold text-white/90">Daily Mix</div>
-                  </div>
-
-                  {/* Big ring */}
-                  <div className="relative mx-auto mt-5 flex h-[340px] w-[340px] items-center justify-center">
-                    {/* outer subtle ring */}
-                    <div className="absolute inset-0 rounded-full bg-white/5 blur-[0.2px]" />
-
-                    {/* progress ring (animated) */}
-                    <svg
-                      width="340"
-                      height="340"
-                      viewBox="0 0 340 340"
-                      className="absolute inset-0"
-                      aria-hidden="true"
-                    >
-                      <defs>
-                        <linearGradient id="gradPink" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="rgba(201,162,39,1)" />
-                          <stop offset="100%" stopColor="rgba(218,185,80,1)" />
-                        </linearGradient>
-                      </defs>
-
-                      {/* base track */}
-                      <circle
-                        cx="170"
-                        cy="170"
-                        r={ring.r}
-                        fill="none"
-                        stroke="rgba(255,255,255,0.10)"
-                        strokeWidth="12"
-                      />
-
-                      {/* animated stroke */}
-                      <circle
-                        cx="170"
-                        cy="170"
-                        r={ring.r}
-                        fill="none"
-                        stroke="url(#gradPink)"
-                        strokeWidth="12"
-                        strokeLinecap="round"
-                        strokeDasharray={ring.c}
-                        strokeDashoffset={ring.c * 0.18}
-                        className="ring-anim"
-                      />
-                    </svg>
-
-                    {/* inner disc */}
-                    <div className="relative grid h-[240px] w-[240px] place-items-center rounded-full bg-white/5 shadow-[inset_0_0_0_12px_rgba(255,255,255,0.05),0_30px_80px_rgba(0,0,0,0.55)]">
-                      <div className="h-[180px] w-[180px] overflow-hidden rounded-full ring-2 ring-white/15">
-                        <img src={coverUrl} alt="" className="h-full w-full object-cover" />
-                      </div>
-
-                      {/* play button */}
-                      <button
-                        type="button"
-                        onClick={togglePlay}
-                        className="absolute grid h-16 w-16 place-items-center rounded-full bg-[#C9A227] text-black shadow-[0_18px_50px_rgba(201,162,39,0.25)] hover:brightness-110"
-                        aria-label={isPlaying ? 'Pause' : 'Play'}
-                        title={isPlaying ? 'Pause' : 'Play'}
-                      >
-                        <span className="text-2xl font-black">
-                          {isPlaying ? (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z" /></svg>
-                          ) : (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                          )}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* time row (fake like design) */}
-                  <div className="mt-2 flex items-center justify-center gap-3 text-xs text-white/45">
-                    <span>0:00</span>
-                    <span className="h-[2px] w-[210px] rounded-full bg-white/10" />
-                    <span>LIVE</span>
-                  </div>
-
-                  {/* bottom now playing bar */}
-                  <div className="mt-6 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                    {/* waveform */}
-                    <div className="flex items-end gap-[6px]">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="wave h-3 w-[5px] rounded-full bg-[#C9A227]"
-                          style={{ animationDelay: `${i * 0.08}s` }}
-                        />
-                      ))}
-                    </div>
-
-                    {/* title */}
-                    <div className="mx-4 min-w-0 flex-1 text-center">
-                      <div className="truncate text-sm font-extrabold text-white/90">
-                        {title}
-                      </div>
-                      <div className="truncate text-xs text-white/50">{subtitle}</div>
-                      <div className="mt-1 text-xs font-bold text-[#C9A227]">
-                        LIVE
-                      </div>
-                    </div>
-
-                    {/* actions */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        className="btn-icon text-white/75"
-                        aria-label="Like"
-                        title="Like"
-                      >
-                        ♡
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon text-white/75"
-                        aria-label="More"
-                        title="More"
-                      >
-                        ⋯
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* audio is handled by shared radioAudioEngine singleton */}
-                </div>
-
-                {/* Right: WP Content */}
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] card-anim">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-extrabold text-white/90">Derniers contenus</h3>
-                    <a href="/explorer" className="text-xs text-white/60 hover:text-white/80">Voir tout →</a>
-                  </div>
-
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    {wpContent.map((item) => (
-                      <a
-                        key={item.id}
-                        href={`/watch/${item.slug}`}
-                        className="block group"
-                      >
-                        <div className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition">
-                          <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden">
-                            <img
-                              src={item.thumbnail}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-white/90 text-sm line-clamp-2 group-hover:text-white">
-                              {item.title}
-                            </div>
-                            <div className="text-xs text-white/50 mt-1">
-                              {new Date(item.date).toLocaleDateString('fr-FR')}
-                            </div>
-                          </div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="w-full btn-base btn-primary text-sm"
-                    >
-                      {isPlaying ? 'Mettre en pause' : 'Écouter maintenant'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {/* Context menu dots */}
+            <div className="flex items-center gap-1.5 opacity-50">
+              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
+              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
+              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
             </div>
-
-            {/* local styles */}
-            <style jsx>{`
-              .ring-anim {
-                transform-origin: 170px 170px;
-                animation: spinRing 6s linear infinite;
-                filter: drop-shadow(0 10px 20px rgba(201, 162, 39, 0.22));
-              }
-              @keyframes spinRing {
-                0% {
-                  transform: rotate(0deg);
-                  stroke-dashoffset: ${ring.c * 0.18};
-                }
-                50% {
-                  stroke-dashoffset: ${ring.c * 0.62};
-                }
-                100% {
-                  transform: rotate(360deg);
-                  stroke-dashoffset: ${ring.c * 0.18};
-                }
-              }
-
-              .wave {
-                animation: wave 1.1s ease-in-out infinite;
-              }
-              @keyframes wave {
-                0%,
-                100% {
-                  height: 10px;
-                  opacity: 0.55;
-                }
-                50% {
-                  height: 28px;
-                  opacity: 1;
-                }
-              }
-            `}</style>
           </div>
+
+          {/* Huge frequency text */}
+          <div className="flex items-end justify-between mt-2 mb-8">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[64px] font-light leading-[0.85] tracking-tighter tabular-nums">102.6</span>
+              <span className="text-base font-bold text-white/40 mb-1 tracking-wider uppercase">MHz</span>
+            </div>
+            {/* AM / FM toggle */}
+            <div className="flex gap-2">
+              <div className="px-2 py-1 rounded-md bg-[#222] text-white/40 text-[10px] font-bold uppercase tracking-widest leading-none">AM</div>
+              <div className="px-2 py-1 rounded-md bg-[#FF1A35]/20 text-[#FF4D6D] text-[10px] font-bold uppercase tracking-widest leading-none">FM</div>
+            </div>
+          </div>
+
+          {/* Dotted marquee title */}
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[#FF1A35] mb-2 px-1 truncate opacity-90">
+            LOUANGE - ENSEIGNEMENTS - PROGRAMMES
+          </div>
+
+          {/* Red visually rich band */}
+          <div className="relative w-full h-[90px] rounded-[24px] bg-[#FF1A35] overflow-hidden p-4 shadow-[0_10px_30px_rgba(255,26,53,0.3)]">
+            {/* Dark gradient overlay to match image aesthetics */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#E60023] to-[#FF4D6D]" />
+
+            {/* Frequency scale dots and numbers */}
+            <div className="relative flex flex-col justify-between h-full z-10 w-[95%]">
+              <div className="flex items-end justify-between border-b border-black/20 pb-1 w-[80%]">
+                {[98, 100, 101, 102, 103, 104, 105].map(freq => (
+                  <div key={freq} className="flex flex-col items-center gap-1">
+                    <div className="h-1.5 w-[1px] bg-black/40" />
+                    <span className="text-[8px] font-bold text-black/50 leading-none">{freq}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* The abstract waveform layer on the right side */}
+            <div className="absolute bottom-0 right-0 h-full w-[40%] bg-black/5 backdrop-blur-sm z-0">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full fill-black/20 drop-shadow-md">
+                <path d="M0,100 C20,100 20,40 50,40 C80,40 80,0 100,0 L100,100 Z" />
+              </svg>
+            </div>
+
+            {/* Active pointer line at 102.6 */}
+            <div className="absolute top-0 bottom-0 w-[2px] bg-white/90 z-20 left-[45%] opacity-70" />
+            <div className="absolute top-2 z-20 left-[45%] -ml-1 text-[8px] font-extrabold text-white">.6</div>
+          </div>
+
+          {/* Bottom Controls */}
+          <div className="flex items-center justify-between mt-8">
+            <button className="h-[52px] w-[52px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/70 active:scale-95">
+              <Star fill="currentColor" size={20} className="drop-shadow-lg" />
+            </button>
+            <div className="flex gap-3">
+              <button className="h-[44px] w-[44px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
+                <SkipBack fill="currentColor" size={16} />
+              </button>
+              <button
+                onClick={togglePlay}
+                className="h-[52px] w-[52px] rounded-full bg-gradient-to-b from-[#333] to-[#111] border border-white/10 shadow-[inset_0_2px_2px_rgba(255,255,255,0.15),0_8px_20px_rgba(0,0,0,0.8)] flex items-center justify-center hover:brightness-125 transition-all text-white active:scale-95"
+              >
+                {isPlaying ? (
+                  <Pause fill="currentColor" size={22} className="drop-shadow-lg" />
+                ) : (
+                  <Play fill="currentColor" size={22} className="ml-1 drop-shadow-lg" />
+                )}
+              </button>
+              <button className="h-[44px] w-[44px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
+                <SkipForward fill="currentColor" size={16} />
+              </button>
+            </div>
+          </div>
+
         </div>
       </main>
-    </AppShell >
+    </AppShell>
   );
 }
