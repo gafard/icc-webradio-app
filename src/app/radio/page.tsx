@@ -54,63 +54,63 @@ function RadioPlayerContent() {
 
   return (
     <AppShell>
-      <main className="min-h-[calc(100vh-72px)] flex items-center justify-center p-4 bg-zinc-200 dark:bg-black transition-colors duration-500">
+      <main className="min-h-[calc(100vh-72px)] flex items-center justify-center p-4 sm:p-8 bg-zinc-200 dark:bg-black transition-colors duration-500">
 
         {/* Widget Container */}
-        <div className="relative w-full max-w-[360px] rounded-[42px] bg-[#0E0E0E] text-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div className="relative w-full max-w-xl md:max-w-2xl lg:max-w-4xl rounded-[48px] bg-[#0E0E0E] text-white p-8 sm:p-12 lg:p-16 shadow-[0_30px_100px_rgba(0,0,0,0.6)] overflow-hidden">
 
           {/* Subtle top border gradient like a physical spec */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
           {/* Header */}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex justify-between items-start mb-6 lg:mb-10">
+            <div className="flex items-center gap-3">
               {/* Recording / Live Red Dot */}
-              <div className="relative flex items-center justify-center h-2 w-2">
-                <div className="absolute h-full w-full rounded-full bg-[#FF1A35] blur-[2px] animate-pulse" />
-                <div className="h-1.5 w-1.5 rounded-full bg-[#FF1A35] shadow-[0_0_8px_#FF1A35]" />
+              <div className="relative flex items-center justify-center h-3 w-3">
+                <div className="absolute h-full w-full rounded-full bg-[#FF1A35] blur-[3px] animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-[#FF1A35] shadow-[0_0_12px_#FF1A35]" />
               </div>
-              <span className="text-sm font-medium tracking-wide text-white/90">ICC WebRadio™</span>
+              <span className="text-base sm:text-lg font-medium tracking-wide text-white/90">ICC WebRadio™</span>
             </div>
 
             {/* Context menu dots */}
-            <div className="flex items-center gap-1.5 opacity-50">
-              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
-              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
-              <div className="h-1.5 w-1.5 rounded-full bg-white/80" />
+            <div className="flex items-center gap-2 opacity-50">
+              <div className="h-2 w-2 rounded-full bg-white/80" />
+              <div className="h-2 w-2 rounded-full bg-white/80" />
+              <div className="h-2 w-2 rounded-full bg-white/80" />
             </div>
           </div>
 
           {/* Huge frequency text */}
-          <div className="flex items-end justify-between mt-2 mb-8">
-            <div className="flex items-baseline gap-1">
-              <span className="text-[64px] font-light leading-[0.85] tracking-tighter tabular-nums">102.6</span>
-              <span className="text-base font-bold text-white/40 mb-1 tracking-wider uppercase">MHz</span>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mt-4 mb-10 lg:mb-14 gap-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[100px] sm:text-[140px] lg:text-[180px] font-light leading-[0.8] tracking-tighter tabular-nums">102.6</span>
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white/40 mb-2 sm:mb-4 lg:mb-6 tracking-wider uppercase">MHz</span>
             </div>
             {/* AM / FM toggle */}
-            <div className="flex gap-2">
-              <div className="px-2 py-1 rounded-md bg-[#222] text-white/40 text-[10px] font-bold uppercase tracking-widest leading-none">AM</div>
-              <div className="px-2 py-1 rounded-md bg-[#FF1A35]/20 text-[#FF4D6D] text-[10px] font-bold uppercase tracking-widest leading-none">FM</div>
+            <div className="flex gap-3 sm:mb-4 lg:mb-6">
+              <div className="px-4 py-2 rounded-lg bg-[#222] text-white/40 text-[14px] font-bold uppercase tracking-widest leading-none">AM</div>
+              <div className="px-4 py-2 rounded-lg bg-[#FF1A35]/20 text-[#FF4D6D] text-[14px] font-bold uppercase tracking-widest leading-none">FM</div>
             </div>
           </div>
 
           {/* Dotted marquee title */}
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#FF1A35] mb-2 px-1 truncate opacity-90">
+          <div className="text-xs sm:text-sm lg:text-base font-bold uppercase tracking-[0.3em] text-[#FF1A35] mb-4 px-2 truncate opacity-90">
             LOUANGE - ENSEIGNEMENTS - PROGRAMMES
           </div>
 
           {/* Red visually rich band */}
-          <div className="relative w-full h-[90px] rounded-[24px] bg-[#FF1A35] overflow-hidden p-4 shadow-[0_10px_30px_rgba(255,26,53,0.3)]">
+          <div className="relative w-full h-[120px] sm:h-[160px] lg:h-[200px] rounded-[32px] bg-[#FF1A35] overflow-hidden p-6 sm:p-8 shadow-[0_15px_40px_rgba(255,26,53,0.25)]">
             {/* Dark gradient overlay to match image aesthetics */}
             <div className="absolute inset-0 bg-gradient-to-tr from-[#E60023] to-[#FF4D6D]" />
 
             {/* Frequency scale dots and numbers */}
             <div className="relative flex flex-col justify-between h-full z-10 w-[95%]">
-              <div className="flex items-end justify-between border-b border-black/20 pb-1 w-[80%]">
+              <div className="flex items-end justify-between border-b-2 border-black/20 pb-2 w-[80%]">
                 {[98, 100, 101, 102, 103, 104, 105].map(freq => (
-                  <div key={freq} className="flex flex-col items-center gap-1">
-                    <div className="h-1.5 w-[1px] bg-black/40" />
-                    <span className="text-[8px] font-bold text-black/50 leading-none">{freq}</span>
+                  <div key={freq} className="flex flex-col items-center gap-2">
+                    <div className="h-2 sm:h-3 w-[2px] bg-black/40" />
+                    <span className="text-[10px] sm:text-[12px] lg:text-[14px] font-bold text-black/50 leading-none">{freq}</span>
                   </div>
                 ))}
               </div>
@@ -124,31 +124,31 @@ function RadioPlayerContent() {
             </div>
 
             {/* Active pointer line at 102.6 */}
-            <div className="absolute top-0 bottom-0 w-[2px] bg-white/90 z-20 left-[45%] opacity-70" />
-            <div className="absolute top-2 z-20 left-[45%] -ml-1 text-[8px] font-extrabold text-white">.6</div>
+            <div className="absolute top-0 bottom-0 w-[4px] bg-white/90 z-20 left-[45%] opacity-80 rounded-full" />
+            <div className="absolute top-4 sm:top-6 z-20 left-[45%] ml-2 text-xs sm:text-base font-extrabold text-white">.6</div>
           </div>
 
           {/* Bottom Controls */}
-          <div className="flex items-center justify-between mt-8">
-            <button className="h-[52px] w-[52px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/70 active:scale-95">
-              <Star fill="currentColor" size={20} className="drop-shadow-lg" />
+          <div className="flex items-center justify-between mt-10 lg:mt-16">
+            <button className="h-[64px] w-[64px] sm:h-[80px] sm:w-[80px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/70 active:scale-95">
+              <Star fill="currentColor" className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-lg" />
             </button>
-            <div className="flex gap-3">
-              <button className="h-[44px] w-[44px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
-                <SkipBack fill="currentColor" size={16} />
+            <div className="flex gap-4 sm:gap-6 lg:gap-8">
+              <button className="h-[56px] w-[56px] sm:h-[72px] sm:w-[72px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
+                <SkipBack fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
               <button
                 onClick={togglePlay}
-                className="h-[52px] w-[52px] rounded-full bg-gradient-to-b from-[#333] to-[#111] border border-white/10 shadow-[inset_0_2px_2px_rgba(255,255,255,0.15),0_8px_20px_rgba(0,0,0,0.8)] flex items-center justify-center hover:brightness-125 transition-all text-white active:scale-95"
+                className="h-[64px] w-[64px] sm:h-[80px] sm:w-[80px] rounded-full bg-gradient-to-b from-[#333] to-[#111] border border-white/10 shadow-[inset_0_2px_2px_rgba(255,255,255,0.15),0_12px_30px_rgba(0,0,0,0.8)] flex items-center justify-center hover:brightness-125 transition-all text-white active:scale-95"
               >
                 {isPlaying ? (
-                  <Pause fill="currentColor" size={22} className="drop-shadow-lg" />
+                  <Pause fill="currentColor" className="w-7 h-7 sm:w-9 sm:h-9 drop-shadow-lg" />
                 ) : (
-                  <Play fill="currentColor" size={22} className="ml-1 drop-shadow-lg" />
+                  <Play fill="currentColor" className="w-7 h-7 sm:w-9 sm:h-9 ml-1 drop-shadow-lg" />
                 )}
               </button>
-              <button className="h-[44px] w-[44px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
-                <SkipForward fill="currentColor" size={16} />
+              <button className="h-[56px] w-[56px] sm:h-[72px] sm:w-[72px] rounded-full bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_10px_30px_rgba(0,0,0,0.6)] flex items-center justify-center hover:brightness-125 transition-all text-white/50 active:scale-95">
+                <SkipForward fill="currentColor" className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
