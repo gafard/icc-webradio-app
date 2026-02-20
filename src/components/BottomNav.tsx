@@ -27,9 +27,9 @@ export default function BottomNav() {
   const items = [
     { href: '/', icon: Home, label: 'Accueil' },
     { href: '/radio', icon: Radio, label: 'Radio' },
+    { href: '/videos', icon: Video, label: 'Vidéos' },
     { href: '/bible', icon: BookOpen, label: 'Bible' },
     { href: '/community', icon: Users, label: 'Communauté' },
-    { href: '/videos', icon: Video, label: 'Vidéos' },
   ];
 
   return (
