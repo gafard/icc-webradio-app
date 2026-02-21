@@ -77,8 +77,8 @@ export default function VideosGrid({ videos }: { videos: Video[] }) {
                 />
 
                 {/* Play hover */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[1px] pointer-events-none">
-                  <div className="w-12 h-12 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl backdrop-blur-md transform scale-75 group-hover:scale-100 transition-transform duration-300 ease-out">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-10">
+                  <div className="w-12 h-12 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300 ease-out">
                     <svg width="18" height="20" viewBox="0 0 16 18" fill="currentColor"><path d="M15 9L1 17.66V.34L15 9z" /></svg>
                   </div>
                 </div>
