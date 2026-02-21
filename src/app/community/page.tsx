@@ -235,7 +235,7 @@ function CommunityPageInner() {
           </div>
         </div>
       )}
-      <div className="mx-auto max-w-7xl px-4 py-6 text-[color:var(--foreground)]">
+      <div className="mx-auto max-w-7xl px-4 py-6 text-[color:var(--foreground)] animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out fill-mode-both">
         <div className="rounded-2xl bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] p-6 mb-6">
           <div className="text-[11px] uppercase tracking-[0.06em] font-semibold text-[color:var(--text-muted)]">
             {t('community.badge')}

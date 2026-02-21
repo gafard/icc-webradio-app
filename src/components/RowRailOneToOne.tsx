@@ -41,7 +41,7 @@ export default function RowRailOneToOne({
   return (
     <section className="mt-8">
       {/* Header */}
-      <div className="flex items-baseline justify-between mb-4 px-1">
+      <div className="flex items-baseline justify-between mb-4 px-1 animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both">
         <h2 className="text-xl font-bold text-[color:var(--foreground)] tracking-tight">{title}</h2>
 
         {seeAllHref ? (
@@ -60,7 +60,7 @@ export default function RowRailOneToOne({
         <button
           type="button"
           onClick={scrollLeft}
-          className={`${arrowClass} left-2`}
+          className={`${arrowClass} left-2 animate-in fade-in duration-500 delay-300 fill-mode-both`}
           aria-label="Scroll left"
           title="Précédent"
         >
@@ -70,7 +70,7 @@ export default function RowRailOneToOne({
         <button
           type="button"
           onClick={scrollRight}
-          className={`${arrowClass} right-2`}
+          className={`${arrowClass} right-2 animate-in fade-in duration-500 delay-300 fill-mode-both`}
           aria-label="Scroll right"
           title="Suivant"
         >
@@ -84,37 +84,41 @@ export default function RowRailOneToOne({
           style={{ scrollbarWidth: 'none' }}
         >
           {items.map((it, idx) => (
-            <div key={`${it.id}-${idx}`} className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[280px]">
+            <div
+              key={`${it.id}-${idx}`}
+              className="shrink-0 snap-start w-[220px] sm:w-[260px] lg:w-[280px] animate-in fade-in slide-in-from-right-8 zoom-in-[0.98] duration-700 ease-out fill-mode-both"
+              style={{ animationDelay: `${idx * 75}ms` }}
+            >
               <Link
                 href={it.href}
-                className="group block rounded-2xl overflow-hidden bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] shadow-sm transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+                className="group block rounded-2xl overflow-hidden bg-[color:var(--surface-strong)] border border-[color:var(--border-soft)] shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
               >
                 <div className="relative aspect-video overflow-hidden bg-[color:var(--surface)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={it.thumbnail}
                     alt={it.title}
-                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition duration-700 group-hover:scale-110"
                   />
 
                   {it.badge ? (
-                    <div className="absolute top-2.5 left-2.5 rounded-full bg-[#FF3B30] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                    <div className="absolute top-2.5 left-2.5 rounded-full bg-[#FF3B30] px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-md">
                       {it.badge}
                     </div>
                   ) : null}
 
                   {/* Play hover */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-11 h-11 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg backdrop-blur-sm">
-                      <svg width="16" height="18" viewBox="0 0 16 18" fill="currentColor"><path d="M15 9L1 17.66V.34L15 9z" /></svg>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[1px]">
+                    <div className="w-12 h-12 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl backdrop-blur-md transform scale-75 group-hover:scale-100 transition-transform duration-300 ease-out">
+                      <svg width="18" height="20" viewBox="0 0 16 18" fill="currentColor"><path d="M15 9L1 17.66V.34L15 9z" /></svg>
                     </div>
                   </div>
                 </div>
 
-                <div className="px-3 py-3">
-                  <div className="line-clamp-2 text-[15px] font-semibold text-[color:var(--foreground)] leading-tight">{it.title}</div>
+                <div className="px-3 py-4">
+                  <div className="line-clamp-2 text-[15px] font-bold text-[color:var(--foreground)] leading-tight group-hover:text-[#C9A227] transition-colors duration-200">{it.title}</div>
                   {it.subtitle ? (
-                    <div className="mt-1 line-clamp-1 text-[13px] text-[color:var(--text-muted)]">{it.subtitle}</div>
+                    <div className="mt-1.5 line-clamp-1 text-[13px] text-[color:var(--text-muted)] font-medium">{it.subtitle}</div>
                   ) : null}
                 </div>
               </Link>

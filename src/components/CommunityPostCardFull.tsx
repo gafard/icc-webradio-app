@@ -83,8 +83,8 @@ export default function CommunityPostCardFull({
 
     return (
         <div
-            className="group relative h-full w-full overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-soft)]"
-            style={bgStyle}
+            className="group relative h-full w-full overflow-hidden rounded-[32px] border border-[color:var(--border-soft)] bg-[color:var(--surface)] shadow-[var(--shadow-soft)] animate-in fade-in slide-in-from-bottom-8 zoom-in-[0.98] duration-700 ease-out fill-mode-both"
+            style={{ ...bgStyle, animationDelay: `${(index % 10) * 100}ms` }}
         >
             {/* 1. MEDIA LAYER */}
             {post.media_url ? (
@@ -95,13 +95,13 @@ export default function CommunityPostCardFull({
                         <img
                             src={post.media_url}
                             alt="Post content"
-                            className="h-full w-full object-cover opacity-90"
+                            className="h-full w-full object-cover opacity-90 transition-transform duration-[2000ms] group-hover:scale-105"
                             draggable={false}
                         />
                     ) : mediaKind === 'video' ? (
                         <video
                             src={post.media_url}
-                            className="h-full w-full object-cover opacity-95"
+                            className="h-full w-full object-cover opacity-95 transition-transform duration-[2000ms] group-hover:scale-105"
                             autoPlay
                             muted
                             loop
@@ -112,12 +112,12 @@ export default function CommunityPostCardFull({
                     ) : (
                         // Link / Non-image media placeholder
                         <div className="flex h-full flex-col items-center justify-center bg-[color:var(--surface-strong)] p-8 text-center">
-                            <Share2 size={48} className="mb-4 text-[color:var(--foreground)]/50" />
+                            <Share2 size={48} className="mb-4 text-[color:var(--foreground)]/50 transition-transform duration-700 group-hover:scale-110" />
                             <a
                                 href={post.media_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="break-all rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 text-[color:var(--accent)] hover:underline"
+                                className="break-all rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 text-[#C9A227] hover:underline"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {post.media_url}
@@ -125,13 +125,13 @@ export default function CommunityPostCardFull({
                         </div>
                     )}
                     {/* Gradient Overlay for text readability (lighter desktop frame) */}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/75 sm:from-black/15 sm:to-black/65" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/75 sm:from-black/15 sm:to-black/65 transition-opacity duration-700 group-hover:opacity-90" />
                 </div>
             ) : (
                 // Text-only post background
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[color:var(--surface-strong)] to-[color:var(--surface)] p-8 text-center text-[color:var(--foreground)]/50">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[color:var(--surface-strong)] to-[color:var(--surface)] p-8 text-center text-[color:var(--foreground)]/50 transition-colors duration-700 group-hover:bg-[color:var(--surface)] group-hover:brightness-105">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
-                    <div className="text-9xl opacity-5 select-none">❝</div>
+                    <div className="text-9xl opacity-5 select-none transition-transform duration-1000 group-hover:scale-110">❝</div>
                 </div>
             )}
 
@@ -165,7 +165,7 @@ export default function CommunityPostCardFull({
             <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end gap-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-6 pt-24 sm:from-black/80 sm:via-black/55 sm:p-8">
 
                 {/* Author Info */}
-                <div className="flex items-center gap-3 mb-1">
+                <div className="flex items-center gap-3 mb-1 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300 fill-mode-both">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/20">
                         <div className="flex h-full w-full items-center justify-center rounded-[10px] border border-[color:var(--border-soft)] bg-[color:var(--surface)]/70 text-xs font-bold text-[color:var(--foreground)] backdrop-blur-sm">
                             {initials(post.author_name)}
@@ -186,14 +186,14 @@ export default function CommunityPostCardFull({
 
                 {/* Post Text Body */}
                 <div className={`
-             text-white leading-relaxed drop-shadow-sm prose prose-invert max-w-none
+             text-white leading-relaxed drop-shadow-sm prose prose-invert max-w-none animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 fill-mode-both
              ${post.media_url ? 'text-sm sm:text-base font-medium line-clamp-4' : 'text-lg sm:text-xl font-semibold'}
         `}>
                     {post.content}
                 </div>
 
                 {/* 4. ACTIONS BAR */}
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex items-center gap-3 mt-2 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-700 fill-mode-both">
                     <button
                         onClick={(e) => { e.stopPropagation(); onLike(); }}
                         className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] py-3 backdrop-blur-md transition-all active:scale-95 hover:bg-[color:var(--surface-strong)]"
@@ -211,7 +211,7 @@ export default function CommunityPostCardFull({
                     </button>
 
                     <button
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/70 backdrop-blur-md transition-all active:scale-95 hover:bg-[color:var(--surface-strong)]"
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]/70 backdrop-blur-md transition-all active:scale-95 hover:bg-[color:var(--surface-strong)] hover:text-[#C9A227]"
                     >
                         <MoreHorizontal size={20} />
                     </button>

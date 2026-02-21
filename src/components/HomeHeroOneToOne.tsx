@@ -94,17 +94,17 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
       : 'chip-soft text-[#0B1220]';
 
   return (
-    <section className={`relative overflow-hidden rounded-[28px] border ${frame} backdrop-blur-xl shadow-2xl ${shell} ${dataSaver ? '' : 'hero-float'}`}>
+    <section className={`group relative overflow-hidden rounded-[28px] border ${frame} backdrop-blur-xl shadow-2xl ${shell} ${dataSaver ? '' : 'hero-float'} animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out fill-mode-both`}>
       {/* Backdrop */}
       <div className={`relative ${dataSaver ? 'h-[300px] sm:h-[340px] lg:h-[380px]' : 'h-[360px] sm:h-[440px] lg:h-[520px]'}`}>
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 overflow-hidden">
           {/* Si pas d'image radio, on garde un fond stylé */}
           {!dataSaver && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={backdrop}
               alt="Hero"
-              className={`w-full h-full object-cover ${heroKind === 'radio' ? 'opacity-70' : 'opacity-100'}`}
+              className={`w-full h-full object-cover transition-transform duration-[2000ms] ease-out group-hover:scale-105 ${heroKind === 'radio' ? 'opacity-70' : 'opacity-100'}`}
               onError={(e) => {
                 // fallback si /hero-radio.jpg n'existe pas
                 (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -112,9 +112,9 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             />
           )}
           {/* Cinema overlay */}
-          <div className={`absolute inset-0 ${overlay}`} />
+          <div className={`absolute inset-0 ${overlay} transition-opacity duration-1000 group-hover:opacity-90`} />
           {/* ICC aura glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(201,162,39,0.22),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(201,162,39,0.22),transparent_55%)] transition-opacity duration-1000 group-hover:opacity-75" />
           <div className="absolute -bottom-20 left-10 h-56 w-56 rounded-full bg-[#7B2CBF]/12 blur-3xl" />
         </div>
 
@@ -122,7 +122,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
         <div className="relative z-10 h-full flex items-end">
           <div className="p-6 sm:p-10 lg:p-12 max-w-3xl">
             {/* Top tiny label */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
               {heroKind === 'radio' ? (
                 <div className="inline-flex items-center gap-2 text-xs font-extrabold px-3 py-1 rounded-full bg-red-500/20 border border-red-500/70 text-red-100 shadow-[0_4px_20px_rgba(239,68,68,0.45)]">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -141,17 +141,17 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight drop-shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight drop-shadow-[0_18px_60px_rgba(0,0,0,0.35)] animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-both">
               {title}
             </h1>
 
             {/* Description */}
-            <p className="mt-4 text-sm sm:text-base opacity-85 max-w-2xl">
+            <p className="mt-4 text-sm sm:text-base opacity-85 max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-700 delay-[450ms] fill-mode-both">
               {subtitle}
             </p>
 
             {/* Meta chips */}
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500 fill-mode-both">
               {heroKind === 'radio' ? (
                 <>
                   <span className={`text-xs font-semibold px-3 py-1 rounded-full ${chip}`}>Louange</span>
@@ -168,7 +168,7 @@ export default function HomeHeroOneToOne({ mode, latestVideo, radioStreamUrl, cu
             </div>
 
             {/* Actions */}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-7 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-700 fill-mode-both">
               {heroKind === 'radio' ? (
                 <>
                   <button
